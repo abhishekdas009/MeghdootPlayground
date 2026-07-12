@@ -1,6 +1,8 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import * as React from "react";
+
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
