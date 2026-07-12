@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #0176D3;
+  --color-primary-foreground: #FFFFFF;
+  --color-secondary: #032D60;
+  --color-secondary-foreground: #FFFFFF;
+  --color-background: #F3F6F9;
+  --color-card: #FFFFFF;
+  --color-border: #D8DDE6;
+  --color-hover: #EEF4FF;
+  --color-success: #2E844A;
+  --color-warning: #FE9339;
+  --color-danger: #EA001E;
+  --color-muted: #F3F6F9;
+  --color-muted-foreground: #5C6670;
+  --color-foreground: #181818;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-card: 0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.06);
+  --shadow-card-hover: 0 4px 12px 0 rgba(1,118,211,0.12), 0 2px 4px -1px rgba(0,0,0,0.06);
+  --shadow-header: 0 1px 0 0 rgba(0,0,0,0.06);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+}
+
+.dark {
+  --color-background: #0B1120;
+  --color-card: #151E32;
+  --color-border: #2A3B55;
+  --color-hover: #1E293B;
+  --color-foreground: #F1F5F9;
+  --color-muted-foreground: #94A3B8;
+  --color-muted: #1E293B;
+}
