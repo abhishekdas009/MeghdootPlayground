@@ -20,12 +20,13 @@ export function ThemeProvider({
   children: React.ReactNode;
 }) {
   const [theme, setThemeState] = React.useState<Theme>("light");
-  const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    const saved =
-      (localStorage.getItem(STORAGE_KEY) as Theme | null) ??
-      "light";
+    const savedTheme = localStorage.getItem(STORAGE_KEY);
+    const saved: Theme =
+      savedTheme === "dark" || savedTheme === "light"
+        ? savedTheme
+        : "light";
 
     setThemeState(saved);
 
@@ -35,7 +36,6 @@ export function ThemeProvider({
       document.documentElement.classList.remove("dark");
     }
 
-    setMounted(true);
   }, []);
 
   const setTheme = React.useCallback((newTheme: Theme) => {
@@ -62,10 +62,6 @@ export function ThemeProvider({
     }),
     [theme, setTheme, toggleTheme]
   );
-
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
     <ThemeContext.Provider value={value}>
