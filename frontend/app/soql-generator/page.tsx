@@ -289,7 +289,6 @@ function parseFailedTickets(input: string): string[] {
   const lines = input.split(/[\r\n]+/).filter((l) => l.trim());
   const failed: string[] = [];
   const hasFailedLines = lines.some((l) => l.toLowerCase().includes("failed"));
-
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.includes("Ticket_Number_Read_Only__c") || trimmed.includes("__Status") || trimmed.includes("_Id") || trimmed.includes("_Errors")) continue;
@@ -386,24 +385,33 @@ function parseAssetTransferPairs(input: string): AssetTransferPair[] {
   const lines = input.split(/[\r\n]+/).filter((l) => l.trim());
   const pairs: AssetTransferPair[] = [];
 
+  // Only requirement: New CID must start with "CID" (case-insensitive). Component ID can be any format.
+  const CID_REGEX = /CID-?\d+/i;
+
   for (const line of lines) {
     const trimmed = line.trim();
     const lower = trimmed.toLowerCase();
-    if (lower.includes("component") && lower.includes("new cid")) continue;
-    if (lower.includes("component") && lower.includes("cid")) continue;
+
+    // Skip header rows like "COMPONENT  NEW CID" or "COMPONENT  CID"
+    if (lower.includes("component") && (lower.includes("new cid") || lower.includes("cid"))) continue;
 
     const parts = trimmed.split(/[\s,\t]+/).filter(Boolean);
+
     if (parts.length >= 2) {
       const componentId = parts[0]!.trim();
       const newCid = parts[1]!.trim();
-      if (componentId && newCid && componentId.startsWith("BSL")) {
+      if (componentId && newCid && /^CID/i.test(newCid)) {
         pairs.push({ componentId, newCid });
       }
     } else {
-      const cidMatch = trimmed.match(/CID-\d+/);
-      const componentMatch = trimmed.match(/BSL\d+/);
-      if (componentMatch && cidMatch) {
-        pairs.push({ componentId: componentMatch[0], newCid: cidMatch[0] });
+      // Fallback: single blob line with no clean delimiter between component and CID
+      const cidMatch = trimmed.match(CID_REGEX);
+      if (cidMatch && cidMatch.index !== undefined) {
+        const componentId = trimmed.slice(0, cidMatch.index).trim();
+        const newCid = cidMatch[0];
+        if (componentId) {
+          pairs.push({ componentId, newCid });
+        }
       }
     }
   }
@@ -1028,8 +1036,8 @@ BSL22295338      CID-6074821`}
                       <label className="text-xs font-medium text-foreground mb-1.5">Asset SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Asset SOQL result here...
-"_"	"Component_Id__c"	"Id"	"Account"	"Account.Customer_ID__c"	"Record_Type__c"	"Parent"	"Parent.Id"	"Parent.Account"	"Parent.Account.Id"
-"[Asset]"	"BSL22295338"	"02iNy00000h4ZkwIAE"	"[Account]"	"CID-6959279"	"Component"	"[Asset]"	"02iNy00000h4RaYIAU"	"[Account]"	"001Ny00001bDRvuIAG"`}
+"_"\t"Component_Id__c"\t"Id"\t"Account"\t"Account.Customer_ID__c"\t"Record_Type__c"\t"Parent"\t"Parent.Id"\t"Parent.Account"\t"Parent.Account.Id"
+"[Asset]"\t"BSL22295338"\t"02iNy00000h4ZkwIAE"\t"[Account]"\t"CID-6959279"\t"Component"\t"[Asset]"\t"02iNy00000h4RaYIAU"\t"[Account]"\t"001Ny00001bDRvuIAG"`}
                         className="flex-1 min-h-[160px] font-mono text-xs"
                         value={assetSOQLResult}
                         onChange={(e) => setAssetSOQLResult(e.target.value)}
@@ -1039,9 +1047,9 @@ BSL22295338      CID-6074821`}
                       <label className="text-xs font-medium text-foreground mb-1.5">Account SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Account SOQL result here...
-"_"	"Customer_ID__c"	"Id"
-"[Account]"	"CID-6074821"	"001Ny000016UZXTIA4"
-"[Account]"	"CID-7414665"	"001Ny00001g1bBKIAY"`}
+"_"\t"Customer_ID__c"\t"Id"
+"[Account]"\t"CID-6074821"\t"001Ny000016UZXTIA4"
+"[Account]"\t"CID-7414665"\t"001Ny00001g1bBKIAY"`}
                         className="flex-1 min-h-[160px] font-mono text-xs"
                         value={accountSOQLResult}
                         onChange={(e) => setAccountSOQLResult(e.target.value)}
