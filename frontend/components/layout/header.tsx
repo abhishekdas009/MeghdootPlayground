@@ -1,20 +1,3 @@
-Your existing `Header` component is well-structured, but it has a few missed opportunities—specifically regarding the unused `useTheme` hook, the inactive `⌘K` keyboard shortcut, and an inconsistent raw SVG icon for the menu.
-
-Here is an improved and refactored version.
-
-### Key Improvements:
-
-1. **Functional `⌘K` Shortcut:** Added a `useEffect` hook to listen for `Cmd+K` (Mac) or `Ctrl+K` (Windows) and automatically focus the search input.
-2. **Theme Toggle Implementation:** You were importing `useTheme` but not utilizing it. I added a new icon button to toggle between Light and Dark mode using `Sun` and `Moon` icons.
-3. **Consistent Icons:** Replaced the hardcoded raw SVG hamburger icon with the `Menu` icon from `lucide-react` to keep your icon library consistent.
-4. **Mobile Search Fallback:** Added a mobile-only search icon button (`md:hidden`) to the right side, ensuring mobile users aren't left without a search trigger.
-5. **Accessibility (A11y):** Added `title` and `aria-label` tags to the new buttons for screen-reader and hover-tooltip support.
-
-### The Refactored Code
-
-```tsx
-"use client";
-
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { 
@@ -190,5 +173,3 @@ export function Header() {
     </header>
   );
 }
-
-```
