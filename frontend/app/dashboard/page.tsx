@@ -2,9 +2,8 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { useDashboardStore, getTimeAgo } from "@/lib/dashboard-store";
 import {
@@ -12,12 +11,25 @@ import {
   Table2,
   History,
   Star,
-  ArrowRight,
   Zap,
   Bookmark,
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+
+type DashboardStats = {
+  queriesGenerated: number;
+  excelOperations: number;
+  historyItems: number;
+  favourites: number;
+  activities: Array<{
+    id: string;
+    type: string;
+    title: string;
+    description: string;
+    timestamp: number;
+  }>;
+};
 
 function AnimatedNumber({ value }: { value: number }) {
   const [display, setDisplay] = React.useState(0);
@@ -28,7 +40,7 @@ function AnimatedNumber({ value }: { value: number }) {
     if (!ref.current) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting && !started) {
+        if (entry?.isIntersecting) {
           setStarted(true);
         }
       },
@@ -36,27 +48,29 @@ function AnimatedNumber({ value }: { value: number }) {
     );
     observer.observe(ref.current);
     return () => observer.disconnect();
-  }, [started]);
+  }, []);
 
   React.useEffect(() => {
     if (!started) return;
-    let start = 0;
-    const end = value;
-    if (end === 0) {
+
+    if (value === 0) {
       setDisplay(0);
       return;
     }
+
     const duration = 800;
+    const startValue = display;
+    const change = value - startValue;
     const startTime = performance.now();
 
     const tick = (now: number) => {
       const elapsed = now - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const ease = 1 - Math.pow(1 - progress, 3);
-      start = Math.floor(ease * end);
-      setDisplay(start);
+      setDisplay(Math.round(startValue + change * ease));
       if (progress < 1) requestAnimationFrame(tick);
     };
+
     requestAnimationFrame(tick);
   }, [started, value]);
 
@@ -91,9 +105,7 @@ function KPICard({
             </p>
           </div>
           <Link href={href}>
-            <div
-              className={`flex h-11 w-11 items-center justify-center rounded-xl ${color} text-white shadow-sm`}
-            >
+            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${color} text-white shadow-sm`}>
               <Icon className="h-5 w-5" />
             </div>
           </Link>
@@ -121,9 +133,7 @@ function QuickActionCard({
       <Card className="overflow-hidden border-border/70 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
-            <div
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${color} text-white shadow-sm`}
-            >
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${color} text-white shadow-sm`}>
               <Icon className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -172,40 +182,69 @@ const activityColor = (type: string) => {
 
 export default function DashboardPage() {
   const stats = useDashboardStore();
+  const [refreshKey, setRefreshKey] = React.useState(0);
+
+  React.useEffect(() => {
+    const onFocus = () => setRefreshKey((prev) => prev + 1);
+    const onVisibility = () => {
+      if (!document.hidden) {
+        setRefreshKey((prev) => prev + 1);
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
+
+  const handleRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
+    toast.success("Dashboard refreshed");
+  };
+
+  const activities = [...(stats.activities ?? [])];
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Overview of your productivity and recent activity</p>
+    <div className="space-y-6 max-w-7xl mx-auto" key={refreshKey}>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Overview of your productivity and recent activity</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh}>
+          Refresh
+        </Button>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Queries Generated"
-          value={stats.queriesGenerated}
+          value={stats.queriesGenerated ?? 0}
           icon={Terminal}
           color="bg-primary"
           href="/soql-generator"
         />
         <KPICard
           title="Excel Operations"
-          value={stats.excelOperations}
+          value={stats.excelOperations ?? 0}
           icon={Table2}
           color="bg-success"
           href="/excel-automation"
         />
         <KPICard
           title="History Items"
-          value={stats.historyItems}
+          value={stats.historyItems ?? 0}
           icon={History}
           color="bg-warning"
           href="/history"
         />
         <KPICard
           title="Favourites"
-          value={stats.favourites}
+          value={stats.favourites ?? 0}
           icon={Star}
           color="bg-orange-500"
           href="/template-manager"
@@ -213,7 +252,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* Quick Actions */}
         <div className="lg:col-span-8 space-y-4">
           <h2 className="text-base font-semibold text-foreground">Quick Actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -248,7 +286,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Activity */}
         <div className="lg:col-span-4 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
@@ -260,7 +297,7 @@ export default function DashboardPage() {
           </div>
           <Card className="overflow-hidden border-border/70 shadow-sm">
             <CardContent className="p-0">
-              {stats.activities.length === 0 ? (
+              {activities.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <History className="h-8 w-8 text-muted-foreground/50 mb-3" />
                   <p className="text-sm text-muted-foreground">No activity yet</p>
@@ -268,7 +305,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-border/60">
-                  {stats.activities.slice(0, 6).map((activity) => (
+                  {activities.slice(0, 6).map((activity) => (
                     <div key={activity.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
                       <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${activityColor(activity.type)}`}>
                         {activityIcon(activity.type)}
