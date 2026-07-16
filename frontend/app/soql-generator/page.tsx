@@ -658,14 +658,25 @@ ${formatted}
         continue;
       }
 
-      const recordType = assetRow.record_type__c || assetRow.recordtype || "";
-      const isComponent = recordType.toLowerCase().includes("component");
+      const recordType = (assetRow.record_type__c || assetRow.recordtype || "").toLowerCase().trim();
+
+      // Both "Component" and "Sub Component" record types follow the parent-transfer rule.
+      // Transferring the Parent.Id automatically carries all Component and Sub Component
+      // children along with it - so both types must resolve to Parent.Id, not their own Id.
+      const isComponent = recordType === "component";
+      const isSubComponent =
+        recordType === "sub component" ||
+        recordType === "sub-component" ||
+        recordType === "subcomponent";
+      const usesParentId = isComponent || isSubComponent;
 
       let assetId: string | undefined;
       let sourceNote: string;
-      if (isComponent) {
+      if (usesParentId) {
         assetId = assetRow["parent.id"] || assetRow.parentid || assetRow.parent_id || assetRow.id;
-        sourceNote = "Parent.Id (Component record type)";
+        sourceNote = isSubComponent
+          ? "Parent.Id (Sub Component record type)"
+          : "Parent.Id (Component record type)";
       } else {
         assetId = assetRow.id;
         sourceNote = "Asset.Id";
@@ -1077,7 +1088,7 @@ BSL22295338      CID-6074821`}
                         <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={handleDownloadTransfer}><Download className="h-4 w-4" /> Download</Button>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">If Record Type = Component, Parent.Id is used as transfer target</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">If Record Type = Component or Sub Component, Parent.Id is used as transfer target</p>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col min-h-0">
                     <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">{transferOutput}</pre>
