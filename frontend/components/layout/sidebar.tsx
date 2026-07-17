@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useUIStore } from "@/lib/ui-store";
+import { useUIStore } from "@/store/ui-store";
 import {
   LayoutDashboard,
   TerminalSquare,
@@ -105,7 +105,7 @@ function SidebarContent({
   );
 }
 
-export default function Sidebar() {
+export function Sidebar() {
   const pathname = usePathname();
   const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -147,6 +147,7 @@ export default function Sidebar() {
             {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
           </Button>
         </div>
+
         <div className="min-h-0 flex-1">
           <SidebarContent collapsed={sidebarCollapsed} />
         </div>
@@ -173,3 +174,5 @@ export default function Sidebar() {
     </>
   );
 }
+
+export default Sidebar;
