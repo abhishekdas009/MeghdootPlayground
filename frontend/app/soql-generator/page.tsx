@@ -289,7 +289,6 @@ function parseFailedTickets(input: string): string[] {
   const lines = input.split(/[\r\n]+/).filter((l) => l.trim());
   const failed: string[] = [];
   const hasFailedLines = lines.some((l) => l.toLowerCase().includes("failed"));
-
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.includes("Ticket_Number_Read_Only__c") || trimmed.includes("__Status") || trimmed.includes("_Id") || trimmed.includes("_Errors")) continue;
@@ -386,24 +385,33 @@ function parseAssetTransferPairs(input: string): AssetTransferPair[] {
   const lines = input.split(/[\r\n]+/).filter((l) => l.trim());
   const pairs: AssetTransferPair[] = [];
 
+  // Only requirement: New CID must start with "CID" (case-insensitive). Component ID can be any format.
+  const CID_REGEX = /CID-?\d+/i;
+
   for (const line of lines) {
     const trimmed = line.trim();
     const lower = trimmed.toLowerCase();
-    if (lower.includes("component") && lower.includes("new cid")) continue;
-    if (lower.includes("component") && lower.includes("cid")) continue;
+
+    // Skip header rows like "COMPONENT  NEW CID" or "COMPONENT  CID"
+    if (lower.includes("component") && (lower.includes("new cid") || lower.includes("cid"))) continue;
 
     const parts = trimmed.split(/[\s,\t]+/).filter(Boolean);
+
     if (parts.length >= 2) {
       const componentId = parts[0]!.trim();
       const newCid = parts[1]!.trim();
-      if (componentId && newCid && componentId.startsWith("BSL")) {
+      if (componentId && newCid && /^CID/i.test(newCid)) {
         pairs.push({ componentId, newCid });
       }
     } else {
-      const cidMatch = trimmed.match(/CID-\d+/);
-      const componentMatch = trimmed.match(/BSL\d+/);
-      if (componentMatch && cidMatch) {
-        pairs.push({ componentId: componentMatch[0], newCid: cidMatch[0] });
+      // Fallback: single blob line with no clean delimiter between component and CID
+      const cidMatch = trimmed.match(CID_REGEX);
+      if (cidMatch && cidMatch.index !== undefined) {
+        const componentId = trimmed.slice(0, cidMatch.index).trim();
+        const newCid = cidMatch[0];
+        if (componentId) {
+          pairs.push({ componentId, newCid });
+        }
       }
     }
   }
@@ -531,8 +539,6 @@ export default function SOQLGeneratorPage() {
   const [transferOutput, setTransferOutput] = React.useState("");
   const [transferDebug, setTransferDebug] = React.useState("");
 
-  const [showCancellationRequestedQuery, setShowCancellationRequestedQuery] = React.useState(false);
-
   const savedTicketsRef = React.useRef("");
 
   const activeTemplate = templates.find((t) => t.id === selectedTemplate);
@@ -603,26 +609,6 @@ export default function SOQLGeneratorPage() {
   const workOrderPreview = React.useMemo(() => buildPreviewBatches("1"), [buildPreviewBatches]);
   const serviceAppointmentPreview = React.useMemo(() => buildPreviewBatches("2"), [buildPreviewBatches]);
   const otherPreview = React.useMemo(() => buildPreviewBatches(selectedTemplate), [buildPreviewBatches, selectedTemplate]);
-
-  const CANCELLATION_REQUESTED_TEMPLATE = `SELECT Id, Ticket_Number_Read_Only__c, Status
-FROM WorkOrder
-WHERE Ticket_Number_Read_Only__c IN (
-{{tickets}}
-)
-AND Status = 'Cancellation Requested'`;
-
-  const cancellationRequestedPreview = React.useMemo(() => {
-    if (parsedTickets.length === 0) {
-      return [CANCELLATION_REQUESTED_TEMPLATE.replace("{{tickets}}", "")];
-    }
-    const batches: string[] = [];
-    for (let index = 0; index < parsedTickets.length; index += batchSize) {
-      const chunk = parsedTickets.slice(index, index + batchSize);
-      const formatted = formatTicketsForSOQL(chunk);
-      batches.push(CANCELLATION_REQUESTED_TEMPLATE.replace("{{tickets}}", formatted));
-    }
-    return batches;
-  }, [parsedTickets]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
@@ -746,7 +732,6 @@ ${formatted}
     setAccountSOQLResult("");
     setTransferOutput("");
     setTransferDebug("");
-    setShowCancellationRequestedQuery(false);
     setSelectedTemplate(value);
     if (value === "1" && savedTicketsRef.current.trim()) {
       setTicketsInput(savedTicketsRef.current);
@@ -827,6 +812,7 @@ ${formatted}
       )}
 
       <div className="grid gap-6 lg:grid-cols-12">
+        {/* LEFT COLUMN */}
         <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }} className="lg:col-span-3 space-y-4">
           <Card>
             <CardHeader className="pb-2">
@@ -893,6 +879,7 @@ ${formatted}
             </Card>
           )}
 
+          {/* Normal ticket input card */}
           {!isAssetTransfer && (
             <Card className="flex flex-col">
               <CardHeader className="pb-3">
@@ -937,6 +924,7 @@ A26060134750619`}
             </Card>
           )}
 
+          {/* Asset Transfer Input Card */}
           {isAssetTransfer && (
             <Card className="flex flex-col">
               <CardHeader className="pb-3">
@@ -973,7 +961,9 @@ BSL22295338      CID-6074821`}
           )}
         </motion.div>
 
+        {/* RIGHT COLUMN */}
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.25 }} className="lg:col-span-9 grid grid-cols-1 xl:grid-cols-2 gap-6">
+          {/* TS selected */}
           {isTS && (
             <>
               <QueryPreviewCard title="TS (Ticket Status)" subtitle="WorkOrder query preview" batches={workOrderPreview} batchIndex={tsBatchIndex} setBatchIndex={setTsBatchIndex} onCopy={handleCopy} />
@@ -1003,10 +993,12 @@ BSL22295338      CID-6074821`}
             </>
           )}
 
+          {/* SA selected */}
           {isSA && (
             <QueryPreviewCard title="SA (Service Appointment)" subtitle="ServiceAppointment query preview" batches={serviceAppointmentPreview} batchIndex={saBatchIndex} setBatchIndex={setSaBatchIndex} onCopy={handleCopy} />
           )}
 
+          {/* Asset Transfer selected */}
           {isAssetTransfer && (
             <>
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
@@ -1044,8 +1036,8 @@ BSL22295338      CID-6074821`}
                       <label className="text-xs font-medium text-foreground mb-1.5">Asset SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Asset SOQL result here...
-"_"	"Component_Id__c"	"Id"	"Account"	"Account.Customer_ID__c"	"Record_Type__c"	"Parent"	"Parent.Id"	"Parent.Account"	"Parent.Account.Id"
-"[Asset]"	"BSL22295338"	"02iNy00000h4ZkwIAE"	"[Account]"	"CID-6959279"	"Component"	"[Asset]"	"02iNy00000h4RaYIAU"	"[Account]"	"001Ny00001bDRvuIAG"`}
+"_"\t"Component_Id__c"\t"Id"\t"Account"\t"Account.Customer_ID__c"\t"Record_Type__c"\t"Parent"\t"Parent.Id"\t"Parent.Account"\t"Parent.Account.Id"
+"[Asset]"\t"BSL22295338"\t"02iNy00000h4ZkwIAE"\t"[Account]"\t"CID-6959279"\t"Component"\t"[Asset]"\t"02iNy00000h4RaYIAU"\t"[Account]"\t"001Ny00001bDRvuIAG"`}
                         className="flex-1 min-h-[160px] font-mono text-xs"
                         value={assetSOQLResult}
                         onChange={(e) => setAssetSOQLResult(e.target.value)}
@@ -1055,9 +1047,9 @@ BSL22295338      CID-6074821`}
                       <label className="text-xs font-medium text-foreground mb-1.5">Account SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Account SOQL result here...
-"_"	"Customer_ID__c"	"Id"
-"[Account]"	"CID-6074821"	"001Ny000016UZXTIA4"
-"[Account]"	"CID-7414665"	"001Ny00001g1bBKIAY"`}
+"_"\t"Customer_ID__c"\t"Id"
+"[Account]"\t"CID-6074821"\t"001Ny000016UZXTIA4"
+"[Account]"\t"CID-7414665"\t"001Ny00001g1bBKIAY"`}
                         className="flex-1 min-h-[160px] font-mono text-xs"
                         value={accountSOQLResult}
                         onChange={(e) => setAccountSOQLResult(e.target.value)}
@@ -1110,45 +1102,10 @@ BSL22295338      CID-6074821`}
             </>
           )}
 
+          {/* Cancellation selected */}
           {isCancellation && (
             <>
-              <div className="flex flex-col gap-2">
-                <QueryPreviewCard
-                  title={
-                    showCancellationRequestedQuery
-                      ? "Cancellation Requested Query"
-                      : (activeTemplate?.name ?? "Query Preview")
-                  }
-                  subtitle={
-                    showCancellationRequestedQuery
-                      ? "WorkOrder cancellation requested query preview"
-                      : `${activeTemplate?.category ?? ""} query preview`
-                  }
-                  batches={
-                    showCancellationRequestedQuery
-                      ? cancellationRequestedPreview
-                      : otherPreview
-                  }
-                  batchIndex={otherBatchIndex}
-                  setBatchIndex={setOtherBatchIndex}
-                  onCopy={handleCopy}
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 self-start"
-                    onClick={() => {
-                      setShowCancellationRequestedQuery((prev) => !prev);
-                      setOtherBatchIndex(0);
-                    }}
-                  >
-                    <ArrowRightLeft className="h-4 w-4" />
-                    {showCancellationRequestedQuery ? "Show Default Query" : "Show Cancellation Requested Query"}
-                  </Button>
-                </div>
-              </div>
-
+              <QueryPreviewCard title={activeTemplate?.name ?? "Query Preview"} subtitle={`${activeTemplate?.category ?? ""} query preview`} batches={otherPreview} batchIndex={otherBatchIndex} setBatchIndex={setOtherBatchIndex} onCopy={handleCopy} />
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Paste Excel / Data Loader Output</CardTitle>
@@ -1170,7 +1127,6 @@ BSL22295338      CID-6074821`}
                   )}
                 </CardContent>
               </Card>
-
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
@@ -1182,7 +1138,6 @@ BSL22295338      CID-6074821`}
                   <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">{cancellationEmail || "Paste tickets to generate cancellation email"}</pre>
                 </CardContent>
               </Card>
-
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
@@ -1197,6 +1152,7 @@ BSL22295338      CID-6074821`}
             </>
           )}
 
+          {/* Other templates */}
           {!isTS && !isSA && !isAssetTransfer && !isCancellation && (
             <QueryPreviewCard title={activeTemplate?.name ?? "Query Preview"} subtitle={`${activeTemplate?.category ?? ""} query preview`} batches={otherPreview} batchIndex={otherBatchIndex} setBatchIndex={setOtherBatchIndex} onCopy={handleCopy} />
           )}
