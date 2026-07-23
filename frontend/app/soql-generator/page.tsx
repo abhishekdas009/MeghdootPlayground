@@ -559,7 +559,7 @@ export default function SOQLGeneratorPage() {
   };
 
   const parsedTickets = React.useMemo(() => parseTickets(ticketsInput), [ticketsInput]);
-  const batchSize = 500;
+  const batchSize = 450;
   const batchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / batchSize) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
   const failedTickets = React.useMemo(() => parseFailedTickets(excelInput), [excelInput]);
@@ -914,7 +914,7 @@ A26060134750619`}
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="text-[10px]">{parsedTickets.length === 0 ? "No tickets" : `${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`}</Badge>
                   <Badge variant="outline" className="text-[10px]">{batchCount === 0 ? "0 batches" : `${batchCount} batch${batchCount === 1 ? "" : "es"}`}</Badge>
-                  <Badge variant="outline" className="text-[10px]">Max 500 values / block</Badge>
+                  <Badge variant="outline" className="text-[10px]">Max 450 values / block</Badge>
                   <div className="flex-1" />
                   <Button variant="outline" className="gap-1" onClick={handleClear}>
                     <Trash2 className="h-4 w-4" /> Clear
