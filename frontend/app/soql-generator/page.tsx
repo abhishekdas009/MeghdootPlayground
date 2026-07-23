@@ -60,7 +60,7 @@ WHERE Ticket_Number_Read_Only__c IN (
     id: "13",
     name: "Cancellation Tickets",
     category: "WorkOrder",
-    soql: `SELECT id, Status
+    soql: `SELECT id,Ticket_Number_Read_Only__c,Status
 FROM WorkOrder
 WHERE status != 'Completed' AND Ticket_Number_Read_Only__c IN (
 {{tickets}}
