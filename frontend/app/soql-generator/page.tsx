@@ -20,6 +20,10 @@ import {
   Download,
   ArrowRightLeft,
   AlertTriangle,
+  CheckCircle2,
+  Filter,
+  FileSpreadsheet,
+  PlayCircle,
 } from "lucide-react";
 
 interface Template {
@@ -35,6 +39,14 @@ interface AssetTransferPair {
   componentId: string;
   newCid: string;
 }
+
+interface CancellationExecutionRow {
+  id: string;
+  ticket: string;
+  status: string;
+}
+
+type CancellationViewMode = "query" | "update-output" | "requested-query";
 
 const defaultTemplates: Template[] = [
   {
@@ -58,22 +70,34 @@ WHERE Ticket_Number_Read_Only__c IN (
   },
   {
     id: "13",
-    name: "Cancellation Tickets",
+    name: "CANCELLATION TICKETS",
     category: "WorkOrder",
-    soql: `SELECT id,Ticket_Number_Read_Only__c,Status
+    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status
 FROM WorkOrder
-WHERE status != 'Completed' AND Ticket_Number_Read_Only__c IN (
+WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
 {{tickets}}
 )`,
+    favourite: false,
+  },
+  {
+    id: "19",
+    name: "Cancellation Requested",
+    category: "WorkOrder",
+    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status
+FROM WorkOrder
+WHERE Ticket_Number_Read_Only__c IN (
+{{tickets}}
+)
+AND Status = 'Cancellation Requested'`,
     favourite: false,
   },
   {
     id: "14",
     name: "Case Cancellation",
     category: "WorkOrder",
-    soql: `SELECT id, Status, CaseId, case.status, case.Cancellation_Reason__c, Cancellation_Reason__c
+    soql: `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c
 FROM WorkOrder
-WHERE status != 'Completed' AND Ticket_Number_Read_Only__c IN (
+WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
 {{tickets}}
 )`,
     favourite: false,
@@ -91,7 +115,7 @@ WHERE Ticket_Numbers__c IN (
   },
   {
     id: "4",
-    name: "OP (Case Details)",
+    name: "Case Assign",
     category: "Case",
     soql: `SELECT Id,
        Status,
@@ -163,7 +187,7 @@ AND Status NOT IN ('Completed','Canceled','Bundled')`,
     id: "9",
     name: "Account ID Fetch",
     category: "Account",
-    soql: `SELECT Customer_ID__c,Id
+    soql: `SELECT Customer_ID__c, Id
 FROM Account
 WHERE Customer_ID__c IN (
 {{tickets}}
@@ -194,7 +218,7 @@ WHERE Service_Department_L__c = 'a3cNy0000001IStIAM' AND Account_Group__c = 'NON
     id: "12",
     name: "Asset ID Fetch",
     category: "Asset",
-    soql: `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, parent.id, Parent.Account.id
+    soql: `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id
 FROM Asset
 WHERE Component_Id__c IN (
 {{tickets}}
@@ -231,7 +255,7 @@ WHERE CommunityNickname IN (
 FROM ServiceAppointment
 WHERE Ticket_Numbers__c IN (
 {{tickets}}
-) AND Work_Order__r.status != 'Completed'`,
+) AND Work_Order__r.Status != 'Completed'`,
     favourite: false,
   },
   {
@@ -258,12 +282,14 @@ const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const EMAIL_TEMPLATE = `Hello,
-You service ticket status has been updated to Accepted. Kindly check and revert.
-Regards`;
+Your service ticket status has been updated to Accepted. Kindly check and revert.
+`;
 
-const POST_TEMPLATE = `@tag_user You service ticket status has been updated to Accepted. Kindly check and revert.`;
+const POST_TEMPLATE = `@tag_user Your service ticket status has been updated to Accepted. Kindly check and revert.`;
 
 const TICKET_REGEX = /[BISXCAD]\d{14,}/g;
+const SOQL_BATCH_SIZE = 450;
+const UPDATE_BATCH_SIZE = 200;
 
 interface TicketStats {
   total: number;
@@ -273,6 +299,7 @@ interface TicketStats {
 
 function getTicketStats(tickets: string[]): TicketStats {
   const stats: TicketStats = { total: tickets.length, breakdown: {}, unknown: 0 };
+
   for (const ticket of tickets) {
     const firstChar = ticket.charAt(0).toUpperCase();
     if (CATEGORY_MAP[firstChar]) {
@@ -281,17 +308,27 @@ function getTicketStats(tickets: string[]): TicketStats {
       stats.unknown += 1;
     }
   }
+
   return stats;
 }
 
 function parseFailedTickets(input: string): string[] {
   if (!input.trim()) return [];
-  const lines = input.split(/[\r\n]+/).filter((l) => l.trim());
+  const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
   const failed: string[] = [];
-  const hasFailedLines = lines.some((l) => l.toLowerCase().includes("failed"));
+  const hasFailedLines = lines.some((line) => line.toLowerCase().includes("failed"));
+
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.includes("Ticket_Number_Read_Only__c") || trimmed.includes("__Status") || trimmed.includes("_Id") || trimmed.includes("_Errors")) continue;
+    if (
+      trimmed.includes("Ticket_Number_Read_Only__c") ||
+      trimmed.includes("__Status") ||
+      trimmed.includes("_Id") ||
+      trimmed.includes("_Errors")
+    ) {
+      continue;
+    }
+
     if (hasFailedLines) {
       if (trimmed.toLowerCase().includes("failed") && !trimmed.toLowerCase().includes("succeeded")) {
         const matches = trimmed.match(TICKET_REGEX);
@@ -302,16 +339,194 @@ function parseFailedTickets(input: string): string[] {
       if (matches) failed.push(matches[0]);
     }
   }
+
   return [...new Set(failed)];
+}
+
+function parseAssetTransferPairs(input: string): AssetTransferPair[] {
+  if (!input.trim()) return [];
+  const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
+  const pairs: AssetTransferPair[] = [];
+  const cidRegex = /CID-?\d+/i;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const lower = trimmed.toLowerCase();
+
+    if (lower.includes("component") && (lower.includes("new cid") || lower.includes("cid"))) continue;
+
+    const parts = trimmed.split(/[\s,\t]+/).filter(Boolean);
+
+    if (parts.length >= 2) {
+      const componentId = parts[0]?.trim() ?? "";
+      const newCid = parts[1]?.trim() ?? "";
+      if (componentId && newCid && /^CID/i.test(newCid)) {
+        pairs.push({ componentId, newCid });
+      }
+    } else {
+      const cidMatch = trimmed.match(cidRegex);
+      if (cidMatch && cidMatch.index !== undefined) {
+        const componentId = trimmed.slice(0, cidMatch.index).trim();
+        const newCid = cidMatch[0];
+        if (componentId) {
+          pairs.push({ componentId, newCid });
+        }
+      }
+    }
+  }
+
+  return pairs;
+}
+
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i += 2;
+      } else {
+        inQuotes = !inQuotes;
+        i += 1;
+      }
+    } else if ((char === "," || char === "\t") && !inQuotes) {
+      values.push(current);
+      current = "";
+      i += 1;
+    } else {
+      current += char;
+      i += 1;
+    }
+  }
+
+  values.push(current);
+  return values;
+}
+
+function cleanHeader(value: string): string {
+  return value.replace(/["\[\]]/g, "").trim().toLowerCase().replace(/[^a-z0-9_.]/g, "");
+}
+
+function cleanValue(value: string): string {
+  return value.replace(/["\[\]]/g, "").trim();
+}
+
+function parseSOQLResult(input: string): Array<Record<string, string>> {
+  if (!input.trim()) return [];
+
+  const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
+  const rows: Array<Record<string, string>> = [];
+  let headers: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const values = parseCSVLine(trimmed);
+    if (values.length === 0) continue;
+
+    const firstVal = cleanValue(values[0] ?? "");
+
+    if (
+      firstVal === "_" ||
+      firstVal === "" ||
+      firstVal.toLowerCase() === "component" ||
+      firstVal.toLowerCase() === "id"
+    ) {
+      headers = values.map(cleanHeader);
+      continue;
+    }
+
+    if (headers.length === 0) continue;
+
+    const row: Record<string, string> = {};
+    for (let index = 0; index < values.length; index += 1) {
+      const rawValue = values[index];
+      const header = headers[index];
+      if (!rawValue || !header) continue;
+      row[header] = cleanValue(rawValue);
+    }
+
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function parseAssetResult(input: string): Record<string, Record<string, string>> {
+  const rows = parseSOQLResult(input);
+  const result: Record<string, Record<string, string>> = {};
+
+  for (const row of rows) {
+    const componentId = row.component_id__c || row.componentid__c || row.component_id;
+    if (componentId) result[componentId] = row;
+  }
+
+  return result;
+}
+
+function parseAccountResult(input: string): Record<string, string> {
+  const rows = parseSOQLResult(input);
+  const result: Record<string, string> = {};
+
+  for (const row of rows) {
+    const cid = row.customer_id__c || row.customerid__c || row.customer_id;
+    const id = row.id;
+    if (cid && id) result[cid] = id;
+  }
+
+  return result;
+}
+
+function parseCancellationExecutionRows(input: string): CancellationExecutionRow[] {
+  const rows = parseSOQLResult(input);
+
+  return rows
+    .map((row) => {
+      const id = row.id || "";
+      const ticket = row.ticket_number_read_only__c || row.ticketnumberreadonly__c || "";
+      const status = row.status || "";
+      return { id, ticket, status };
+    })
+    .filter((row) => row.id && row.ticket && row.status);
+}
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  if (size <= 0) return [items];
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
+function downloadTextFile(filename: string, content: string, type = "text/plain;charset=utf-8;") {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function StatPill({ code, count }: { code: string; count: number }) {
   const info = CATEGORY_MAP[code];
   if (!info) return null;
+
   return (
     <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 shadow-sm">
       <span className={`inline-block h-2.5 w-2.5 rounded-full ${info.color}`} />
-      <span className="text-xs font-medium text-foreground">{info.label}: {count}</span>
+      <span className="text-xs font-medium text-foreground">
+        {info.label}: {count}
+      </span>
     </div>
   );
 }
@@ -332,34 +547,50 @@ function QueryPreviewCard({
   onCopy: (value: string) => void;
 }) {
   const currentBatch = batches[batchIndex] ?? "";
+
   return (
     <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle className="text-base">{title}</CardTitle>
             <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">{batches.length} batch{batches.length === 1 ? "" : "es"}</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {batches.length} batch{batches.length === 1 ? "" : "es"}
+            </Badge>
             <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => onCopy(batches.join("\n\n"))}>
               <Copy className="h-4 w-4" /> Copy All
             </Button>
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="space-y-3 flex-1 flex flex-col">
-        {batches.length > 0 && (
+        {batches.length > 0 ? (
           <div className="rounded-lg border border-border/70 bg-muted/20 flex flex-col min-h-0 flex-1">
             <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
               <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 Batch {batchIndex + 1} / {batches.length}
               </span>
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={batchIndex <= 0} onClick={() => setBatchIndex((i) => Math.max(0, i - 1))}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={batchIndex <= 0}
+                  onClick={() => setBatchIndex((value) => Math.max(0, value - 1))}
+                >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={batchIndex >= batches.length - 1} onClick={() => setBatchIndex((i) => Math.min(batches.length - 1, i + 1))}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  disabled={batchIndex >= batches.length - 1}
+                  onClick={() => setBatchIndex((value) => Math.min(batches.length - 1, value + 1))}
+                >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={() => onCopy(currentBatch)}>
@@ -367,10 +598,11 @@ function QueryPreviewCard({
                 </Button>
               </div>
             </div>
-            <pre className="overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-foreground min-h-0 max-h-[320px]">{currentBatch}</pre>
+            <pre className="overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-foreground min-h-0 max-h-[320px]">
+              {currentBatch}
+            </pre>
           </div>
-        )}
-        {batches.length === 0 && (
+        ) : (
           <div className="flex-1 flex items-center justify-center rounded-lg border border-border/70 bg-muted/20 p-6">
             <p className="text-sm text-muted-foreground text-center">Paste tickets to generate query preview</p>
           </div>
@@ -380,151 +612,30 @@ function QueryPreviewCard({
   );
 }
 
-function parseAssetTransferPairs(input: string): AssetTransferPair[] {
-  if (!input.trim()) return [];
-  const lines = input.split(/[\r\n]+/).filter((l) => l.trim());
-  const pairs: AssetTransferPair[] = [];
-
-  // Only requirement: New CID must start with "CID" (case-insensitive). Component ID can be any format.
-  const CID_REGEX = /CID-?\d+/i;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const lower = trimmed.toLowerCase();
-
-    // Skip header rows like "COMPONENT  NEW CID" or "COMPONENT  CID"
-    if (lower.includes("component") && (lower.includes("new cid") || lower.includes("cid"))) continue;
-
-    const parts = trimmed.split(/[\s,\t]+/).filter(Boolean);
-
-    if (parts.length >= 2) {
-      const componentId = parts[0]!.trim();
-      const newCid = parts[1]!.trim();
-      if (componentId && newCid && /^CID/i.test(newCid)) {
-        pairs.push({ componentId, newCid });
-      }
-    } else {
-      // Fallback: single blob line with no clean delimiter between component and CID
-      const cidMatch = trimmed.match(CID_REGEX);
-      if (cidMatch && cidMatch.index !== undefined) {
-        const componentId = trimmed.slice(0, cidMatch.index).trim();
-        const newCid = cidMatch[0];
-        if (componentId) {
-          pairs.push({ componentId, newCid });
-        }
-      }
-    }
-  }
-  return pairs;
-}
-
-function parseCSVLine(line: string): string[] {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-  let i = 0;
-
-  while (i < line.length) {
-    const char = line[i];
-    const nextChar = line[i + 1];
-
-    if (char === '"') {
-      if (inQuotes && nextChar === '"') {
-        current += '"';
-        i += 2;
-      } else {
-        inQuotes = !inQuotes;
-        i++;
-      }
-    } else if ((char === "," || char === "\t") && !inQuotes) {
-      values.push(current);
-      current = "";
-      i++;
-    } else {
-      current += char;
-      i++;
-    }
-  }
-  values.push(current);
-  return values;
-}
-
-function cleanHeader(value: string): string {
-  return value.replace(/["\[\]]/g, "").trim().toLowerCase().replace(/[^a-z0-9_.]/g, "");
-}
-
-function cleanValue(value: string): string {
-  return value.replace(/["\[\]]/g, "").trim();
-}
-
-function parseSOQLResult(input: string): Array<Record<string, string>> {
-  if (!input.trim()) return [];
-  const lines = input.split(/[\r\n]+/).filter((l) => l.trim());
-  const rows: Array<Record<string, string>> = [];
-  let headers: string[] = [];
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    const values = parseCSVLine(trimmed);
-
-    if (values.length === 0) continue;
-
-    const firstVal = cleanValue(values[0]!);
-
-    if (firstVal === "_" || firstVal === "" || firstVal.toLowerCase() === "component" || firstVal.toLowerCase() === "id") {
-      headers = values.map(cleanHeader);
-      continue;
-    }
-
-    if (headers.length === 0) continue;
-
-    const row: Record<string, string> = {};
-    for (let i = 0; i < values.length; i++) {
-      const rawValue = values[i];
-      if (rawValue === undefined) continue;
-      const cleanVal = cleanValue(rawValue);
-      const header = headers[i];
-      if (header) {
-        row[header] = cleanVal;
-      }
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-
-function parseAssetResult(input: string): Record<string, Record<string, string>> {
-  const rows = parseSOQLResult(input);
-  const result: Record<string, Record<string, string>> = {};
-
-  for (const row of rows) {
-    const componentId = row.component_id__c || row.componentid__c || row.component_id;
-    if (componentId) {
-      result[componentId] = row;
-    }
-  }
-  return result;
-}
-
-function parseAccountResult(input: string): Record<string, string> {
-  const rows = parseSOQLResult(input);
-  const result: Record<string, string> = {};
-
-  for (const row of rows) {
-    const cid = row.customer_id__c || row.customerid__c || row.customer_id;
-    const id = row.id;
-    if (cid && id) {
-      result[cid] = id;
-    }
-  }
-  return result;
+function CancellationModeButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Button
+      variant={active ? "primary" : "outline"}
+      size="sm"
+      onClick={onClick}
+      className="min-h-11 h-auto w-full whitespace-normal break-words px-4 py-2 text-center leading-5"
+    >
+      <span className="block w-full text-center">{children}</span>
+    </Button>
+  );
 }
 
 export default function SOQLGeneratorPage() {
   const [templates] = React.useState<Template[]>(defaultTemplates);
-  const [selectedTemplate, setSelectedTemplate] = React.useState<string>("1");
+  const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
   const [ticketsInput, setTicketsInput] = React.useState("");
   const [excelInput, setExcelInput] = React.useState("");
   const [favourites, setFavourites] = React.useState<Set<string>>(new Set(["1"]));
@@ -539,47 +650,118 @@ export default function SOQLGeneratorPage() {
   const [transferOutput, setTransferOutput] = React.useState("");
   const [transferDebug, setTransferDebug] = React.useState("");
 
+  const [cancellationExecutionInput, setCancellationExecutionInput] = React.useState("");
+  const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
+  const [cancellationViewMode, setCancellationViewMode] = React.useState<CancellationViewMode>("query");
+
   const savedTicketsRef = React.useRef("");
 
-  const activeTemplate = templates.find((t) => t.id === selectedTemplate);
+  const activeTemplate = templates.find((template) => template.id === selectedTemplate);
   const isTS = selectedTemplate === "1";
   const isSA = selectedTemplate === "2";
   const isAssetTransfer = selectedTemplate === "3";
-  const isCancellation = selectedTemplate === "13" || selectedTemplate === "14";
+  const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19";
 
-  const parseTickets = (input: string): string[] => {
+  const parseTickets = React.useCallback((input: string): string[] => {
     if (!input.trim()) return [];
     const cleaned = input.replace(/'/g, "").replace(/,/g, " ").replace(/[\t\r\n]+/g, " ");
-    return cleaned.split(/\s+/).map((t) => t.trim()).filter((t) => t.length > 0);
-  };
+    return cleaned
+      .split(/\s+/)
+      .map((ticket) => ticket.trim())
+      .filter((ticket) => ticket.length > 0);
+  }, []);
 
-  const formatTicketsForSOQL = (tickets: string[]): string => {
+  const formatTicketsForSOQL = React.useCallback((tickets: string[]): string => {
     if (tickets.length === 0) return "";
-    return tickets.map((t) => `    '${t}'`).join(",\n");
-  };
+    return tickets.map((ticket) => `    '${ticket}'`).join(",\n");
+  }, []);
 
-  const parsedTickets = React.useMemo(() => parseTickets(ticketsInput), [ticketsInput]);
-  const batchSize = 450;
-  const batchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / batchSize) : 0;
+  const parsedTickets = React.useMemo(() => parseTickets(ticketsInput), [parseTickets, ticketsInput]);
+  const batchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / SOQL_BATCH_SIZE) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
   const failedTickets = React.useMemo(() => parseFailedTickets(excelInput), [excelInput]);
-
   const assetPairs = React.useMemo(() => parseAssetTransferPairs(assetTransferInput), [assetTransferInput]);
+
+  const cancellationExecutionRows = React.useMemo(
+    () => parseCancellationExecutionRows(cancellationExecutionInput),
+    [cancellationExecutionInput]
+  );
+
+  const executableCancellationRows = React.useMemo(
+    () =>
+      cancellationExecutionRows.filter(
+        (row) => row.status.trim().toLowerCase() === "cancellation requested"
+      ),
+    [cancellationExecutionRows]
+  );
+
+  const skippedCancellationRows = React.useMemo(
+    () =>
+      cancellationExecutionRows.filter(
+        (row) => row.status.trim().toLowerCase() !== "cancellation requested"
+      ),
+    [cancellationExecutionRows]
+  );
+
+  const uniqueExecutableCancellationRows = React.useMemo(() => {
+    const seen = new Set<string>();
+    return executableCancellationRows.filter((row) => {
+      if (seen.has(row.id)) return false;
+      seen.add(row.id);
+      return true;
+    });
+  }, [executableCancellationRows]);
+
+  const cancellationUpdateBatches = React.useMemo(() => {
+    const chunks = chunkArray(uniqueExecutableCancellationRows, UPDATE_BATCH_SIZE);
+
+    return chunks.map((chunk) => {
+      const rows = ['"_","Id","Status"'];
+      for (const item of chunk) {
+        rows.push(`"[WorkOrder]","${item.id}","Canceled"`);
+      }
+      return rows.join("\n");
+    });
+  }, [uniqueExecutableCancellationRows]);
+
+  const cancellationUpdateDebug = React.useMemo(() => {
+    if (!cancellationExecutionRows.length) return "";
+
+    const lines: string[] = [];
+    lines.push(`Total parsed rows: ${cancellationExecutionRows.length}`);
+    lines.push(`Ready for cancel execution: ${uniqueExecutableCancellationRows.length}`);
+    lines.push(`Skipped rows: ${skippedCancellationRows.length}`);
+
+    if (skippedCancellationRows.length > 0) {
+      lines.push("");
+      lines.push("Skipped rows because status is not 'Cancellation Requested':");
+      skippedCancellationRows.slice(0, 100).forEach((row) => {
+        lines.push(`${row.ticket} | ${row.id} | ${row.status}`);
+      });
+
+      if (skippedCancellationRows.length > 100) {
+        lines.push(`...and ${skippedCancellationRows.length - 100} more`);
+      }
+    }
+
+    return lines.join("\n");
+  }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows]);
 
   const cancellationBody = React.useMemo(() => {
     const total = parsedTickets.length;
     if (total === 0) return "";
-    let msg = "Cancellation has been done successfully for this slot.";
+
+    let message = "Cancellation has been done successfully for this slot.";
     if (failedTickets.length > 0) {
-      msg += "\n\nExcept ST:\n" + failedTickets.join("\n");
+      message += "\n\nExcept ST:\n" + failedTickets.join("\n");
     }
-    msg += `\n\nTotal Tickets Count : ${total}`;
-    return msg;
+    message += `\n\nTotal Tickets Count : ${total}`;
+    return message;
   }, [parsedTickets, failedTickets]);
 
   const cancellationEmail = React.useMemo(() => {
     if (!cancellationBody) return "";
-    return `Hello,\n${cancellationBody}\n\nRegards`;
+    return `Hello,\n${cancellationBody}\n\n`;
   }, [cancellationBody]);
 
   const cancellationPost = React.useMemo(() => {
@@ -591,46 +773,52 @@ export default function SOQLGeneratorPage() {
     (templateId: string) => {
       const template = templates.find((item) => item.id === templateId);
       if (!template) return [];
+
       if (parsedTickets.length === 0) {
-        return [`${template.soql.replace("{{tickets}}", "")}`];
+        return [template.soql.replace("{{tickets}}", "")];
       }
+
       const batches: string[] = [];
-      for (let index = 0; index < parsedTickets.length; index += batchSize) {
-        const chunk = parsedTickets.slice(index, index + batchSize);
+      for (let index = 0; index < parsedTickets.length; index += SOQL_BATCH_SIZE) {
+        const chunk = parsedTickets.slice(index, index + SOQL_BATCH_SIZE);
         const formatted = formatTicketsForSOQL(chunk);
         const query = template.soql.replace("{{tickets}}", formatted);
         batches.push(query);
       }
+
       return batches;
     },
-    [batchCount, parsedTickets, templates]
+    [formatTicketsForSOQL, parsedTickets, templates]
   );
 
   const workOrderPreview = React.useMemo(() => buildPreviewBatches("1"), [buildPreviewBatches]);
   const serviceAppointmentPreview = React.useMemo(() => buildPreviewBatches("2"), [buildPreviewBatches]);
   const otherPreview = React.useMemo(() => buildPreviewBatches(selectedTemplate), [buildPreviewBatches, selectedTemplate]);
+  const cancellationRequestedPreview = React.useMemo(() => buildPreviewBatches("19"), [buildPreviewBatches]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
-    const componentIds = assetPairs.map((p) => p.componentId);
+    const componentIds = assetPairs.map((pair) => pair.componentId);
     const formatted = formatTicketsForSOQL(componentIds);
+
     return `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id
 FROM Asset
 WHERE Component_Id__c IN (
 ${formatted}
 )`;
-  }, [assetPairs]);
+  }, [assetPairs, formatTicketsForSOQL]);
 
   const assetTransferAccountSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
-    const cids = [...new Set(assetPairs.map((p) => p.newCid))];
+    const cids = [...new Set(assetPairs.map((pair) => pair.newCid))];
     const formatted = formatTicketsForSOQL(cids);
+
     return `SELECT Customer_ID__c, Id
 FROM Account
 WHERE Customer_ID__c IN (
 ${formatted}
 )`;
-  }, [assetPairs]);
+  }, [assetPairs, formatTicketsForSOQL]);
 
   const handleProcessTransfer = () => {
     const assetData = parseAssetResult(assetSOQLResult);
@@ -640,6 +828,7 @@ ${formatted}
       toast.error("Paste Asset SOQL result first");
       return;
     }
+
     if (Object.keys(accountData).length === 0) {
       toast.error("Paste Account SOQL result first");
       return;
@@ -663,6 +852,7 @@ ${formatted}
 
       let assetId: string | undefined;
       let sourceNote: string;
+
       if (isComponent) {
         assetId = assetRow["parent.id"] || assetRow.parentid || assetRow.parent_id || assetRow.id;
         sourceNote = "Parent.Id (Component record type)";
@@ -687,11 +877,8 @@ ${formatted}
       debugLines.push(`✅ ${pair.componentId} → ${assetId} (${sourceNote}) | CID ${pair.newCid} → ${accountId}`);
     }
 
-    const output = rows.join("\n");
-    const debug = debugLines.join("\n");
-
-    setTransferOutput(output);
-    setTransferDebug(debug);
+    setTransferOutput(rows.join("\n"));
+    setTransferDebug(debugLines.join("\n"));
 
     if (rows.length === 1) {
       toast.error(`No records generated. Missing: ${missingAssets.length} assets, ${missingCids.length} CIDs`);
@@ -705,14 +892,35 @@ ${formatted}
       toast.error("Generate transfer output first");
       return;
     }
-    const blob = new Blob([transferOutput], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `asset-transfer-${Date.now()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadTextFile(`asset-transfer-${Date.now()}.csv`, transferOutput, "text/csv;charset=utf-8;");
     toast.success("Transfer CSV downloaded");
+  };
+
+  const handleDownloadCancellationBatch = () => {
+    const currentBatch = cancellationUpdateBatches[cancellationExecutionBatchIndex] ?? "";
+    if (!currentBatch.trim()) {
+      toast.error("No cancellation update batch available");
+      return;
+    }
+    downloadTextFile(
+      `iis-cancellation-batch-${cancellationExecutionBatchIndex + 1}.csv`,
+      currentBatch,
+      "text/csv;charset=utf-8;"
+    );
+    toast.success("Cancellation batch downloaded");
+  };
+
+  const handleDownloadAllCancellationBatches = () => {
+    if (cancellationUpdateBatches.length === 0) {
+      toast.error("No cancellation update output available");
+      return;
+    }
+
+    cancellationUpdateBatches.forEach((batch, index) => {
+      downloadTextFile(`iis-cancellation-batch-${index + 1}.csv`, batch, "text/csv;charset=utf-8;");
+    });
+
+    toast.success(`Downloaded ${cancellationUpdateBatches.length} cancellation batch files`);
   };
 
   React.useEffect(() => {
@@ -721,10 +929,15 @@ ${formatted}
     setOtherBatchIndex(0);
   }, [ticketsInput]);
 
+  React.useEffect(() => {
+    setCancellationExecutionBatchIndex(0);
+  }, [cancellationExecutionInput, cancellationViewMode]);
+
   const handleTemplateChange = (value: string) => {
     if (selectedTemplate === "1" && ticketsInput.trim()) {
       savedTicketsRef.current = ticketsInput;
     }
+
     setTicketsInput("");
     setExcelInput("");
     setAssetTransferInput("");
@@ -732,7 +945,10 @@ ${formatted}
     setAccountSOQLResult("");
     setTransferOutput("");
     setTransferDebug("");
+    setCancellationExecutionInput("");
+    setCancellationViewMode("query");
     setSelectedTemplate(value);
+
     if (value === "1" && savedTicketsRef.current.trim()) {
       setTicketsInput(savedTicketsRef.current);
     }
@@ -746,27 +962,31 @@ ${formatted}
 
   const handleClear = () => {
     setTicketsInput("");
+    setExcelInput("");
     setAssetTransferInput("");
     setAssetSOQLResult("");
     setAccountSOQLResult("");
     setTransferOutput("");
     setTransferDebug("");
+    setCancellationExecutionInput("");
+    setCancellationViewMode("query");
   };
 
   const toggleFav = (id: string) => {
-    const template = templates.find((t) => t.id === id);
+    const template = templates.find((template) => template.id === id);
     const isAdding = !favourites.has(id);
+
     setFavourites((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-    if (isAdding && template) {
-      dashboardStore.recordFavourite(template.name);
-    } else {
-      dashboardStore.removeFavourite();
-    }
+
+    if (!template) return;
+
+    if (isAdding) dashboardStore.recordFavourite(template.name);
+    else dashboardStore.removeFavourite(template.name);
   };
 
   const triggerGenerate = () => {
@@ -774,33 +994,66 @@ ${formatted}
       toast.error("Paste at least one ticket number");
       return;
     }
+
     if (!generatedAtLeastOnce) {
       setGeneratedAtLeastOnce(true);
       dashboardStore.recordSOQL(activeTemplate?.name ?? "Unknown", parsedTickets.length);
     }
+
     toast.success(`Generated SOQL for ${parsedTickets.length} tickets`);
   };
 
   const showStats = parsedTickets.length > 0;
   const statEntries = Object.entries(ticketStats.breakdown).sort((a, b) => b[1] - a[1]);
 
+  const visibleCancellationBatches =
+    cancellationViewMode === "update-output"
+      ? cancellationUpdateBatches
+      : cancellationViewMode === "requested-query"
+      ? cancellationRequestedPreview
+      : otherPreview;
+
+  const visibleCancellationTitle =
+    cancellationViewMode === "update-output"
+      ? "ALL IN ONE CANCELLATION ARENA"
+      : cancellationViewMode === "requested-query"
+      ? "CANCELLATION REQUESTED QUERY"
+      : activeTemplate?.name ?? "Query Preview";
+
+  const visibleCancellationSubtitle =
+    cancellationViewMode === "update-output"
+      ? 'Data Loader update file to set Status = "Canceled"'
+      : cancellationViewMode === "requested-query"
+      ? "Fetch only rows in Cancellation Requested"
+      : `${activeTemplate?.category ?? ""} query preview`;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">SOQL Generator</h1>
-        <p className="text-sm text-muted-foreground">Paste tickets, pick a template, generate production-ready SOQL</p>
+        <p className="text-sm text-muted-foreground">
+          Paste tickets, pick a template, generate production-ready SOQL
+        </p>
       </div>
 
       {showStats && !isAssetTransfer && (
-        <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <motion.div
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-border bg-card p-4 shadow-sm"
+        >
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 pr-3 border-r border-border">
               <span className="text-sm font-semibold text-foreground">Total</span>
-              <Badge variant="secondary" className="text-xs">{ticketStats.total}</Badge>
+              <Badge variant="secondary" className="text-xs">
+                {ticketStats.total}
+              </Badge>
             </div>
+
             {statEntries.map(([code, count]) => (
               <StatPill key={code} code={code} count={count} />
             ))}
+
             {ticketStats.unknown > 0 && (
               <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 shadow-sm">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-gray-400" />
@@ -812,32 +1065,51 @@ ${formatted}
       )}
 
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* LEFT COLUMN */}
-        <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.25 }} className="lg:col-span-3 space-y-4">
+        <motion.div
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.25 }}
+          className="lg:col-span-3 space-y-4"
+        >
           <Card>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">Template</CardTitle>
-                <Badge variant="outline" className="text-[10px]">{templates.length}</Badge>
+                <Badge variant="outline" className="text-[10px]">
+                  {templates.length}
+                </Badge>
               </div>
             </CardHeader>
+
             <CardContent className="space-y-1 p-3 pt-0">
               <div className="relative">
                 <select
                   value={selectedTemplate}
-                  onChange={(e) => handleTemplateChange(e.target.value)}
+                  onChange={(event) => handleTemplateChange(event.target.value)}
                   className="w-full appearance-none rounded-md border border-border bg-card px-3 py-2.5 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 >
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               </div>
+
               <div className="flex items-center justify-between pt-2">
                 <span className="text-xs text-muted-foreground">{activeTemplate?.category}</span>
-                <button type="button" onClick={() => toggleFav(selectedTemplate)} className="shrink-0" aria-label={`Toggle favourite for ${activeTemplate?.name ?? ""}`}>
-                  <Star className={`h-4 w-4 ${favourites.has(selectedTemplate) ? "fill-warning text-warning" : "text-muted-foreground"}`} />
+                <button
+                  type="button"
+                  onClick={() => toggleFav(selectedTemplate)}
+                  className="shrink-0"
+                  aria-label={`Toggle favourite for ${activeTemplate?.name ?? ""}`}
+                >
+                  <Star
+                    className={`h-4 w-4 ${
+                      favourites.has(selectedTemplate) ? "fill-warning text-warning" : "text-muted-foreground"
+                    }`}
+                  />
                 </button>
               </div>
             </CardContent>
@@ -852,47 +1124,56 @@ ${formatted}
                 {statEntries.map(([code, count]) => {
                   const info = CATEGORY_MAP[code];
                   const pct = Math.round((count / ticketStats.total) * 100);
+
                   return (
                     <div key={code} className="flex items-center gap-2">
                       <span className={`inline-block h-2 w-2 rounded-full ${info?.color ?? "bg-gray-400"}`} />
                       <span className="text-xs text-muted-foreground w-28">{info?.label ?? code}</span>
                       <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className={`h-full rounded-full ${info?.color ?? "bg-gray-400"}`} style={{ width: `${pct}%` }} />
+                        <div
+                          className={`h-full rounded-full ${info?.color ?? "bg-gray-400"}`}
+                          style={{ width: `${pct}%` }}
+                        />
                       </div>
                       <span className="text-xs font-medium text-foreground w-10 text-right">{count}</span>
                       <span className="text-[10px] text-muted-foreground w-8 text-right">{pct}%</span>
                     </div>
                   );
                 })}
+
                 {ticketStats.unknown > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
                     <span className="text-xs text-muted-foreground w-28">Other</span>
                     <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full bg-gray-400" style={{ width: `${Math.round((ticketStats.unknown / ticketStats.total) * 100)}%` }} />
+                      <div
+                        className="h-full rounded-full bg-gray-400"
+                        style={{ width: `${Math.round((ticketStats.unknown / ticketStats.total) * 100)}%` }}
+                      />
                     </div>
                     <span className="text-xs font-medium text-foreground w-10 text-right">{ticketStats.unknown}</span>
-                    <span className="text-[10px] text-muted-foreground w-8 text-right">{Math.round((ticketStats.unknown / ticketStats.total) * 100)}%</span>
+                    <span className="text-[10px] text-muted-foreground w-8 text-right">
+                      {Math.round((ticketStats.unknown / ticketStats.total) * 100)}%
+                    </span>
                   </div>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {/* Normal ticket input card */}
           {!isAssetTransfer && (
             <Card className="flex flex-col">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">{activeTemplate?.name ?? "Select a template"}</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">{activeTemplate?.category}</p>
-                  </div>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
+                    Step : 1
+                  </span>
+                  <CardTitle className="text-base">Paste you tickets here</CardTitle>
                 </div>
               </CardHeader>
+
               <CardContent className="space-y-4 flex-1 flex flex-col">
                 <div className="flex-1 flex flex-col">
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Ticket Numbers</label>
                   <Textarea
                     placeholder={`Paste ticket numbers here...
 A26060134750678
@@ -900,22 +1181,35 @@ A26060134750476
 A26060134750619`}
                     className="flex-1 min-h-[320px] font-mono text-sm"
                     value={ticketsInput}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setTicketsInput(val);
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setTicketsInput(value);
                       setGeneratedAtLeastOnce(false);
-                      if (selectedTemplate !== "1" && val.trim()) {
+                      if (selectedTemplate !== "1" && value.trim()) {
                         savedTicketsRef.current = "";
                       }
                     }}
                   />
-                  <p className="text-xs text-muted-foreground mt-1.5">Supports spaces, commas, tabs, or newlines. Values are automatically chunked into 500-value batches for Salesforce-safe SOQL.</p>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Supports spaces, commas, tabs, or newlines. Values are automatically chunked into 450-value
+                    batches for Salesforce-safe SOQL.
+                  </p>
                 </div>
+
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">{parsedTickets.length === 0 ? "No tickets" : `${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`}</Badge>
-                  <Badge variant="outline" className="text-[10px]">{batchCount === 0 ? "0 batches" : `${batchCount} batch${batchCount === 1 ? "" : "es"}`}</Badge>
-                  <Badge variant="outline" className="text-[10px]">Max 450 values / block</Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    {parsedTickets.length === 0 ? "No tickets" : `${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    {batchCount === 0 ? "0 batches" : `${batchCount} batch${batchCount === 1 ? "" : "es"}`}
+                  </Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    Max 450 values / block
+                  </Badge>
                   <div className="flex-1" />
+                  <Button variant="outline" className="gap-1" onClick={triggerGenerate}>
+                    <PlayCircle className="h-4 w-4" /> Generate
+                  </Button>
                   <Button variant="outline" className="gap-1" onClick={handleClear}>
                     <Trash2 className="h-4 w-4" /> Clear
                   </Button>
@@ -924,15 +1218,12 @@ A26060134750619`}
             </Card>
           )}
 
-          {/* Asset Transfer Input Card */}
           {isAssetTransfer && (
             <Card className="flex flex-col">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">Asset Transfer</CardTitle>
-                    <p className="text-xs text-muted-foreground mt-0.5">Component ID → New CID</p>
-                  </div>
+                <div>
+                  <CardTitle className="text-base">Asset Transfer</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Component ID → New CID</p>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4 flex-1 flex flex-col">
@@ -945,12 +1236,17 @@ BSL29709797      CID-4206214
 BSL22295338      CID-6074821`}
                     className="flex-1 min-h-[200px] font-mono text-sm"
                     value={assetTransferInput}
-                    onChange={(e) => setAssetTransferInput(e.target.value)}
+                    onChange={(event) => setAssetTransferInput(event.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1.5">Paste component ID and new CID pairs. Tab or space separated. One pair per line.</p>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Paste component ID and new CID pairs. Tab or space separated. One pair per line.
+                  </p>
                 </div>
+
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">{assetPairs.length} pair{assetPairs.length === 1 ? "" : "s"}</Badge>
+                  <Badge variant="outline" className="text-[10px]">
+                    {assetPairs.length} pair{assetPairs.length === 1 ? "" : "s"}
+                  </Badge>
                   <div className="flex-1" />
                   <Button variant="outline" className="gap-1" onClick={handleClear}>
                     <Trash2 className="h-4 w-4" /> Clear
@@ -961,74 +1257,140 @@ BSL22295338      CID-6074821`}
           )}
         </motion.div>
 
-        {/* RIGHT COLUMN */}
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.25 }} className="lg:col-span-9 grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* TS selected */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.25 }}
+          className="lg:col-span-9 grid grid-cols-1 xl:grid-cols-2 gap-6"
+        >
           {isTS && (
             <>
-              <QueryPreviewCard title="TS (Ticket Status)" subtitle="WorkOrder query preview" batches={workOrderPreview} batchIndex={tsBatchIndex} setBatchIndex={setTsBatchIndex} onCopy={handleCopy} />
-              <QueryPreviewCard title="SA (Service Appointment)" subtitle="ServiceAppointment query preview" batches={serviceAppointmentPreview} batchIndex={saBatchIndex} setBatchIndex={setSaBatchIndex} onCopy={handleCopy} />
+              <QueryPreviewCard
+                title="TS (Ticket Status)"
+                subtitle="WorkOrder query preview"
+                batches={workOrderPreview}
+                batchIndex={tsBatchIndex}
+                setBatchIndex={setTsBatchIndex}
+                onCopy={handleCopy}
+              />
+              <QueryPreviewCard
+                title="SA (Service Appointment)"
+                subtitle="ServiceAppointment query preview"
+                batches={serviceAppointmentPreview}
+                batchIndex={saBatchIndex}
+                setBatchIndex={setSaBatchIndex}
+                onCopy={handleCopy}
+              />
+
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /><CardTitle className="text-base">Email</CardTitle></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(EMAIL_TEMPLATE)}><Copy className="h-4 w-4" /> Copy</Button>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Email</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(EMAIL_TEMPLATE)}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">{EMAIL_TEMPLATE}</pre>
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
+                    {EMAIL_TEMPLATE}
+                  </pre>
                 </CardContent>
               </Card>
+
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /><CardTitle className="text-base">Post</CardTitle></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(POST_TEMPLATE)}><Copy className="h-4 w-4" /> Copy</Button>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Post</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(POST_TEMPLATE)}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">{POST_TEMPLATE}</pre>
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
+                    {POST_TEMPLATE}
+                  </pre>
                 </CardContent>
               </Card>
             </>
           )}
 
-          {/* SA selected */}
           {isSA && (
-            <QueryPreviewCard title="SA (Service Appointment)" subtitle="ServiceAppointment query preview" batches={serviceAppointmentPreview} batchIndex={saBatchIndex} setBatchIndex={setSaBatchIndex} onCopy={handleCopy} />
+            <QueryPreviewCard
+              title="SA (Service Appointment)"
+              subtitle="ServiceAppointment query preview"
+              batches={serviceAppointmentPreview}
+              batchIndex={saBatchIndex}
+              setBatchIndex={setSaBatchIndex}
+              onCopy={handleCopy}
+            />
           )}
 
-          {/* Asset Transfer selected */}
           {isAssetTransfer && (
             <>
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2"><ArrowRightLeft className="h-4 w-4 text-primary" /><CardTitle className="text-base">Component SOQL</CardTitle></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(assetTransferComponentSOQL)} disabled={!assetTransferComponentSOQL}><Copy className="h-4 w-4" /> Copy</Button>
+                    <div className="flex items-center gap-2">
+                      <ArrowRightLeft className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Component SOQL</CardTitle>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1"
+                      onClick={() => handleCopy(assetTransferComponentSOQL)}
+                      disabled={!assetTransferComponentSOQL}
+                    >
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">{assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"}</pre>
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">
+                    {assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"}
+                  </pre>
                 </CardContent>
               </Card>
 
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2"><ArrowRightLeft className="h-4 w-4 text-primary" /><CardTitle className="text-base">Account SOQL</CardTitle></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(assetTransferAccountSOQL)} disabled={!assetTransferAccountSOQL}><Copy className="h-4 w-4" /> Copy</Button>
+                    <div className="flex items-center gap-2">
+                      <ArrowRightLeft className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Account SOQL</CardTitle>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1"
+                      onClick={() => handleCopy(assetTransferAccountSOQL)}
+                      disabled={!assetTransferAccountSOQL}
+                    >
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">{assetTransferAccountSOQL || "Paste component pairs to generate Account SOQL"}</pre>
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">
+                    {assetTransferAccountSOQL || "Paste component pairs to generate Account SOQL"}
+                  </pre>
                 </CardContent>
               </Card>
 
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">SOQL Results Processing</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">Paste results from both SOQL queries to generate transfer file</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Paste results from both SOQL queries to generate transfer file
+                  </p>
                 </CardHeader>
                 <CardContent className="space-y-3 flex-1 flex flex-col min-h-0">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1036,26 +1398,28 @@ BSL22295338      CID-6074821`}
                       <label className="text-xs font-medium text-foreground mb-1.5">Asset SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Asset SOQL result here...
-"_"\t"Component_Id__c"\t"Id"\t"Account"\t"Account.Customer_ID__c"\t"Record_Type__c"\t"Parent"\t"Parent.Id"\t"Parent.Account"\t"Parent.Account.Id"
-"[Asset]"\t"BSL22295338"\t"02iNy00000h4ZkwIAE"\t"[Account]"\t"CID-6959279"\t"Component"\t"[Asset]"\t"02iNy00000h4RaYIAU"\t"[Account]"\t"001Ny00001bDRvuIAG"`}
+"_"	"Component_Id__c"	"Id"	"Account"	"Account.Customer_ID__c"	"Record_Type__c"	"Parent"	"Parent.Id"	"Parent.Account"	"Parent.Account.Id"
+"[Asset]"	"BSL22295338"	"02iNy00000h4ZkwIAE"	"[Account]"	"CID-6959279"	"Component"	"[Asset]"	"02iNy00000h4RaYIAU"	"[Account]"	"001Ny00001bDRvuIAG"`}
                         className="flex-1 min-h-[160px] font-mono text-xs"
                         value={assetSOQLResult}
-                        onChange={(e) => setAssetSOQLResult(e.target.value)}
+                        onChange={(event) => setAssetSOQLResult(event.target.value)}
                       />
                     </div>
+
                     <div className="flex flex-col">
                       <label className="text-xs font-medium text-foreground mb-1.5">Account SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Account SOQL result here...
-"_"\t"Customer_ID__c"\t"Id"
-"[Account]"\t"CID-6074821"\t"001Ny000016UZXTIA4"
-"[Account]"\t"CID-7414665"\t"001Ny00001g1bBKIAY"`}
+"_"	"Customer_ID__c"	"Id"
+"[Account]"	"CID-6074821"	"001Ny000016UZXTIA4"
+"[Account]"	"CID-7414665"	"001Ny00001g1bBKIAY"`}
                         className="flex-1 min-h-[160px] font-mono text-xs"
                         value={accountSOQLResult}
-                        onChange={(e) => setAccountSOQLResult(e.target.value)}
+                        onChange={(event) => setAccountSOQLResult(event.target.value)}
                       />
                     </div>
                   </div>
+
                   <div className="flex items-center gap-2">
                     <Button className="gap-1" onClick={handleProcessTransfer} disabled={!assetSOQLResult || !accountSOQLResult}>
                       <ArrowRightLeft className="h-4 w-4" /> Process Transfer
@@ -1073,14 +1437,22 @@ BSL22295338      CID-6074821`}
                     <div className="flex items-center justify-between gap-2">
                       <CardTitle className="text-base">Transfer Output (Excel Ready)</CardTitle>
                       <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferOutput)}><Copy className="h-4 w-4" /> Copy</Button>
-                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={handleDownloadTransfer}><Download className="h-4 w-4" /> Download</Button>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferOutput)}>
+                          <Copy className="h-4 w-4" /> Copy
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={handleDownloadTransfer}>
+                          <Download className="h-4 w-4" /> Download
+                        </Button>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">If Record Type = Component, Parent.Id is used as transfer target</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      If Record Type = Component, Parent.Id is used as transfer target
+                    </p>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col min-h-0">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">{transferOutput}</pre>
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">
+                      {transferOutput}
+                    </pre>
                   </CardContent>
                 </Card>
               )}
@@ -1089,23 +1461,212 @@ BSL22295338      CID-6074821`}
                 <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning" /><CardTitle className="text-base">Transfer Debug Log</CardTitle></div>
-                      <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferDebug)}><Copy className="h-4 w-4" /> Copy</Button>
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-warning" />
+                        <CardTitle className="text-base">Transfer Debug Log</CardTitle>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferDebug)}>
+                        <Copy className="h-4 w-4" /> Copy
+                      </Button>
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">Shows which pairs matched or were skipped</p>
                   </CardHeader>
                   <CardContent className="flex-1 flex flex-col min-h-0">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[240px] min-h-0">{transferDebug}</pre>
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[240px] min-h-0">
+                      {transferDebug}
+                    </pre>
                   </CardContent>
                 </Card>
               )}
             </>
           )}
 
-          {/* Cancellation selected */}
           {isCancellation && (
             <>
-              <QueryPreviewCard title={activeTemplate?.name ?? "Query Preview"} subtitle={`${activeTemplate?.category ?? ""} query preview`} batches={otherPreview} batchIndex={otherBatchIndex} setBatchIndex={setOtherBatchIndex} onCopy={handleCopy} />
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <CardTitle className="text-base">{visibleCancellationTitle}</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">{visibleCancellationSubtitle}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] self-start">
+                        {visibleCancellationBatches.length} batch{visibleCancellationBatches.length === 1 ? "" : "es"}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <CancellationModeButton
+                        active={cancellationViewMode === "query"}
+                        onClick={() => setCancellationViewMode("query")}
+                      >
+                        Normal Query
+                      </CancellationModeButton>
+
+                      <CancellationModeButton
+                        active={cancellationViewMode === "update-output"}
+                        onClick={() => setCancellationViewMode("update-output")}
+                      >
+                        Update Output
+                      </CancellationModeButton>
+
+                      <CancellationModeButton
+                        active={cancellationViewMode === "requested-query"}
+                        onClick={() => setCancellationViewMode("requested-query")}
+                      >
+                        Cancellation Requested Query
+                      </CancellationModeButton>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-3 flex-1 flex flex-col">
+                  {visibleCancellationBatches.length > 0 ? (
+                    <div className="rounded-lg border border-border/70 bg-muted/20 flex flex-col min-h-0 flex-1">
+                      <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          Batch {cancellationExecutionBatchIndex + 1} / {visibleCancellationBatches.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            disabled={cancellationExecutionBatchIndex <= 0}
+                            onClick={() => setCancellationExecutionBatchIndex((value) => Math.max(0, value - 1))}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            disabled={cancellationExecutionBatchIndex >= visibleCancellationBatches.length - 1}
+                            onClick={() =>
+                              setCancellationExecutionBatchIndex((value) =>
+                                Math.min(visibleCancellationBatches.length - 1, value + 1)
+                              )
+                            }
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 gap-1"
+                            onClick={() =>
+                              handleCopy(visibleCancellationBatches[cancellationExecutionBatchIndex] ?? "")
+                            }
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <pre className="overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-foreground min-h-0 max-h-[320px]">
+                        {visibleCancellationBatches[cancellationExecutionBatchIndex] ?? ""}
+                      </pre>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center rounded-lg border border-border/70 bg-muted/20 p-6">
+                      <p className="text-sm text-muted-foreground text-center">
+                        {cancellationViewMode === "update-output"
+                          ? "Paste IIS cancellation SOQL result to generate update output"
+                          : cancellationViewMode === "requested-query"
+                          ? "Paste tickets to generate Cancellation Requested query"
+                          : "Paste tickets to generate normal cancellation query"}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCopy(visibleCancellationBatches.join("\n\n"))}
+                      disabled={visibleCancellationBatches.length === 0}
+                    >
+                      <Copy className="h-4 w-4 mr-1" /> Copy All
+                    </Button>
+
+                    {cancellationViewMode === "update-output" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDownloadCancellationBatch}
+                          disabled={cancellationUpdateBatches.length === 0}
+                        >
+                          <Download className="h-4 w-4 mr-1" /> Download Current Batch
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDownloadAllCancellationBatches}
+                          disabled={cancellationUpdateBatches.length === 0}
+                        >
+                          <FileSpreadsheet className="h-4 w-4 mr-1" /> Download All Batches
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
+                      Step : 3
+                    </span>
+                    <CardTitle className="text-base">Paste SOQL Result for email /post ticket entry</CardTitle>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Paste SOQL result here. Only rows in <span className="font-medium">Cancellation Requested</span> will be converted into batch-wise update output for setting status to <span className="font-medium">Canceled</span>.
+                  </p>
+                </CardHeader>
+
+                <CardContent className="flex-1 flex flex-col min-h-0 gap-3">
+                  <Textarea
+                    placeholder={`Paste SOQL result here...
+"_","Id","Ticket_Number_Read_Only__c","Status"
+"[WorkOrder]","0WONy000008eHgfOAE","B25031925463529","Cancellation Requested"
+"[WorkOrder]","0WONy00000a7CPXOA2","B26070935689550","Accepted"`}
+                    className="flex-1 min-h-[220px] font-mono text-xs"
+                    value={cancellationExecutionInput}
+                    onChange={(event) => setCancellationExecutionInput(event.target.value)}
+                  />
+
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="text-[10px]">
+                      Parsed: {cancellationExecutionRows.length}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      Ready: {uniqueExecutableCancellationRows.length}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      Skipped: {skippedCancellationRows.length}
+                    </Badge>
+                    <Badge variant="outline" className="text-[10px]">
+                      Update batches: {cancellationUpdateBatches.length}
+                    </Badge>
+                  </div>
+
+                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-600" />
+                      <div className="text-xs text-muted-foreground leading-6">
+                        This module prepares Data Loader-ready update rows in this format:
+                        <pre className="mt-2 whitespace-pre-wrap break-words rounded-md bg-background/80 p-2 font-mono text-[11px] text-foreground">
+{`"_","Id","Status"
+"[WorkOrder]","0WONy000008eHgfOAE","Canceled"`}
+                        </pre>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base">Paste Excel / Data Loader Output</CardTitle>
@@ -1118,43 +1679,91 @@ BSL22295338      CID-6074821`}
 "0WONy000008eHgfOAE","B25031925463529","Cancellation Requested"`}
                     className="flex-1 min-h-[180px] font-mono text-xs"
                     value={excelInput}
-                    onChange={(e) => setExcelInput(e.target.value)}
+                    onChange={(event) => setExcelInput(event.target.value)}
                   />
                   {failedTickets.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="outline" className="text-[10px]">{failedTickets.length} failed ticket{failedTickets.length === 1 ? "" : "s"} extracted</Badge>
+                      <Badge variant="outline" className="text-[10px]">
+                        {failedTickets.length} failed ticket{failedTickets.length === 1 ? "" : "s"} extracted
+                      </Badge>
                     </div>
                   )}
                 </CardContent>
               </Card>
+
               <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /><CardTitle className="text-base">Email</CardTitle></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationEmail)}><Copy className="h-4 w-4" /> Copy</Button>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Email</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationEmail)}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">{cancellationEmail || "Paste tickets to generate cancellation email"}</pre>
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
+                    {cancellationEmail || "Paste tickets to generate cancellation email"}
+                  </pre>
                 </CardContent>
               </Card>
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
+
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /><CardTitle className="text-base">Post</CardTitle></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationPost)}><Copy className="h-4 w-4" /> Copy</Button>
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Post</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationPost)}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">{cancellationPost || "Paste tickets to generate cancellation post"}</pre>
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
+                    {cancellationPost || "Paste tickets to generate cancellation post"}
+                  </pre>
                 </CardContent>
               </Card>
+
+              {cancellationUpdateDebug && (
+                <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Filter className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-base">Cancellation Execution Summary</CardTitle>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationUpdateDebug)}>
+                        <Copy className="h-4 w-4" /> Copy
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Shows executable rows and skipped rows based on returned status
+                    </p>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col min-h-0">
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[280px] min-h-0">
+                      {cancellationUpdateDebug}
+                    </pre>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
 
-          {/* Other templates */}
           {!isTS && !isSA && !isAssetTransfer && !isCancellation && (
-            <QueryPreviewCard title={activeTemplate?.name ?? "Query Preview"} subtitle={`${activeTemplate?.category ?? ""} query preview`} batches={otherPreview} batchIndex={otherBatchIndex} setBatchIndex={setOtherBatchIndex} onCopy={handleCopy} />
+            <QueryPreviewCard
+              title={activeTemplate?.name ?? "Query Preview"}
+              subtitle={`${activeTemplate?.category ?? ""} query preview`}
+              batches={otherPreview}
+              batchIndex={otherBatchIndex}
+              setBatchIndex={setOtherBatchIndex}
+              onCopy={handleCopy}
+            />
           )}
         </motion.div>
       </div>
