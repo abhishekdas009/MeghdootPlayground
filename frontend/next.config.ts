@@ -3,6 +3,7 @@ import path from "node:path";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: ["@prisma/client", "pg"],
   turbopack: {
     root: path.resolve(__dirname),
   },
