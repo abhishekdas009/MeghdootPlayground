@@ -54,14 +54,16 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   ]);
 
   return {
-    metrics: metrics.map((m) => ({
+    // Explicitly defining the type for 'm' to resolve the implicit 'any' error
+    metrics: metrics.map((m: { key: string; value: number; label: string; category: string; updatedAt: Date }) => ({
       key: m.key,
       value: m.key === "templates_created" ? templateCount : m.value,
       label: m.key === "templates_created" ? "Query Library Templates" : m.label,
       category: m.category,
       updatedAt: m.updatedAt.toISOString(),
     })),
-    events: events.map((e) => ({
+    // Explicitly defining the type for 'e' to resolve the implicit 'any' error
+    events: events.map((e: { id: string; type: string; label: string; meta: string | null; module: string; createdAt: Date }) => ({
       id: e.id,
       type: e.type,
       label: e.label,
