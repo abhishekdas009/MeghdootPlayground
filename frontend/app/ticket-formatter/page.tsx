@@ -6,14 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-<<<<<<< Updated upstream
-import { Copy, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-=======
 import { Copy, Download, Trash2, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
->>>>>>> Stashed changes
 import { toast } from "sonner";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
-import { cn } from "@/lib/utils"; // <-- FIX: Imported cn utility
+import { cn } from "@/lib/utils";
 
 type FormatOption = {
   id: string;
@@ -39,8 +35,6 @@ const FORMATS: FormatOption[] = [
 
 const BATCH_SIZE = 500;
 
-<<<<<<< Updated upstream
-=======
 // Framer Motion variants for staggered animations
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -55,7 +49,6 @@ const itemVariants = {
   show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
 };
 
->>>>>>> Stashed changes
 export default function TicketFormatterPage() {
   const [input, setInput] = React.useState("");
   const [selectedFormat, setSelectedFormat] = React.useState<string>("soql-in");
@@ -106,8 +99,6 @@ export default function TicketFormatterPage() {
     if (outputBatches.length === 0) return;
     navigator.clipboard.writeText(outputBatches.join("\n\n"));
     toast.success("Copied all batches to clipboard");
-<<<<<<< Updated upstream
-=======
 
     trackDashboardEvent({
       metricKey: "tickets_formatted",
@@ -119,7 +110,6 @@ export default function TicketFormatterPage() {
         module: "ticket-formatter",
       },
     });
->>>>>>> Stashed changes
   };
 
   const handleDownload = () => {
@@ -146,29 +136,6 @@ export default function TicketFormatterPage() {
   };
 
   return (
-<<<<<<< Updated upstream
-    <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-[clamp(1.5rem,3vw,2rem)] font-bold leading-tight tracking-tight text-foreground">Ticket Formatter</h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">Convert ticket numbers into any format instantly</p>
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-2 lg:gap-6">
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <CardTitle className="text-base">Input Tickets</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{tickets.length} tickets</Badge>
-                  {batchCount > 1 && (
-                    <Badge variant="outline">{batchCount} batches</Badge>
-                  )}
-                  <Button variant="ghost" size="icon" onClick={() => setInput("")} aria-label="Clear tickets">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-=======
     <div className="mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8 min-h-screen">
       
       {/* ─── Hero / Header Section ────────────────────────────────────────────── */}
@@ -235,20 +202,11 @@ export default function TicketFormatterPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
->>>>>>> Stashed changes
               </div>
             </CardHeader>
             
             <CardContent className="p-8 relative z-10 h-[calc(100%-80px)] flex flex-col">
               <Textarea
-<<<<<<< Updated upstream
-                placeholder={`Paste ticket numbers here...\nA260182314123\nA260182314124\nA260182314125`}
-                className="min-h-[240px] font-mono text-sm sm:min-h-[320px]"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground mt-1.5">Values are automatically chunked into 500-ticket batches per output block.</p>
-=======
                 placeholder={`Paste ticket numbers here...\n\nA260182314123\nA260182314124\nA260182314125`}
                 className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border border-slate-300 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl text-slate-800 dark:text-slate-100 focus-visible:ring-4 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 p-6 shadow-inner transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 value={input}
@@ -258,84 +216,10 @@ export default function TicketFormatterPage() {
                 <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Values are automatically chunked into 500-ticket batches for optimal query performance.
               </p>
->>>>>>> Stashed changes
             </CardContent>
           </Card>
         </motion.div>
 
-<<<<<<< Updated upstream
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.25 }} className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Output Format</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {FORMATS.map((f) => (
-                  <button
-                    type="button"
-                    key={f.id}
-                    onClick={() => setSelectedFormat(f.id)}
-                    className={`min-h-11 rounded-md border px-3 py-2 text-left text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 ${
-                      selectedFormat === f.id
-                        ? "border-accent bg-hover text-accent"
-                        : "border-border bg-card text-muted-foreground hover:bg-hover hover:text-foreground"
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">Result</CardTitle>
-                  {batchCount > 1 && (
-                    <Badge variant="outline" className="text-[10px]">{batchCount} batch{batchCount === 1 ? "" : "es"}</Badge>
-                  )}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button variant="ghost" size="sm" className="gap-1" onClick={handleCopyAll} disabled={outputBatches.length === 0}>
-                    <Copy className="h-4 w-4" /> Copy All
-                  </Button>
-                  <Button variant="ghost" size="sm" className="gap-1" onClick={handleDownload} disabled={outputBatches.length === 0}>
-                    <Download className="h-4 w-4" /> Download
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {batchCount > 1 && (
-                <div className="flex items-center justify-between rounded-md border border-border/70 bg-muted/20 px-3 py-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                    Batch {batchIndex + 1} / {batchCount}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={batchIndex <= 0} onClick={() => setBatchIndex((i) => Math.max(0, i - 1))}>
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={batchIndex >= batchCount - 1} onClick={() => setBatchIndex((i) => Math.min(batchCount - 1, i + 1))}>
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={() => handleCopy(currentOutput)}>
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-              <Textarea
-                readOnly
-                value={currentOutput}
-                className="min-h-[200px] font-mono text-sm bg-muted"
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
-=======
         {/* Right Side: Options and Result */}
         <div className="space-y-8 flex flex-col h-full">
           
@@ -462,7 +346,6 @@ export default function TicketFormatterPage() {
           </motion.div>
 
         </div>
->>>>>>> Stashed changes
       </div>
     </div>
   );
