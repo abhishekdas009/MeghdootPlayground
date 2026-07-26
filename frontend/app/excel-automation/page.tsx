@@ -218,7 +218,7 @@ export default function ExcelAutomationPage() {
                   <AnimatePresence>
                     {selectedOps.size > 0 && (
                       <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                        <Badge className="bg-purple-600 px-2 py-0.5 shadow-sm hover:bg-purple-700">
+                        <Badge className="bg-purple-600 px-2 py-0.5 shadow-sm hover:bg-purple-700 text-white">
                           {selectedOps.size} Selected
                         </Badge>
                       </motion.div>
@@ -322,10 +322,11 @@ export default function ExcelAutomationPage() {
                       <><Sparkles className="h-4 w-4" /> Process Data</>
                     )}
                   </Button>
+                  {/* FIX: Changed variant to "primary" to match available Button component variants */}
                   <Button 
-                    variant="default" 
+                    variant="primary" 
                     disabled={!file || processing}
-                    className="h-11 rounded-xl gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/30 font-semibold px-6"
+                    className="h-11 rounded-xl gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/30 font-semibold px-6 border-0"
                   >
                     <Download className="h-4 w-4" /> Export
                   </Button>
