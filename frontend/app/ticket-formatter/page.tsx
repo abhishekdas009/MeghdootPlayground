@@ -6,8 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+<<<<<<< Updated upstream
 import { Copy, Download, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+=======
+import { Copy, Download, Trash2, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+>>>>>>> Stashed changes
 import { toast } from "sonner";
+import { trackDashboardEvent } from "@/lib/dashboard-tracker";
+import { cn } from "@/lib/utils"; // <-- FIX: Imported cn utility
 
 type FormatOption = {
   id: string;
@@ -33,6 +39,23 @@ const FORMATS: FormatOption[] = [
 
 const BATCH_SIZE = 500;
 
+<<<<<<< Updated upstream
+=======
+// Framer Motion variants for staggered animations
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
+>>>>>>> Stashed changes
 export default function TicketFormatterPage() {
   const [input, setInput] = React.useState("");
   const [selectedFormat, setSelectedFormat] = React.useState<string>("soql-in");
@@ -83,6 +106,20 @@ export default function TicketFormatterPage() {
     if (outputBatches.length === 0) return;
     navigator.clipboard.writeText(outputBatches.join("\n\n"));
     toast.success("Copied all batches to clipboard");
+<<<<<<< Updated upstream
+=======
+
+    trackDashboardEvent({
+      metricKey: "tickets_formatted",
+      incrementBy: tickets.length,
+      event: {
+        type: "ticket-formatted",
+        label: `Tickets formatted · ${selectedFormat}`,
+        meta: `${tickets.length} ticket${tickets.length === 1 ? "" : "s"}`,
+        module: "ticket-formatter",
+      },
+    });
+>>>>>>> Stashed changes
   };
 
   const handleDownload = () => {
@@ -95,9 +132,21 @@ export default function TicketFormatterPage() {
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Downloaded");
+
+    trackDashboardEvent({
+      metricKey: "tickets_formatted",
+      incrementBy: tickets.length,
+      event: {
+        type: "ticket-formatted",
+        label: `Tickets downloaded · ${selectedFormat}`,
+        meta: `${tickets.length} ticket${tickets.length === 1 ? "" : "s"}`,
+        module: "ticket-formatter",
+      },
+    });
   };
 
   return (
+<<<<<<< Updated upstream
     <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-[clamp(1.5rem,3vw,2rem)] font-bold leading-tight tracking-tight text-foreground">Ticket Formatter</h1>
@@ -119,20 +168,102 @@ export default function TicketFormatterPage() {
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
+=======
+    <div className="mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8 min-h-screen">
+      
+      {/* ─── Hero / Header Section ────────────────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: -20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-8 shadow-[0_20px_50px_rgba(8,_112,_184,_0.15)] border border-white/10"
+      >
+        {/* Dynamic Background Elements */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03)_0%,transparent_50%)]" />
+        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-indigo-500/20 blur-[100px] mix-blend-screen pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[100px] mix-blend-screen pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col gap-4">
+          <div className="flex items-center gap-5">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0176d3] to-indigo-600 shadow-[0_0_30px_rgba(1,118,211,0.4)] border border-white/20">
+              <Sparkles className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Badge className="bg-[#0176d3]/20 text-blue-300 border border-[#0176d3]/40 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-md uppercase tracking-widest">
+                  Formatter Tool
+                </Badge>
+              </div>
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white drop-shadow-md">
+                Ticket <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">Formatter</span>
+              </h1>
+            </div>
+          </div>
+          <p className="text-slate-300 font-medium max-w-2xl leading-relaxed mt-2 text-sm sm:text-base opacity-90">
+            Convert large lists of ticket numbers into any code or query format instantly. Automatically chunks large sets into 500-ticket batches for seamless integration.
+          </p>
+        </div>
+      </motion.div>
+
+      {/* ─── Main Content Grid ─────────────────────────────────────────────────── */}
+      <div className="grid gap-8 lg:grid-cols-2">
+        
+        {/* Left Side: Input Panel */}
+        <motion.div initial="hidden" animate="show" variants={containerVariants} className="h-full">
+          <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
+            
+            <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-8 py-6 border-b border-white/10 dark:border-slate-800/50 flex flex-row items-center justify-between relative z-10 backdrop-blur-md">
+              <CardTitle className="text-lg font-black tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                Input Tickets
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-300 dark:border-slate-700 px-3 py-1 text-blue-600 dark:text-blue-400 shadow-sm">
+                  {tickets.length} tickets
+                </Badge>
+                {batchCount > 1 && (
+                  <Badge variant="outline" className="text-xs font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-300 dark:border-slate-700 px-3 py-1 text-indigo-600 dark:text-indigo-400 shadow-sm">
+                    {batchCount} batches
+                  </Badge>
+                )}
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => setInput("")} 
+                  aria-label="Clear tickets" 
+                  className="h-8 w-8 rounded-full hover:bg-red-500/20 hover:text-red-500 transition-colors ml-2 bg-slate-100 dark:bg-slate-800"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+>>>>>>> Stashed changes
               </div>
             </CardHeader>
-            <CardContent>
+            
+            <CardContent className="p-8 relative z-10 h-[calc(100%-80px)] flex flex-col">
               <Textarea
+<<<<<<< Updated upstream
                 placeholder={`Paste ticket numbers here...\nA260182314123\nA260182314124\nA260182314125`}
                 className="min-h-[240px] font-mono text-sm sm:min-h-[320px]"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
               />
               <p className="text-xs text-muted-foreground mt-1.5">Values are automatically chunked into 500-ticket batches per output block.</p>
+=======
+                placeholder={`Paste ticket numbers here...\n\nA260182314123\nA260182314124\nA260182314125`}
+                className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border border-slate-300 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl text-slate-800 dark:text-slate-100 focus-visible:ring-4 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 p-6 shadow-inner transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-5 flex items-center gap-2 font-medium bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+                <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Values are automatically chunked into 500-ticket batches for optimal query performance.
+              </p>
+>>>>>>> Stashed changes
             </CardContent>
           </Card>
         </motion.div>
 
+<<<<<<< Updated upstream
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.25 }} className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
@@ -204,6 +335,134 @@ export default function TicketFormatterPage() {
             </CardContent>
           </Card>
         </motion.div>
+=======
+        {/* Right Side: Options and Result */}
+        <div className="space-y-8 flex flex-col h-full">
+          
+          {/* Format Options */}
+          <motion.div initial="hidden" animate="show" variants={containerVariants}>
+            <Card className="border border-white/10 shadow-xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden">
+              <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 backdrop-blur-md">
+                <CardTitle className="text-sm font-black tracking-widest uppercase text-slate-600 dark:text-slate-400">
+                  Select Output Format
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  {FORMATS.map((f) => (
+                    <motion.button
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                      type="button"
+                      key={f.id}
+                      onClick={() => setSelectedFormat(f.id)}
+                      className={cn(
+                        "flex items-center justify-center min-h-[48px] rounded-xl border px-3 py-2 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 shadow-sm",
+                        selectedFormat === f.id
+                          ? "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30"
+                          : "border-slate-200 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-foreground hover:border-slate-300 dark:hover:border-slate-600"
+                      )}
+                    >
+                      {f.label}
+                    </motion.button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Output Result panel */}
+          <motion.div initial="hidden" animate="show" variants={containerVariants} className="flex-1 min-h-[300px]">
+            <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden flex flex-col relative group">
+              <div className="absolute bottom-0 right-0 p-32 bg-gradient-to-tl from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
+              
+              <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 backdrop-blur-md">
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-base font-black tracking-tight text-slate-800 dark:text-slate-100">
+                    Generated Result
+                  </CardTitle>
+                  {batchCount > 1 && (
+                    <Badge className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider shadow-inner">
+                      {batchCount} batch{batchCount === 1 ? "" : "es"}
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    onClick={handleCopyAll} 
+                    disabled={outputBatches.length === 0} 
+                    className="h-10 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-500/25 text-xs gap-2 transition-all hover:scale-105 active:scale-95"
+                  >
+                    <Copy className="h-4 w-4" /> Copy All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleDownload} 
+                    disabled={outputBatches.length === 0} 
+                    className="h-10 px-5 rounded-xl border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs gap-2 transition-all hover:scale-105 active:scale-95 text-slate-700 dark:text-slate-200"
+                  >
+                    <Download className="h-4 w-4" /> Download
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-6 flex-1 flex flex-col gap-4 relative z-10">
+                {batchCount > 1 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }} 
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center justify-between rounded-xl border border-slate-300 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-5 py-3 shadow-sm"
+                  >
+                    <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      Batch <span className="text-slate-800 dark:text-slate-100">{batchIndex + 1}</span> of {batchCount}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-lg border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300" 
+                        disabled={batchIndex <= 0} 
+                        onClick={() => setBatchIndex((i) => Math.max(0, i - 1))}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-8 w-8 rounded-lg border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300" 
+                        disabled={batchIndex >= batchCount - 1} 
+                        onClick={() => setBatchIndex((i) => Math.min(batchCount - 1, i + 1))}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                      <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1"></div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 px-4 rounded-lg text-blue-600 dark:text-blue-400 font-bold hover:bg-blue-500/10 gap-1.5 text-xs transition-colors" 
+                        onClick={() => handleCopy(currentOutput)}
+                      >
+                        <Copy className="h-3.5 w-3.5" /> Copy Batch
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+                
+                <div className="flex-1 relative group h-full">
+                  <Textarea
+                    readOnly
+                    value={currentOutput}
+                    className="h-full min-h-[250px] font-mono text-sm leading-relaxed rounded-2xl border border-slate-300 dark:border-slate-700/50 bg-slate-50/80 dark:bg-[#0a0f1c]/80 backdrop-blur-xl text-slate-800 dark:text-slate-200 p-6 shadow-inner transition-all resize-none custom-scrollbar focus-visible:ring-0"
+                  />
+                  {/* Glowing Overlay effect on hover for the terminal block */}
+                  <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/5 pointer-events-none group-hover:ring-blue-500/20 transition-all duration-300" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+        </div>
+>>>>>>> Stashed changes
       </div>
     </div>
   );

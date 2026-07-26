@@ -6,10 +6,9 @@ export const NAV_ITEMS = [
   { label: "Excel Automation", href: "/excel-automation", icon: "Sheet" },
   { label: "Formula Generator", href: "/formula-generator", icon: "FunctionSquare" },
   { label: "Ticket Formatter", href: "/ticket-formatter", icon: "Ticket" },
-  { label: "Template Manager", href: "/template-manager", icon: "LayoutTemplate" },
+  { label: "Query Library", href: "/template-manager", icon: "LayoutTemplate" },
   { label: "History", href: "/history", icon: "History" },
   { label: "Analytics", href: "/analytics", icon: "BarChart3" },
-  { label: "Settings", href: "/settings", icon: "Settings" },
   { label: "Help", href: "/help", icon: "HelpCircle" },
 ] as const;
 

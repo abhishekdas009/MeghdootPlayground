@@ -1,0 +1,84 @@
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">SOQL Results Processing</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Paste results from both SOQL queries to generate transfer file
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3 flex-1 flex flex-col min-h-0">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="flex flex-col">
+                      <label className="text-xs font-medium text-foreground mb-1.5">Asset SOQL Result</label>
+                      <Textarea
+                        placeholder={`Paste Asset SOQL result here...\n"_"\t"Component_Id__c"\t"Id"\t"Account.Customer_ID__c"\t"Record_Type__c"\t"Parent.Id"`}
+                        className="flex-1 min-h-[160px] font-mono text-xs"
+                        value={assetSOQLResult}
+                        onChange={(event) => setAssetSOQLResult(event.target.value)}
+                      />
+                    </div>
+
+                    <div className="flex flex-col">
+                      <label className="text-xs font-medium text-foreground mb-1.5">Account SOQL Result</label>
+                      <Textarea
+                        placeholder={`Paste Account SOQL result here...\n"_"\t"Customer_ID__c"\t"Id"`}
+                        className="flex-1 min-h-[160px] font-mono text-xs"
+                        value={accountSOQLResult}
+                        onChange={(event) => setAccountSOQLResult(event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button className="gap-1" onClick={handleProcessTransfer} disabled={!assetSOQLResult || !accountSOQLResult}>
+                      <ArrowRightLeft className="h-4 w-4" /> Process Transfer
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={handleDownloadTransfer} disabled={!transferOutput}>
+                      <Download className="h-4 w-4" /> Download CSV
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {transferOutput && (
+                <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-base">Transfer Output (Excel Ready)</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferOutput)}>
+                          <Copy className="h-4 w-4" /> Copy
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={handleDownloadTransfer}>
+                          <Download className="h-4 w-4" /> Download
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col min-h-0">
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">
+                      {transferOutput}
+                    </pre>
+                  </CardContent>
+                </Card>
+              )}
+
+              {transferDebug && (
+                <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        <CardTitle className="text-base">Transfer Debug Log</CardTitle>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferDebug)}>
+                        <Copy className="h-4 w-4" /> Copy
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col min-h-0">
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[240px] min-h-0">
+                      {transferDebug}
+                    </pre>
+                  </CardContent>
+                </Card>
+              )}

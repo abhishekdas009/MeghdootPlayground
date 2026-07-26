@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model CaseOwner {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SOQLLibrary {
+  id          String   @id @default(cuid())
+  label       String
+  category    String
+  description String   @default("")
+  soql        String
+  favourite   Boolean  @default(false)
+  usageCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([label])
+  @@index([category])
+  @@map("soql_library")
+}
+
+model DashboardMetric {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  value       Int      @default(0)
+  category    String   @default("general")
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([category])
+  @@map("dashboard_metrics")
+}
+
+model DashboardMetricEvent {
+  id          String   @id @default(cuid())
+  metricKey   String
+  change      Int
+  source      String
+  module      String
+  meta        String?
+  createdAt   DateTime @default(now())
+
+  @@index([metricKey, createdAt])
+  @@index([module, createdAt])
+  @@map("dashboard_metric_events")
+}
+
+model DashboardActivity {
+  id          String   @id @default(cuid())
+  type        String
+  label       String
+  meta        String?
+  module      String
+  createdAt   DateTime @default(now())
+
+  @@index([module, createdAt])
+  @@index([type, createdAt])
+  @@map("dashboard_activities")
+}
+
+model DashboardJobRun {
+  id           String    @id @default(cuid())
+  jobKey        String
+  status        String
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  lastHeartbeat DateTime?
+  message       String?
+
+  @@index([jobKey, startedAt])
+  @@index([status])
+  @@map("dashboard_job_runs")
+}

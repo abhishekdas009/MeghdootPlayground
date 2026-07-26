@@ -11,25 +11,29 @@ const config: Config = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#0176D3",
-          foreground: "#FFFFFF",
+          DEFAULT: "rgb(var(--color-primary) / <alpha-value>)",
+          foreground: "rgb(var(--color-primary-foreground) / <alpha-value>)",
         },
         secondary: {
-          DEFAULT: "#032D60",
-          foreground: "#FFFFFF",
+          DEFAULT: "rgb(var(--color-secondary) / <alpha-value>)",
+          foreground: "rgb(var(--color-secondary-foreground) / <alpha-value>)",
         },
-        background: "#F3F6F9",
-        card: "#FFFFFF",
-        border: "#D8DDE6",
-        hover: "#EEF4FF",
-        success: "#2E844A",
-        warning: "#FE9339",
-        danger: "#EA001E",
+        accent: {
+          DEFAULT: "rgb(var(--color-accent) / <alpha-value>)",
+          foreground: "rgb(var(--color-accent-foreground) / <alpha-value>)",
+        },
+        background: "rgb(var(--color-background) / <alpha-value>)",
+        card: "rgb(var(--color-card) / <alpha-value>)",
+        border: "rgb(var(--color-border) / <alpha-value>)",
+        hover: "rgb(var(--color-hover) / <alpha-value>)",
+        success: "rgb(var(--color-success) / <alpha-value>)",
+        warning: "rgb(var(--color-warning) / <alpha-value>)",
+        danger: "rgb(var(--color-danger) / <alpha-value>)",
         muted: {
-          DEFAULT: "#F3F6F9",
-          foreground: "#5C6670",
+          DEFAULT: "rgb(var(--color-muted) / <alpha-value>)",
+          foreground: "rgb(var(--color-muted-foreground) / <alpha-value>)",
         },
-        foreground: "#181818",
+        foreground: "rgb(var(--color-foreground) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "Inter", "sans-serif"],

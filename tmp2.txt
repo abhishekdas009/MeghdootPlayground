@@ -1,0 +1,191 @@
+                          <AlertTriangle className="h-5 w-5" />
+                        </div>
+                        <CardTitle className="text-base font-black tracking-tight text-foreground">Transfer Debug Log</CardTitle>
+                      </div>
+                      <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(transferDebug)}>
+                        <Copy className="h-3.5 w-3.5" /> Copy
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                    <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                      <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[240px] min-h-0 selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
+                        {transferDebug}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
+          {isCancellation && (
+            <>
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <CardTitle className="text-base">{visibleCancellationTitle}</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">{visibleCancellationSubtitle}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] self-start">
+                        {visibleCancellationBatches.length} batch{visibleCancellationBatches.length === 1 ? "" : "es"}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <CancellationModeButton active={cancellationViewMode === "query"} onClick={() => setCancellationViewMode("query")}>
+                        Normal Query
+                      </CancellationModeButton>
+                      <CancellationModeButton active={cancellationViewMode === "update-output"} onClick={() => setCancellationViewMode("update-output")}>
+                        Update Output
+                      </CancellationModeButton>
+                      <CancellationModeButton active={cancellationViewMode === "requested-query"} onClick={() => setCancellationViewMode("requested-query")}>
+                        Cancellation Requested Query
+                      </CancellationModeButton>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-3 flex-1 flex flex-col">
+                  {visibleCancellationBatches.length > 0 ? (
+                    <div className="rounded-lg border border-border/70 bg-muted/20 flex flex-col min-h-0 flex-1">
+                      <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                          Batch {cancellationExecutionBatchIndex + 1} / {visibleCancellationBatches.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={cancellationExecutionBatchIndex <= 0} onClick={() => setCancellationExecutionBatchIndex((value) => Math.max(0, value - 1))}>
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" disabled={cancellationExecutionBatchIndex >= visibleCancellationBatches.length - 1} onClick={() => setCancellationExecutionBatchIndex((value) => Math.min(visibleCancellationBatches.length - 1, value + 1))}>
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 gap-1" onClick={() => handleCopy(visibleCancellationBatches[cancellationExecutionBatchIndex] ?? "")}>
+                            <Copy className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <pre className="overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-foreground min-h-0 max-h-[320px]">
+                        {visibleCancellationBatches[cancellationExecutionBatchIndex] ?? ""}
+                      </pre>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center rounded-lg border border-border/70 bg-muted/20 p-6">
+                      <p className="text-sm text-muted-foreground text-center">
+                        {cancellationViewMode === "update-output"
+                          ? "Paste IIS cancellation SOQL result to generate update output"
+                          : cancellationViewMode === "requested-query"
+                          ? "Paste tickets to generate Cancellation Requested query"
+                          : "Paste tickets to generate normal cancellation query"}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => handleCopy(visibleCancellationBatches.join("\n\n"))} disabled={visibleCancellationBatches.length === 0}>
+                      <Copy className="h-4 w-4 mr-1" /> Copy All
+                    </Button>
+
+                    {cancellationViewMode === "update-output" && (
+                      <>
+                        <Button variant="outline" size="sm" onClick={handleDownloadCancellationBatch} disabled={cancellationUpdateBatches.length === 0}>
+                          <Download className="h-4 w-4 mr-1" /> Download Current Batch
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleDownloadAllCancellationBatches} disabled={cancellationUpdateBatches.length === 0}>
+                          <FileSpreadsheet className="h-4 w-4 mr-1" /> Download All Batches
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
+                      Step : 3
+                    </span>
+                    <CardTitle className="text-base">Paste SOQL Result for email /post ticket entry</CardTitle>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex-1 flex flex-col min-h-0 gap-3">
+                  <Textarea
+                    placeholder={`Paste SOQL result here...\n"_","Id","Ticket_Number_Read_Only__c","Status"`}
+                    className="flex-1 min-h-[220px] font-mono text-xs"
+                    value={cancellationExecutionInput}
+                    onChange={(event) => setCancellationExecutionInput(event.target.value)}
+                  />
+
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="text-[10px]">Parsed: {cancellationExecutionRows.length}</Badge>
+                    <Badge variant="outline" className="text-[10px]">Ready: {uniqueExecutableCancellationRows.length}</Badge>
+                    <Badge variant="outline" className="text-[10px]">Skipped: {skippedCancellationRows.length}</Badge>
+                    <Badge variant="outline" className="text-[10px]">Update batches: {cancellationUpdateBatches.length}</Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">Paste Excel / Data Loader Output</CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col min-h-0">
+                  <Textarea
+                    placeholder={`Paste Excel / Data Loader output here...`}
+                    className="flex-1 min-h-[180px] font-mono text-xs"
+                    value={excelInput}
+                    onChange={(event) => setExcelInput(event.target.value)}
+                  />
+                  {failedTickets.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge variant="outline" className="text-[10px]">
+                        {failedTickets.length} failed ticket{failedTickets.length === 1 ? "" : "s"} extracted
+                      </Badge>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Email</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationEmail)}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col min-h-0">
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
+                    {cancellationEmail || "Paste tickets to generate cancellation email"}
+                  </pre>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4 text-primary" />
+                      <CardTitle className="text-base">Post</CardTitle>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationPost)}>
+                      <Copy className="h-4 w-4" /> Copy
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col min-h-0">
+                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
+                    {cancellationPost || "Paste tickets to generate cancellation post"}
+                  </pre>
+                </CardContent>
+              </Card>
+
+              {cancellationUpdateDebug && (

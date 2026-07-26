@@ -1,0 +1,260 @@
+                {/* 2. Step 3: Paste fetched Case output (Compact 140px textarea) */}
+                <Card className="overflow-hidden border-border/70 shadow-sm flex flex-col">
+                  <CardHeader className="p-3.5 pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-sm font-bold">Step 2: Paste fetched Case output</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">Rows: {caseAssignmentRows.length}</Badge>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">Active: {activeCaseOwners.length}</Badge>
+                        <Badge variant={caseOwnerLoadState === "error" ? "danger" : "outline"} className="text-[10px] px-1.5 py-0 font-mono">
+                          DB: {caseOwnerLoadState === "loading" ? "Syncing" : caseOwnerLoadState === "error" ? "Offline" : "Ready"}
+                        </Badge>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Paste SOQL result from Workbench. Format: Id, Status, OwnerId.
+                    </p>
+                  </CardHeader>
+                  <CardContent className="p-3.5 pt-0">
+                    <Textarea
+                      placeholder={`"_","Id","Status","OwnerId"\n"[Case]","500Ny00001RpOgFIAV","Open","00GNy000009qbJFMAY"`}
+                      className="min-h-[120px] max-h-[140px] font-mono text-xs bg-muted/20"
+                      value={caseAssignInput}
+                      onChange={(event) => setCaseAssignInput(event.target.value)}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* 3. Assignment Mode & Quick Execute Control Box */}
+                <Card className="overflow-hidden border-border/70 shadow-sm flex flex-col">
+                  <CardHeader className="p-3.5 pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <CardTitle className="text-sm font-bold">Assignment Mode &amp; Execution</CardTitle>
+                      <span className="text-[10px] text-muted-foreground font-mono uppercase">Round Robin / Load Balance</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-3.5 pt-0 space-y-3">
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <Button size="sm" variant={caseAssignMode === "equal" ? "primary" : "outline"} onClick={() => setCaseAssignMode("equal")} className="text-xs h-8 font-bold">
+                        Equally
+                      </Button>
+                      <Button size="sm" variant={caseAssignMode === "owner-wise" ? "primary" : "outline"} onClick={() => setCaseAssignMode("owner-wise")} className="text-xs h-8 font-bold">
+                        Owner Wise
+                      </Button>
+                      <Button size="sm" variant={caseAssignMode === "quantity-wise" ? "primary" : "outline"} onClick={() => setCaseAssignMode("quantity-wise")} className="text-xs h-8 font-bold">
+                        Qty Wise
+                      </Button>
+                    </div>
+
+                    {/* Mode Specific Compact Configurations */}
+                    {caseAssignMode === "equal" && (
+                      <div className="p-2.5 rounded-lg bg-muted/30 border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                        <span>Automatically distributes cases as evenly as possible across all {activeCaseOwners.length} active employees.</span>
+                      </div>
+                    )}
+
+                    {caseAssignMode === "owner-wise" && (
+                      <div className="p-2 rounded-lg bg-muted/30 border border-border/50 space-y-1.5">
+                        <div className="text-[11px] font-bold text-foreground flex items-center justify-between">
+                          <span>Select Active Target Owners:</span>
+                          <span className="text-muted-foreground font-mono">{selectedOwnerIds.length} selected</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 max-h-[100px] overflow-y-auto no-scrollbar">
+                          {activeCaseOwners.map((owner) => {
+                            const checked = selectedOwnerIds.includes(owner.ownerId);
+                            return (
+                              <label key={owner.id} className="flex items-center gap-2 rounded border border-border/60 bg-card px-2 py-1 cursor-pointer hover:border-[#0176d3]/40 transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(event) => {
+                                    setSelectedOwnerIds((prev) => {
+                                      if (event.target.checked) return [...prev, owner.ownerId];
+                                      return prev.filter((id) => id !== owner.ownerId);
+                                    });
+                                  }}
+                                  className="rounded text-[#0176d3]"
+                                />
+                                <span className="text-xs font-bold text-foreground truncate">{owner.name}</span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {caseAssignMode === "quantity-wise" && (
+                      <div className="p-2 rounded-lg bg-muted/30 border border-border/50 space-y-1.5">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-foreground">
+                          <span>Set Exact Quantities per Owner:</span>
+                          <Badge variant="outline" className="text-[9px]">Total: {quantitySelectedTotal} / {caseAssignmentRows.length}</Badge>
+                        </div>
+                        <div className="grid grid-cols-1 gap-1.5 max-h-[100px] overflow-y-auto no-scrollbar">
+                          {quantityOwnerConfigs.map((owner, index) => (
+                            <div key={owner.id} className="flex items-center justify-between gap-2 rounded border border-border/60 bg-card px-2 py-1">
+                              <label className="flex items-center gap-1.5 cursor-pointer min-w-0">
+                                <input
+                                  type="checkbox"
+                                  checked={owner.selected}
+                                  onChange={(event) => {
+                                    setQuantityOwnerConfigs((prev) =>
+                                      prev.map((item, itemIndex) =>
+                                        itemIndex === index ? { ...item, selected: event.target.checked } : item
+                                      )
+                                    );
+                                  }}
+                                  className="rounded"
+                                />
+                                <span className="text-xs font-bold text-foreground truncate">{owner.name}</span>
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={owner.quantity}
+                                disabled={!owner.selected}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setQuantityOwnerConfigs((prev) =>
+                                    prev.map((item, itemIndex) =>
+                                      itemIndex === index ? { ...item, quantity: value } : item
+                                    )
+                                  );
+                                }}
+                                className="w-16 h-6 rounded border border-border bg-background px-1.5 text-xs text-center font-mono font-bold disabled:opacity-40 outline-none focus:ring-1 focus:ring-[#0176d3]"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Execution Action Bar */}
+                    <div className="pt-2 border-t border-border/50 flex items-center justify-between gap-2 flex-wrap">
+                      <Button size="sm" className="bg-[#0176d3] hover:bg-[#0176d3]/90 text-white font-extrabold text-xs gap-1.5 h-8.5 flex-1 shadow-2xs" onClick={handleRunCaseAssignment}>
+                        <CheckCircle2 className="h-4 w-4" /> Generate Assignment
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8.5 px-2.5 text-xs gap-1 font-bold" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput} title="Copy result">
+                        <Copy className="h-3.5 w-3.5" /> Copy
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8.5 px-2.5 text-xs gap-1 font-bold" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput} title="Download CSV">
+                        <Download className="h-3.5 w-3.5" /> CSV
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* === RIGHT RESULTS & MASTER MANAGEMENT COLUMN === */}
+              <div className="space-y-4 flex flex-col">
+                {/* 1. Assignment Output Box (Right at the Top so you see results without scrolling!) */}
+                <Card className="overflow-hidden border-border/70 shadow-sm flex flex-col border-[#0176d3]/40 bg-gradient-to-b from-[#0176d3]/5 to-card">
+                  <CardHeader className="p-3.5 pb-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-[#0176d3]" />
+                        <CardTitle className="text-sm font-extrabold text-foreground">Final Assignment Output</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-bold text-[#0176d3] hover:bg-[#0176d3]/10" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput}>
+                          <Copy className="h-3.5 w-3.5 mr-1" /> Copy Output
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs font-bold text-[#0176d3] hover:bg-[#0176d3]/10" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput}>
+                          <Download className="h-3.5 w-3.5 mr-1" /> CSV
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Ready for Salesforce Data Loader / Workbench update.</p>
+                  </CardHeader>
+                  <CardContent className="p-3.5 pt-0">
+                    <pre className="overflow-auto whitespace-pre-wrap break-words rounded-lg border border-border/70 bg-card p-3 font-mono text-xs leading-5 text-foreground h-[140px] max-h-[140px] shadow-inner no-scrollbar">
+                      {caseAssignOutput || `"_","Id","Status","OwnerId"\n"[Case]","500Ny00001RpOgFIAV","Open","005Ny00000QgwYTIAZ"`}
+                    </pre>
+                  </CardContent>
+                </Card>
+
+                {/* 2. Compact High-Density Owner Master Management */}
+                <Card className="overflow-hidden border-border/70 shadow-sm flex flex-col flex-1">
+                  <CardHeader className="p-3.5 pb-2 border-b border-border/50 bg-muted/20">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-[#0176d3]" />
+                        <CardTitle className="text-sm font-bold">Owner Master Roster ({caseOwners.length})</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" className="h-6.5 px-2 text-[11px] gap-1" onClick={refreshCaseOwners} disabled={caseOwnerAction !== null} title="Refresh DB">
+                          <RotateCcw className="h-3 w-3" /> Refresh
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-6.5 px-2 text-[11px] gap-1" onClick={handleExportOwners} title="Export JSON">
+                          <Download className="h-3 w-3" /> Export
+                        </Button>
+                        <label className="inline-flex">
+                          <input type="file" accept="application/json" className="hidden" onChange={handleImportOwners} disabled={caseOwnerAction !== null} />
+                          <span className="inline-flex items-center gap-1 rounded px-2 py-1 text-[11px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors">
+                            <Upload className="h-3 w-3" /> Import
+                          </span>
+                        </label>
+                        <Button variant="ghost" size="sm" className="h-6.5 px-2 text-[11px] gap-1 text-red-500 hover:bg-red-500/10" onClick={handleResetOwners} disabled={caseOwnerAction !== null} title="Reset default roster">
+                          <RotateCcw className="h-3 w-3" /> Reset
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-3.5 space-y-3">
+                    {/* Compact Add/Update Bar */}
+                    <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Employee name..."
+                        value={ownerForm.name}
+                        onChange={(event) => setOwnerForm((prev) => ({ ...prev, name: event.target.value }))}
+                        disabled={caseOwnerAction !== null}
+                        className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 text-xs font-semibold outline-none focus:ring-1 focus:ring-[#0176d3] focus:bg-card transition-all"
+                      />
+                      <input
+                        type="text"
+                        placeholder="005Ny00000..."
+                        value={ownerForm.ownerId}
+                        onChange={(event) => setOwnerForm((prev) => ({ ...prev, ownerId: event.target.value }))}
+                        disabled={caseOwnerAction !== null}
+                        className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 text-xs font-mono outline-none focus:ring-1 focus:ring-[#0176d3] focus:bg-card transition-all"
+                      />
+                      <Button size="sm" className="h-8 px-3 gap-1 bg-[#0176d3] text-white font-bold text-xs" onClick={handleAddOrUpdateOwner} disabled={caseOwnerAction !== null}>
+                        {editingOwnerRecordId ? <Save className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                        {editingOwnerRecordId ? "Save" : "Add"}
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={clearCaseOwnerForm} disabled={caseOwnerAction !== null} title="Clear inputs">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+
+                    {/* Scrollable High-Density Roster Panel */}
+                    <div className="max-h-[200px] overflow-y-auto no-scrollbar space-y-1.5 pr-0.5">
+                      {caseOwnerLoadState === "loading" && (
+                        <div className="p-4 text-center text-xs text-muted-foreground font-medium">Syncing PostgreSQL roster...</div>
+                      )}
+                      {caseOwnerLoadState !== "loading" && caseOwners.length === 0 && (
+                        <div className="p-4 text-center text-xs text-muted-foreground font-medium">No employee records saved yet. Add an employee or click Reset.</div>
+                      )}
+                      {caseOwners.map((owner) => (
+                        <div key={owner.id} className="flex items-center justify-between gap-2 p-2 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/50 hover:border-[#0176d3]/30 transition-all">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: owner.isActive ? "#10b981" : "#94a3b8" }} title={owner.isActive ? "Active" : "Inactive"} />
+                            <span className="text-xs font-extrabold text-foreground whitespace-nowrap" title={`ID: ${owner.ownerId}`}>{owner.name}</span>
+                            <Badge variant={owner.isActive ? "default" : "secondary"} className="text-[9px] px-1.5 py-0 uppercase font-bold tracking-wider shrink-0">{owner.isActive ? "Active" : "Disabled"}</Badge>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button variant="ghost" size="sm" className="h-6.5 w-6.5 p-0 hover:bg-muted text-muted-foreground hover:text-foreground" onClick={() => handleEditOwner(owner)} title="Edit Employee"><Pencil className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="sm" className="h-6.5 w-6.5 p-0 hover:bg-muted text-muted-foreground hover:text-foreground" onClick={() => handleToggleOwnerStatus(owner.id)} title={owner.isActive ? "Disable Employee" : "Enable Employee"}><Power className={cn("h-3 w-3", owner.isActive ? "text-emerald-500" : "text-amber-500")} /></Button>
+                            <Button variant="ghost" size="sm" className="h-6.5 w-6.5 p-0 hover:bg-red-500/10 text-red-500" onClick={() => handleDeleteOwner(owner.id)} title="Delete Employee"><UserMinus className="h-3 w-3" /></Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
