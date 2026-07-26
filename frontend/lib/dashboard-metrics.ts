@@ -13,8 +13,6 @@ type RecordMetricInput = {
 export async function incrementMetric(input: RecordMetricInput) {
   const change = input.change ?? 1;
 
-  // Consolidating the two nonexistent models (dashboardMetricEvent & dashboardActivity)
-  // into the single correct 'dashboardEvent' model that the Analytics UI consumes.
   await prisma.$transaction([
     prisma.dashboardMetric.upsert({
       where: { key: input.key },
@@ -70,10 +68,9 @@ export async function getDashboardSnapshot() {
     }),
     prisma.dashboardEvent.findMany({
       orderBy: { createdAt: "desc" },
-      take: 50, // Grab the latest 50 events for the live stream
+      take: 50,
     }),
   ]);
 
-  // Returning 'events' instead of 'activity' to match the frontend API expectations
   return { metrics, events };
 }
