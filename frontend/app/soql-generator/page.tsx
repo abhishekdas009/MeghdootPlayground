@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -26,8 +26,6 @@ import {
   Filter,
   FileSpreadsheet,
   PlayCircle,
-<<<<<<< Updated upstream
-=======
   Users,
   UserPlus,
   UserMinus,
@@ -37,7 +35,6 @@ import {
   Power,
   Upload,
   Terminal,
->>>>>>> Stashed changes
 } from "lucide-react";
 
 interface Template {
@@ -62,9 +59,6 @@ interface CancellationExecutionRow {
   status: string;
 }
 
-<<<<<<< Updated upstream
-type CancellationViewMode = "query" | "update-output" | "requested-query";
-=======
 interface CaseAssignmentRow {
   rawType: string;
   id: string;
@@ -91,7 +85,6 @@ interface QuantityOwnerConfig {
 
 type CancellationViewMode = "query" | "update-output" | "requested-query";
 type CaseAssignMode = "equal" | "owner-wise" | "quantity-wise";
->>>>>>> Stashed changes
 
 const defaultTemplates: Template[] = [
   {
@@ -113,13 +106,6 @@ const defaultTemplates: Template[] = [
     id: "13",
     name: "CANCELLATION TICKETS",
     category: "WorkOrder",
-<<<<<<< Updated upstream
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status
-FROM WorkOrder
-WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
-{{tickets}}
-)`,
-=======
     soql: `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
     favourite: false,
   },
@@ -128,34 +114,13 @@ WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
     name: "Cancellation Requested",
     category: "WorkOrder",
     soql: `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nAND Status = 'Cancellation Requested'`,
->>>>>>> Stashed changes
-    favourite: false,
-  },
-  {
-    id: "19",
-    name: "Cancellation Requested",
-    category: "WorkOrder",
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status
-FROM WorkOrder
-WHERE Ticket_Number_Read_Only__c IN (
-{{tickets}}
-)
-AND Status = 'Cancellation Requested'`,
     favourite: false,
   },
   {
     id: "14",
     name: "Case Cancellation",
     category: "WorkOrder",
-<<<<<<< Updated upstream
-    soql: `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c
-FROM WorkOrder
-WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
-{{tickets}}
-)`,
-=======
     soql: `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
->>>>>>> Stashed changes
     favourite: false,
   },
   {
@@ -204,15 +169,7 @@ WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
     id: "9",
     name: "Account ID Fetch",
     category: "Account",
-<<<<<<< Updated upstream
-    soql: `SELECT Customer_ID__c, Id
-FROM Account
-WHERE Customer_ID__c IN (
-{{tickets}}
-)`,
-=======
     soql: `SELECT Customer_ID__c, Id\nFROM Account\nWHERE Customer_ID__c IN (\n{{tickets}}\n)`,
->>>>>>> Stashed changes
     favourite: false,
   },
   {
@@ -233,15 +190,7 @@ WHERE Customer_ID__c IN (
     id: "12",
     name: "Asset ID Fetch",
     category: "Asset",
-<<<<<<< Updated upstream
-    soql: `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id
-FROM Asset
-WHERE Component_Id__c IN (
-{{tickets}}
-)`,
-=======
     soql: `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n{{tickets}}\n)`,
->>>>>>> Stashed changes
     favourite: false,
   },
   {
@@ -262,15 +211,7 @@ WHERE Component_Id__c IN (
     id: "17",
     name: "Due Date Fix",
     category: "ServiceAppointment",
-<<<<<<< Updated upstream
-    soql: `SELECT Id, Status, IsBundleMember, IsManuallyBundled, RelatedBundleId, Work_Order__r.Status, DueDate, SchedEndTime, SchedStartTime
-FROM ServiceAppointment
-WHERE Ticket_Numbers__c IN (
-{{tickets}}
-) AND Work_Order__r.Status != 'Completed'`,
-=======
     soql: `SELECT Id, Status, IsBundleMember, IsManuallyBundled, RelatedBundleId, Work_Order__r.Status, DueDate, SchedEndTime, SchedStartTime\nFROM ServiceAppointment\nWHERE Ticket_Numbers__c IN (\n{{tickets}}\n) AND Work_Order__r.Status != 'Completed'`,
->>>>>>> Stashed changes
     favourite: false,
   },
   {
@@ -292,13 +233,7 @@ const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
   D: { label: "Demo", color: "bg-pink-500" },
 };
 
-<<<<<<< Updated upstream
-const EMAIL_TEMPLATE = `Hello,
-Your service ticket status has been updated to Accepted. Kindly check and revert.
-`;
-=======
 const EMAIL_TEMPLATE = `Hello,\nYour service ticket status has been updated to Accepted. Kindly check and revert.\n`;
->>>>>>> Stashed changes
 
 const POST_TEMPLATE = `@tag_user Your service ticket status has been updated to Accepted. Kindly check and revert.`;
 
@@ -590,8 +525,6 @@ function parseCancellationExecutionRows(input: string): CancellationExecutionRow
     .filter((row) => row.id && row.ticket && row.status);
 }
 
-<<<<<<< Updated upstream
-=======
 function parseCaseAssignmentRows(input: string): CaseAssignmentRow[] {
   const rows = parseSOQLResult(input);
 
@@ -605,7 +538,6 @@ function parseCaseAssignmentRows(input: string): CaseAssignmentRow[] {
     .filter((row) => row.id && row.status);
 }
 
->>>>>>> Stashed changes
 function chunkArray<T>(items: T[], size: number): T[][] {
   if (size <= 0) return [items];
   const chunks: T[][] = [];
@@ -625,8 +557,6 @@ function downloadTextFile(filename: string, content: string, type = "text/plain;
   URL.revokeObjectURL(url);
 }
 
-<<<<<<< Updated upstream
-=======
 function buildCaseAssignmentOutput(assignments: Array<{ row: CaseAssignmentRow; owner: Pick<CaseOwner, "ownerId"> }>) {
   const outputLines: string[] = ['"_","Id","Status","OwnerId"'];
 
@@ -706,23 +636,15 @@ function buildQuantityWiseAssignments(rows: CaseAssignmentRow[], ownerConfigs: Q
   return { output: buildCaseAssignmentOutput(assignments), error: "" };
 }
 
->>>>>>> Stashed changes
 function StatPill({ code, count }: { code: string; count: number }) {
   const info = CATEGORY_MAP[code];
   if (!info) return null;
 
   return (
-<<<<<<< Updated upstream
-    <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 shadow-sm">
-      <span className={`inline-block h-2.5 w-2.5 rounded-full ${info.color}`} />
-      <span className="text-xs font-medium text-foreground">
-        {info.label}: {count}
-=======
     <div className="group flex items-center gap-2.5 rounded-xl border border-white/20 bg-white/60 dark:bg-slate-800/60 backdrop-blur-md px-3.5 py-2 shadow-sm transition-all hover:border-blue-500/30 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md">
       <span className={`inline-block h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm ${info.color}`} />
       <span className="text-xs font-bold text-slate-500 group-hover:text-foreground transition-colors">
         {info.label}: <strong className="text-foreground font-black tabular-nums ml-1">{count}</strong>
->>>>>>> Stashed changes
       </span>
     </div>
   );
@@ -746,16 +668,10 @@ function QueryPreviewCard({
   const currentBatch = batches[batchIndex] ?? "";
 
   return (
-<<<<<<< Updated upstream
-    <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-      <CardHeader className="pb-2">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-=======
     <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl flex flex-col transition-all duration-300 hover:shadow-xl group relative h-full">
       <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-indigo-500/10 transition-colors" />
       <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
->>>>>>> Stashed changes
           <div>
             <div className="flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
@@ -763,14 +679,6 @@ function QueryPreviewCard({
             </div>
             <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">{subtitle}</p>
           </div>
-<<<<<<< Updated upstream
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px]">
-              {batches.length} batch{batches.length === 1 ? "" : "es"}
-            </Badge>
-            <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => onCopy(batches.join("\n\n"))}>
-              <Copy className="h-4 w-4" /> Copy All
-=======
           <div className="flex items-center gap-3">
             <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
               {batches.length} batch{batches.length === 1 ? "" : "es"}
@@ -782,30 +690,11 @@ function QueryPreviewCard({
               onClick={() => onCopy(batches.join("\n\n"))}
             >
               <Copy className="h-3.5 w-3.5" /> Copy All
->>>>>>> Stashed changes
             </Button>
           </div>
         </div>
       </CardHeader>
 
-<<<<<<< Updated upstream
-      <CardContent className="space-y-3 flex-1 flex flex-col">
-        {batches.length > 0 ? (
-          <div className="rounded-lg border border-border/70 bg-muted/20 flex flex-col min-h-0 flex-1">
-            <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Batch {batchIndex + 1} / {batches.length}
-              </span>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  disabled={batchIndex <= 0}
-                  onClick={() => setBatchIndex((value) => Math.max(0, value - 1))}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-=======
       <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
         {batches.length > 0 ? (
           <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
@@ -830,25 +719,16 @@ function QueryPreviewCard({
                   title="Previous Batch"
                 >
                   <ChevronLeft className="h-4.5 w-4.5" />
->>>>>>> Stashed changes
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
-<<<<<<< Updated upstream
-                  className="h-7 w-7 p-0"
-                  disabled={batchIndex >= batches.length - 1}
-                  onClick={() => setBatchIndex((value) => Math.min(batches.length - 1, value + 1))}
-                >
-                  <ChevronRight className="h-4 w-4" />
-=======
                   className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-lg transition-colors"
                   disabled={batchIndex >= batches.length - 1}
                   onClick={() => setBatchIndex((value) => Math.min(batches.length - 1, value + 1))}
                   title="Next Batch"
                 >
                   <ChevronRight className="h-4.5 w-4.5" />
->>>>>>> Stashed changes
                 </Button>
                 <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1.5" />
                 <Button 
@@ -861,26 +741,17 @@ function QueryPreviewCard({
                 </Button>
               </div>
             </div>
-<<<<<<< Updated upstream
-            <pre className="overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-foreground min-h-0 max-h-[320px]">
-=======
             <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-0 max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
->>>>>>> Stashed changes
               {currentBatch}
             </pre>
           </div>
         ) : (
-<<<<<<< Updated upstream
-          <div className="flex-1 flex items-center justify-center rounded-lg border border-border/70 bg-muted/20 p-6">
-            <p className="text-sm text-muted-foreground text-center">Paste tickets to generate query preview</p>
-=======
           <div className="flex-1 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-8 text-center shadow-inner">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-400 mb-3 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
               <PlayCircle className="h-6 w-6" />
             </div>
             <p className="text-sm font-black text-foreground">No Query Generated Yet</p>
             <p className="text-xs text-slate-500 font-medium mt-1.5 max-w-xs">Paste your tickets or Case IDs on the left and select a template to generate a preview</p>
->>>>>>> Stashed changes
           </div>
         )}
       </CardContent>
@@ -898,16 +769,6 @@ function CancellationModeButton({
   children: React.ReactNode;
 }) {
   return (
-<<<<<<< Updated upstream
-    <Button
-      variant={active ? "primary" : "outline"}
-      size="sm"
-      onClick={onClick}
-      className="min-h-11 h-auto w-full whitespace-normal break-words px-4 py-2 text-center leading-5"
-    >
-      <span className="block w-full text-center">{children}</span>
-    </Button>
-=======
     <button
       type="button"
       onClick={onClick}
@@ -920,19 +781,13 @@ function CancellationModeButton({
     >
       <span className="block w-full text-center leading-tight">{children}</span>
     </button>
->>>>>>> Stashed changes
   );
 }
 
 export default function SOQLGeneratorPage() {
-<<<<<<< Updated upstream
-  const [templates] = React.useState<Template[]>(defaultTemplates);
-  const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
-=======
   const [templates, setTemplates] = React.useState<Template[]>(defaultTemplates);
   const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
   const [libraryLoadState, setLibraryLoadState] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
->>>>>>> Stashed changes
   const [ticketsInput, setTicketsInput] = React.useState("");
   const [excelInput, setExcelInput] = React.useState("");
   const [favourites, setFavourites] = React.useState<Set<string>>(new Set(["1"]));
@@ -951,16 +806,6 @@ export default function SOQLGeneratorPage() {
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
   const [cancellationViewMode, setCancellationViewMode] = React.useState<CancellationViewMode>("query");
 
-<<<<<<< Updated upstream
-  const savedTicketsRef = React.useRef("");
-
-  const activeTemplate = templates.find((template) => template.id === selectedTemplate);
-  const isTS = selectedTemplate === "1";
-  const isSA = selectedTemplate === "2";
-  const isAssetTransfer = selectedTemplate === "3";
-  const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19";
-
-=======
   const [caseAssignInput, setCaseAssignInput] = React.useState("");
   const [caseAssignOutput, setCaseAssignOutput] = React.useState("");
   const [caseAssignMode, setCaseAssignMode] = React.useState<CaseAssignMode>("equal");
@@ -1073,7 +918,6 @@ export default function SOQLGeneratorPage() {
     });
   }, [activeCaseOwners]);
 
->>>>>>> Stashed changes
   const parseTickets = React.useCallback((input: string): string[] => {
     if (!input.trim()) return [];
     const cleaned = input.replace(/'/g, "").replace(/,/g, " ").replace(/[\t\r\n]+/g, " ");
@@ -1105,71 +949,6 @@ export default function SOQLGeneratorPage() {
 
   const skippedCancellationRows = React.useMemo(
     () => cancellationExecutionRows.filter((row) => row.status.trim().toLowerCase() !== "cancellation requested"),
-    [cancellationExecutionRows]
-  );
-
-  const uniqueExecutableCancellationRows = React.useMemo(() => {
-    const seen = new Set<string>();
-    return executableCancellationRows.filter((row) => {
-      if (seen.has(row.id)) return false;
-      seen.add(row.id);
-      return true;
-    });
-  }, [executableCancellationRows]);
-
-  const cancellationUpdateBatches = React.useMemo(() => {
-    const chunks = chunkArray(uniqueExecutableCancellationRows, UPDATE_BATCH_SIZE);
-
-    return chunks.map((chunk) => {
-      const rows = ['"_","Id","Status"'];
-      for (const item of chunk) {
-        rows.push(`"[WorkOrder]","${item.id}","Canceled"`);
-      }
-      return rows.join("\n");
-    });
-  }, [uniqueExecutableCancellationRows]);
-
-  const cancellationUpdateDebug = React.useMemo(() => {
-    if (!cancellationExecutionRows.length) return "";
-
-    const lines: string[] = [];
-    lines.push(`Total parsed rows: ${cancellationExecutionRows.length}`);
-    lines.push(`Ready for cancel execution: ${uniqueExecutableCancellationRows.length}`);
-    lines.push(`Skipped rows: ${skippedCancellationRows.length}`);
-
-    if (skippedCancellationRows.length > 0) {
-      lines.push("");
-      lines.push("Skipped rows because status is not 'Cancellation Requested':");
-      skippedCancellationRows.slice(0, 100).forEach((row) => {
-        lines.push(`${row.ticket} | ${row.id} | ${row.status}`);
-      });
-
-      if (skippedCancellationRows.length > 100) {
-        lines.push(`...and ${skippedCancellationRows.length - 100} more`);
-      }
-    }
-
-    return lines.join("\n");
-  }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows]);
-
-  const cancellationExecutionRows = React.useMemo(
-    () => parseCancellationExecutionRows(cancellationExecutionInput),
-    [cancellationExecutionInput]
-  );
-
-  const executableCancellationRows = React.useMemo(
-    () =>
-      cancellationExecutionRows.filter(
-        (row) => row.status.trim().toLowerCase() === "cancellation requested"
-      ),
-    [cancellationExecutionRows]
-  );
-
-  const skippedCancellationRows = React.useMemo(
-    () =>
-      cancellationExecutionRows.filter(
-        (row) => row.status.trim().toLowerCase() !== "cancellation requested"
-      ),
     [cancellationExecutionRows]
   );
 
@@ -1286,15 +1065,7 @@ export default function SOQLGeneratorPage() {
     const componentIds = assetPairs.map((pair) => pair.componentId);
     const formatted = formatTicketsForSOQL(componentIds);
 
-<<<<<<< Updated upstream
-    return `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id
-FROM Asset
-WHERE Component_Id__c IN (
-${formatted}
-)`;
-=======
     return `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n${formatted}\n)`;
->>>>>>> Stashed changes
   }, [assetPairs, formatTicketsForSOQL]);
 
   const assetTransferAccountSOQL = React.useMemo(() => {
@@ -1302,15 +1073,7 @@ ${formatted}
     const cids = [...new Set(assetPairs.map((pair) => pair.newCid))];
     const formatted = formatTicketsForSOQL(cids);
 
-<<<<<<< Updated upstream
-    return `SELECT Customer_ID__c, Id
-FROM Account
-WHERE Customer_ID__c IN (
-${formatted}
-)`;
-=======
     return `SELECT Customer_ID__c, Id\nFROM Account\nWHERE Customer_ID__c IN (\n${formatted}\n)`;
->>>>>>> Stashed changes
   }, [assetPairs, formatTicketsForSOQL]);
 
   const handleProcessTransfer = () => {
@@ -1389,8 +1152,6 @@ ${formatted}
     toast.success("Transfer CSV downloaded");
   };
 
-<<<<<<< Updated upstream
-=======
   const handleRunCaseAssignment = () => {
     if (!caseAssignInput.trim()) {
       toast.error("Paste Case SOQL result first");
@@ -1446,21 +1207,12 @@ ${formatted}
     toast.success("Case assignment CSV downloaded");
   };
 
->>>>>>> Stashed changes
   const handleDownloadCancellationBatch = () => {
     const currentBatch = cancellationUpdateBatches[cancellationExecutionBatchIndex] ?? "";
     if (!currentBatch.trim()) {
       toast.error("No cancellation update batch available");
       return;
     }
-<<<<<<< Updated upstream
-    downloadTextFile(
-      `iis-cancellation-batch-${cancellationExecutionBatchIndex + 1}.csv`,
-      currentBatch,
-      "text/csv;charset=utf-8;"
-    );
-    toast.success("Cancellation batch downloaded");
-=======
     downloadTextFile(`iis-cancellation-batch-${cancellationExecutionBatchIndex + 1}.csv`, currentBatch, "text/csv;charset=utf-8;");
     trackDashboardEvent({
       metricKey: "ticket_cancellation",
@@ -1473,7 +1225,6 @@ ${formatted}
       },
     });
     toast.success("Cancellation batch downloaded & KPI recorded");
->>>>>>> Stashed changes
   };
 
   const handleDownloadAllCancellationBatches = () => {
@@ -1485,10 +1236,6 @@ ${formatted}
     cancellationUpdateBatches.forEach((batch, index) => {
       downloadTextFile(`iis-cancellation-batch-${index + 1}.csv`, batch, "text/csv;charset=utf-8;");
     });
-<<<<<<< Updated upstream
-
-    toast.success(`Downloaded ${cancellationUpdateBatches.length} cancellation batch files`);
-=======
     trackDashboardEvent({
       metricKey: "ticket_cancellation",
       incrementBy: uniqueExecutableCancellationRows.length || cancellationUpdateBatches.length,
@@ -1696,7 +1443,6 @@ ${formatted}
 
     reader.readAsText(file);
     event.target.value = "";
->>>>>>> Stashed changes
   };
 
   React.useEffect(() => {
@@ -1723,13 +1469,10 @@ ${formatted}
     setTransferDebug("");
     setCancellationExecutionInput("");
     setCancellationViewMode("query");
-<<<<<<< Updated upstream
-=======
     setCaseAssignInput("");
     setCaseAssignOutput("");
     setCaseAssignMode("equal");
     resetCaseOwnerSelectionState();
->>>>>>> Stashed changes
     setSelectedTemplate(value);
 
     if (value === "1" && savedTicketsRef.current.trim()) {
@@ -1768,21 +1511,16 @@ ${formatted}
     setTransferDebug("");
     setCancellationExecutionInput("");
     setCancellationViewMode("query");
-<<<<<<< Updated upstream
-=======
     setCaseAssignInput("");
     setCaseAssignOutput("");
     setCaseAssignMode("equal");
     resetCaseOwnerSelectionState();
->>>>>>> Stashed changes
   };
 
   const toggleFav = (id: string) => {
     const template = templates.find((template) => template.id === id);
     const isAdding = !favourites.has(id);
 
-<<<<<<< Updated upstream
-=======
     if (template?.source === "library") {
       void requestJson<{ query: { favourite: boolean } }>(`/api/soql-library/${id.replace("library:", "")}`, {
         method: "PATCH",
@@ -1803,7 +1541,6 @@ ${formatted}
       return;
     }
 
->>>>>>> Stashed changes
     setFavourites((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -1855,14 +1592,6 @@ ${formatted}
       return;
     }
 
-<<<<<<< Updated upstream
-    if (!generatedAtLeastOnce) {
-      setGeneratedAtLeastOnce(true);
-      dashboardStore.recordSOQL(activeTemplate?.name ?? "Unknown", parsedTickets.length);
-    }
-
-    toast.success(`Generated SOQL for ${parsedTickets.length} tickets`);
-=======
     if (parsedTickets.length === 0) {
       toast.error(isCaseAssign ? "Paste at least one Case ID" : "Paste at least one ticket number");
       return;
@@ -1910,7 +1639,6 @@ ${formatted}
     toast.success(
       `Generated SOQL for ${parsedTickets.length} ${isCaseAssign ? "case id" : "ticket"}${parsedTickets.length === 1 ? "" : "s"}`
     );
->>>>>>> Stashed changes
   };
 
   const showStats = parsedTickets.length > 0;
@@ -1922,45 +1650,6 @@ ${formatted}
       : cancellationViewMode === "requested-query"
       ? cancellationRequestedPreview
       : otherPreview;
-<<<<<<< Updated upstream
-
-  const visibleCancellationTitle =
-    cancellationViewMode === "update-output"
-      ? "ALL IN ONE CANCELLATION ARENA"
-      : cancellationViewMode === "requested-query"
-      ? "CANCELLATION REQUESTED QUERY"
-      : activeTemplate?.name ?? "Query Preview";
-
-  const visibleCancellationSubtitle =
-    cancellationViewMode === "update-output"
-      ? 'Data Loader update file to set Status = "Canceled"'
-      : cancellationViewMode === "requested-query"
-      ? "Fetch only rows in Cancellation Requested"
-      : `${activeTemplate?.category ?? ""} query preview`;
-
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">SOQL Generator</h1>
-        <p className="text-sm text-muted-foreground">
-          Paste tickets, pick a template, generate production-ready SOQL
-        </p>
-      </div>
-
-      {showStats && !isAssetTransfer && (
-        <motion.div
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-xl border border-border bg-card p-4 shadow-sm"
-        >
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 pr-3 border-r border-border">
-              <span className="text-sm font-semibold text-foreground">Total</span>
-              <Badge variant="secondary" className="text-xs">
-                {ticketStats.total}
-              </Badge>
-            </div>
-=======
 
   const visibleCancellationTitle =
     cancellationViewMode === "update-output"
@@ -2038,7 +1727,6 @@ ${formatted}
                 {ticketStats.total}
               </Badge>
             </div>
->>>>>>> Stashed changes
 
             {statEntries.map(([code, count]) => (
               <StatPill key={code} code={code} count={count} />
@@ -2061,30 +1749,6 @@ ${formatted}
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.25 }}
-<<<<<<< Updated upstream
-          className="lg:col-span-3 space-y-4"
-        >
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm">Template</CardTitle>
-                <Badge variant="outline" className="text-[10px]">
-                  {templates.length}
-                </Badge>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-1 p-3 pt-0">
-              <div className="relative">
-                <select
-                  value={selectedTemplate}
-                  onChange={(event) => handleTemplateChange(event.target.value)}
-                  className="w-full appearance-none rounded-md border border-border bg-card px-3 py-2.5 pr-10 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                >
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-=======
           className="xl:col-span-3 lg:col-span-4 md:col-span-12 space-y-4"
         >
           <Card className="border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden group">
@@ -2119,28 +1783,12 @@ ${formatted}
                   {templates.map((template) => (
                     <option key={template.id} value={template.id} className="font-bold text-sm py-2">
                       {template.source === "library" ? `⭐ [Library] ${template.name}` : template.name}
->>>>>>> Stashed changes
                     </option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-transform group-hover/select:-translate-y-1 group-focus-within/select:rotate-180" />
               </div>
 
-<<<<<<< Updated upstream
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-xs text-muted-foreground">{activeTemplate?.category}</span>
-                <button
-                  type="button"
-                  onClick={() => toggleFav(selectedTemplate)}
-                  className="shrink-0"
-                  aria-label={`Toggle favourite for ${activeTemplate?.name ?? ""}`}
-                >
-                  <Star
-                    className={`h-4 w-4 ${
-                      favourites.has(selectedTemplate) ? "fill-warning text-warning" : "text-muted-foreground"
-                    }`}
-                  />
-=======
               <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950/50 px-4 py-3 border border-slate-200/50 dark:border-slate-800/50 shadow-inner">
                 <div className="flex items-center gap-3 min-w-0">
                   <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 shrink-0">
@@ -2179,61 +1827,17 @@ ${formatted}
                       ? "Saved"
                       : "Favorite"}
                   </span>
->>>>>>> Stashed changes
                 </button>
               </div>
             </CardContent>
           </Card>
 
-<<<<<<< Updated upstream
-          {showStats && !isAssetTransfer && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Category Breakdown</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 p-3 pt-0">
-                {statEntries.map(([code, count]) => {
-                  const info = CATEGORY_MAP[code];
-                  const pct = Math.round((count / ticketStats.total) * 100);
-
-                  return (
-                    <div key={code} className="flex items-center gap-2">
-                      <span className={`inline-block h-2 w-2 rounded-full ${info?.color ?? "bg-gray-400"}`} />
-                      <span className="text-xs text-muted-foreground w-28">{info?.label ?? code}</span>
-                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${info?.color ?? "bg-gray-400"}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <span className="text-xs font-medium text-foreground w-10 text-right">{count}</span>
-                      <span className="text-[10px] text-muted-foreground w-8 text-right">{pct}%</span>
-                    </div>
-                  );
-                })}
-
-                {ticketStats.unknown > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block h-2 w-2 rounded-full bg-gray-400" />
-                    <span className="text-xs text-muted-foreground w-28">Other</span>
-                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gray-400"
-                        style={{ width: `${Math.round((ticketStats.unknown / ticketStats.total) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-xs font-medium text-foreground w-10 text-right">{ticketStats.unknown}</span>
-                    <span className="text-[10px] text-muted-foreground w-8 text-right">
-                      {Math.round((ticketStats.unknown / ticketStats.total) * 100)}%
-                    </span>
-=======
           {showStats && !isAssetTransfer && !isCaseAssign && (
             <Card className="border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden group">
               <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
->>>>>>> Stashed changes
                   </div>
                   <CardTitle className="text-base font-black tracking-tight">Category Breakdown</CardTitle>
                 </div>
@@ -2282,20 +1886,6 @@ ${formatted}
           )}
 
           {!isAssetTransfer && (
-<<<<<<< Updated upstream
-            <Card className="flex flex-col">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
-                    Step : 1
-                  </span>
-                  <CardTitle className="text-base">Paste you tickets here</CardTitle>
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-4 flex-1 flex flex-col">
-                <div className="flex-1 flex flex-col">
-=======
             <Card className="flex flex-col border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden">
               <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative">
                  <div className="absolute top-0 right-0 p-24 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
@@ -2312,7 +1902,6 @@ ${formatted}
 
               <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
                 <div className="flex-1 flex flex-col space-y-2">
->>>>>>> Stashed changes
                   <Textarea
                     placeholder={
                       isCaseAssign
@@ -2330,29 +1919,6 @@ ${formatted}
                       }
                     }}
                   />
-<<<<<<< Updated upstream
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    Supports spaces, commas, tabs, or newlines. Values are automatically chunked into 450-value
-                    batches for Salesforce-safe SOQL.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">
-                    {parsedTickets.length === 0 ? "No tickets" : `${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px]">
-                    {batchCount === 0 ? "0 batches" : `${batchCount} batch${batchCount === 1 ? "" : "es"}`}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px]">
-                    Max 450 values / block
-                  </Badge>
-                  <div className="flex-1" />
-                  <Button variant="outline" className="gap-1" onClick={triggerGenerate}>
-                    <PlayCircle className="h-4 w-4" /> Generate
-                  </Button>
-                  <Button variant="outline" className="gap-1" onClick={handleClear}>
-=======
                   <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 dark:bg-slate-950/50 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
                     {isCaseAssign
                       ? "Supports spaces, commas, tabs, or newlines. Case IDs are automatically chunked into 450-value batches for Salesforce-safe SOQL."
@@ -2376,7 +1942,6 @@ ${formatted}
                   </Badge>
                   <div className="flex-1" />
                   <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
->>>>>>> Stashed changes
                     <Trash2 className="h-4 w-4" /> Clear
                   </Button>
                   <Button onClick={triggerGenerate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold gap-2 h-10 px-5 rounded-xl text-xs shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
@@ -2388,13 +1953,6 @@ ${formatted}
           )}
 
           {isAssetTransfer && (
-<<<<<<< Updated upstream
-            <Card className="flex flex-col">
-              <CardHeader className="pb-3">
-                <div>
-                  <CardTitle className="text-base">Asset Transfer</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">Component ID → New CID</p>
-=======
             <Card className="flex flex-col border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden">
               <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative">
                  <div className="absolute top-0 right-0 p-24 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
@@ -2406,7 +1964,6 @@ ${formatted}
                     <CardTitle className="text-base font-black tracking-tight">Asset Transfer Data</CardTitle>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">Component ID → New CID mapping</p>
                   </div>
->>>>>>> Stashed changes
                 </div>
               </CardHeader>
               <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
@@ -2418,22 +1975,13 @@ ${formatted}
                     value={assetTransferInput}
                     onChange={(event) => setAssetTransferInput(event.target.value)}
                   />
-<<<<<<< Updated upstream
-                  <p className="text-xs text-muted-foreground mt-1.5">
-=======
                   <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 dark:bg-slate-950/50 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
->>>>>>> Stashed changes
                     Paste component ID and new CID pairs. Tab or space separated. One pair per line.
                   </p>
                 </div>
 
-<<<<<<< Updated upstream
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">
-=======
                 <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
                   <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
->>>>>>> Stashed changes
                     {assetPairs.length} pair{assetPairs.length === 1 ? "" : "s"}
                   </Badge>
                   <div className="flex-1" />
@@ -2453,11 +2001,7 @@ ${formatted}
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.25 }}
-<<<<<<< Updated upstream
-          className="lg:col-span-9 grid grid-cols-1 xl:grid-cols-2 gap-6"
-=======
           className="xl:col-span-9 lg:col-span-8 md:col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-6"
->>>>>>> Stashed changes
         >
           {isTS && (
             <>
@@ -2478,43 +2022,6 @@ ${formatted}
                 onCopy={handleCopy}
               />
 
-<<<<<<< Updated upstream
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-base">Email</CardTitle>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(EMAIL_TEMPLATE)}>
-                      <Copy className="h-4 w-4" /> Copy
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
-                    {EMAIL_TEMPLATE}
-                  </pre>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-base">Post</CardTitle>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(POST_TEMPLATE)}>
-                      <Copy className="h-4 w-4" /> Copy
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
-                    {POST_TEMPLATE}
-                  </pre>
-=======
               <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
                 <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
                 <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
@@ -2570,7 +2077,6 @@ ${formatted}
                       {POST_TEMPLATE}
                     </pre>
                   </div>
->>>>>>> Stashed changes
                 </CardContent>
               </Card>
             </>
@@ -2589,64 +2095,6 @@ ${formatted}
 
           {isAssetTransfer && (
             <>
-<<<<<<< Updated upstream
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <ArrowRightLeft className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-base">Component SOQL</CardTitle>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-1"
-                      onClick={() => handleCopy(assetTransferComponentSOQL)}
-                      disabled={!assetTransferComponentSOQL}
-                    >
-                      <Copy className="h-4 w-4" /> Copy
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">
-                    {assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"}
-                  </pre>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <ArrowRightLeft className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-base">Account SOQL</CardTitle>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-1"
-                      onClick={() => handleCopy(assetTransferAccountSOQL)}
-                      disabled={!assetTransferAccountSOQL}
-                    >
-                      <Copy className="h-4 w-4" /> Copy
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">
-                    {assetTransferAccountSOQL || "Paste component pairs to generate Account SOQL"}
-                  </pre>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">SOQL Results Processing</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Paste results from both SOQL queries to generate transfer file
-                  </p>
-=======
               <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
                 <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
                 <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
@@ -2715,7 +2163,6 @@ ${formatted}
                       </p>
                     </div>
                   </div>
->>>>>>> Stashed changes
                 </CardHeader>
                 <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -2740,13 +2187,8 @@ ${formatted}
                     </div>
                   </div>
 
-<<<<<<< Updated upstream
-                  <div className="flex items-center gap-2">
-                    <Button className="gap-1" onClick={handleProcessTransfer} disabled={!assetSOQLResult || !accountSOQLResult}>
-=======
                   <div className="flex items-center gap-3 pt-2">
                     <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold gap-2 h-10 px-5 rounded-xl text-xs shadow-md shadow-fuchsia-500/20 transition-all hover:-translate-y-0.5" onClick={handleProcessTransfer} disabled={!assetSOQLResult || !accountSOQLResult}>
->>>>>>> Stashed changes
                       <ArrowRightLeft className="h-4 w-4" /> Process Transfer
                     </Button>
                     <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all" onClick={handleDownloadTransfer} disabled={!transferOutput}>
@@ -2768,24 +2210,6 @@ ${formatted}
                         <CardTitle className="text-base font-black tracking-tight text-foreground">Transfer Output (Excel Ready)</CardTitle>
                       </div>
                       <div className="flex items-center gap-2">
-<<<<<<< Updated upstream
-                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferOutput)}>
-                          <Copy className="h-4 w-4" /> Copy
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={handleDownloadTransfer}>
-                          <Download className="h-4 w-4" /> Download
-                        </Button>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      If Record Type = Component, Parent.Id is used as transfer target
-                    </p>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col min-h-0">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[320px] min-h-0">
-                      {transferOutput}
-                    </pre>
-=======
                         <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(transferOutput)}>
                           <Copy className="h-3.5 w-3.5" /> Copy
                         </Button>
@@ -2801,23 +2225,11 @@ ${formatted}
                         {transferOutput}
                       </pre>
                     </div>
->>>>>>> Stashed changes
                   </CardContent>
                 </Card>
               )}
 
               {transferDebug && (
-<<<<<<< Updated upstream
-                <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-warning" />
-                        <CardTitle className="text-base">Transfer Debug Log</CardTitle>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(transferDebug)}>
-                        <Copy className="h-4 w-4" /> Copy
-=======
                 <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col xl:col-span-2 transition-all duration-300 hover:shadow-xl group relative">
                   <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-amber-500/10 transition-colors" />
                   <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
@@ -2830,23 +2242,15 @@ ${formatted}
                       </div>
                       <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(transferDebug)}>
                         <Copy className="h-3.5 w-3.5" /> Copy
->>>>>>> Stashed changes
                       </Button>
                     </div>
                   </CardHeader>
-<<<<<<< Updated upstream
-                  <CardContent className="flex-1 flex flex-col min-h-0">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[240px] min-h-0">
-                      {transferDebug}
-                    </pre>
-=======
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
                     <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
                       <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[240px] min-h-0 selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
                         {transferDebug}
                       </pre>
                     </div>
->>>>>>> Stashed changes
                   </CardContent>
                 </Card>
               )}
@@ -2855,17 +2259,6 @@ ${formatted}
 
           {isCancellation && (
             <>
-<<<<<<< Updated upstream
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <CardTitle className="text-base">{visibleCancellationTitle}</CardTitle>
-                        <p className="text-xs text-muted-foreground mt-0.5">{visibleCancellationSubtitle}</p>
-                      </div>
-                      <Badge variant="outline" className="text-[10px] self-start">
-=======
               <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
                 <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-rose-500/10 transition-colors" />
                 <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
@@ -2881,32 +2274,10 @@ ${formatted}
                         </div>
                       </div>
                       <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm self-start mt-2 sm:mt-0">
->>>>>>> Stashed changes
                         {visibleCancellationBatches.length} batch{visibleCancellationBatches.length === 1 ? "" : "es"}
                       </Badge>
                     </div>
 
-<<<<<<< Updated upstream
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <CancellationModeButton
-                        active={cancellationViewMode === "query"}
-                        onClick={() => setCancellationViewMode("query")}
-                      >
-                        Normal Query
-                      </CancellationModeButton>
-
-                      <CancellationModeButton
-                        active={cancellationViewMode === "update-output"}
-                        onClick={() => setCancellationViewMode("update-output")}
-                      >
-                        Update Output
-                      </CancellationModeButton>
-
-                      <CancellationModeButton
-                        active={cancellationViewMode === "requested-query"}
-                        onClick={() => setCancellationViewMode("requested-query")}
-                      >
-=======
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mt-2">
                       <CancellationModeButton active={cancellationViewMode === "query"} onClick={() => setCancellationViewMode("query")}>
                         Normal Query
@@ -2915,166 +2286,10 @@ ${formatted}
                         Update Output
                       </CancellationModeButton>
                       <CancellationModeButton active={cancellationViewMode === "requested-query"} onClick={() => setCancellationViewMode("requested-query")}>
->>>>>>> Stashed changes
                         Cancellation Requested Query
                       </CancellationModeButton>
                     </div>
                   </div>
-<<<<<<< Updated upstream
-                </CardHeader>
-
-                <CardContent className="space-y-3 flex-1 flex flex-col">
-                  {visibleCancellationBatches.length > 0 ? (
-                    <div className="rounded-lg border border-border/70 bg-muted/20 flex flex-col min-h-0 flex-1">
-                      <div className="flex items-center justify-between border-b border-border/60 px-3 py-2">
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                          Batch {cancellationExecutionBatchIndex + 1} / {visibleCancellationBatches.length}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            disabled={cancellationExecutionBatchIndex <= 0}
-                            onClick={() => setCancellationExecutionBatchIndex((value) => Math.max(0, value - 1))}
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                            disabled={cancellationExecutionBatchIndex >= visibleCancellationBatches.length - 1}
-                            onClick={() =>
-                              setCancellationExecutionBatchIndex((value) =>
-                                Math.min(visibleCancellationBatches.length - 1, value + 1)
-                              )
-                            }
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1"
-                            onClick={() =>
-                              handleCopy(visibleCancellationBatches[cancellationExecutionBatchIndex] ?? "")
-                            }
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                      <pre className="overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-xs leading-6 text-foreground min-h-0 max-h-[320px]">
-                        {visibleCancellationBatches[cancellationExecutionBatchIndex] ?? ""}
-                      </pre>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center rounded-lg border border-border/70 bg-muted/20 p-6">
-                      <p className="text-sm text-muted-foreground text-center">
-                        {cancellationViewMode === "update-output"
-                          ? "Paste IIS cancellation SOQL result to generate update output"
-                          : cancellationViewMode === "requested-query"
-                          ? "Paste tickets to generate Cancellation Requested query"
-                          : "Paste tickets to generate normal cancellation query"}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(visibleCancellationBatches.join("\n\n"))}
-                      disabled={visibleCancellationBatches.length === 0}
-                    >
-                      <Copy className="h-4 w-4 mr-1" /> Copy All
-                    </Button>
-
-                    {cancellationViewMode === "update-output" && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDownloadCancellationBatch}
-                          disabled={cancellationUpdateBatches.length === 0}
-                        >
-                          <Download className="h-4 w-4 mr-1" /> Download Current Batch
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleDownloadAllCancellationBatches}
-                          disabled={cancellationUpdateBatches.length === 0}
-                        >
-                          <FileSpreadsheet className="h-4 w-4 mr-1" /> Download All Batches
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="inline-flex items-center rounded-md border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 shadow-sm">
-                      Step : 3
-                    </span>
-                    <CardTitle className="text-base">Paste SOQL Result for email /post ticket entry</CardTitle>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Paste SOQL result here. Only rows in <span className="font-medium">Cancellation Requested</span> will be converted into batch-wise update output for setting status to <span className="font-medium">Canceled</span>.
-                  </p>
-                </CardHeader>
-
-                <CardContent className="flex-1 flex flex-col min-h-0 gap-3">
-                  <Textarea
-                    placeholder={`Paste SOQL result here...
-"_","Id","Ticket_Number_Read_Only__c","Status"
-"[WorkOrder]","0WONy000008eHgfOAE","B25031925463529","Cancellation Requested"
-"[WorkOrder]","0WONy00000a7CPXOA2","B26070935689550","Accepted"`}
-                    className="flex-1 min-h-[220px] font-mono text-xs"
-                    value={cancellationExecutionInput}
-                    onChange={(event) => setCancellationExecutionInput(event.target.value)}
-                  />
-
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline" className="text-[10px]">
-                      Parsed: {cancellationExecutionRows.length}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px]">
-                      Ready: {uniqueExecutableCancellationRows.length}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px]">
-                      Skipped: {skippedCancellationRows.length}
-                    </Badge>
-                    <Badge variant="outline" className="text-[10px]">
-                      Update batches: {cancellationUpdateBatches.length}
-                    </Badge>
-                  </div>
-
-                  <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-green-600" />
-                      <div className="text-xs text-muted-foreground leading-6">
-                        This module prepares Data Loader-ready update rows in this format:
-                        <pre className="mt-2 whitespace-pre-wrap break-words rounded-md bg-background/80 p-2 font-mono text-[11px] text-foreground">
-{`"_","Id","Status"
-"[WorkOrder]","0WONy000008eHgfOAE","Canceled"`}
-                        </pre>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Paste Excel / Data Loader Output</CardTitle>
-                  <p className="text-xs text-muted-foreground mt-0.5">Failed tickets will be extracted automatically</p>
-=======
->>>>>>> Stashed changes
                 </CardHeader>
 
                 <CardContent className="p-6 pt-5 space-y-4 flex-1 flex flex-col relative z-10">
@@ -3182,13 +2397,8 @@ ${formatted}
                     onChange={(event) => setExcelInput(event.target.value)}
                   />
                   {failedTickets.length > 0 && (
-<<<<<<< Updated upstream
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="outline" className="text-[10px]">
-=======
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase px-3 py-1.5 tracking-widest shadow-sm">
->>>>>>> Stashed changes
                         {failedTickets.length} failed ticket{failedTickets.length === 1 ? "" : "s"} extracted
                       </Badge>
                     </div>
@@ -3196,43 +2406,6 @@ ${formatted}
                 </CardContent>
               </Card>
 
-<<<<<<< Updated upstream
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-base">Email</CardTitle>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationEmail)}>
-                      <Copy className="h-4 w-4" /> Copy
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
-                    {cancellationEmail || "Paste tickets to generate cancellation email"}
-                  </pre>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-primary" />
-                      <CardTitle className="text-base">Post</CardTitle>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationPost)}>
-                      <Copy className="h-4 w-4" /> Copy
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 flex flex-col min-h-0">
-                  <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[220px] min-h-0">
-                    {cancellationPost || "Paste tickets to generate cancellation post"}
-                  </pre>
-=======
               <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
                 <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
                 <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
@@ -3278,32 +2451,10 @@ ${formatted}
                       {cancellationPost || "Paste tickets to generate cancellation post"}
                     </pre>
                   </div>
->>>>>>> Stashed changes
                 </CardContent>
               </Card>
 
               {cancellationUpdateDebug && (
-<<<<<<< Updated upstream
-                <Card className="overflow-hidden border-border/70 shadow-sm h-full flex flex-col xl:col-span-2">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Filter className="h-4 w-4 text-primary" />
-                        <CardTitle className="text-base">Cancellation Execution Summary</CardTitle>
-                      </div>
-                      <Button variant="ghost" size="sm" className="h-8 gap-1" onClick={() => handleCopy(cancellationUpdateDebug)}>
-                        <Copy className="h-4 w-4" /> Copy
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Shows executable rows and skipped rows based on returned status
-                    </p>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col min-h-0">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-3 rounded-lg border border-border/70 bg-muted/20 font-mono text-xs leading-6 text-foreground max-h-[280px] min-h-0">
-                      {cancellationUpdateDebug}
-                    </pre>
-=======
                 <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col xl:col-span-2 transition-all duration-300 hover:shadow-xl group relative">
                   <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-slate-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-slate-500/10 transition-colors" />
                   <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
@@ -3325,16 +2476,12 @@ ${formatted}
                         {cancellationUpdateDebug}
                       </pre>
                     </div>
->>>>>>> Stashed changes
                   </CardContent>
                 </Card>
               )}
             </>
           )}
 
-<<<<<<< Updated upstream
-          {!isTS && !isSA && !isAssetTransfer && !isCancellation && (
-=======
           {isCaseAssign && (
             <div className="xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
               {/* === LEFT WORKBENCH COLUMN === */}
@@ -3644,7 +2791,6 @@ ${formatted}
 
 
           {!isTS && !isSA && !isAssetTransfer && !isCancellation && !isCaseAssign && (
->>>>>>> Stashed changes
             <QueryPreviewCard
               title={activeTemplate?.name ?? "Query Preview"}
               subtitle={`${activeTemplate?.category ?? ""} query preview`}

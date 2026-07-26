@@ -1,13 +1,6 @@
 "use client";
 
 import * as React from "react";
-<<<<<<< Updated upstream
-import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { useDashboardStore, getTimeAgo } from "@/lib/dashboard-store";
-=======
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,18 +11,12 @@ import {
   type ServerMetric,
   type ServerEvent,
 } from "@/lib/dashboard-store";
->>>>>>> Stashed changes
 import {
   Terminal,
   FileSpreadsheet,
   History,
   Star,
-<<<<<<< Updated upstream
-  Zap,
-  Bookmark,
-=======
   RefreshCw,
->>>>>>> Stashed changes
   ChevronRight,
   Ticket,
   Layers3,
@@ -47,70 +34,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-<<<<<<< Updated upstream
-type DashboardStats = {
-  queriesGenerated: number;
-  excelOperations: number;
-  historyItems: number;
-  favourites: number;
-  activities: Array<{
-    id: string;
-    type: string;
-    title: string;
-    description: string;
-    timestamp: number;
-  }>;
-};
-
-function AnimatedNumber({ value }: { value: number }) {
-  const [display, setDisplay] = React.useState(0);
-  const ref = React.useRef<HTMLSpanElement>(null);
-  const [started, setStarted] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!ref.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) {
-          setStarted(true);
-        }
-      },
-      { threshold: 0.3 }
-    );
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
-  React.useEffect(() => {
-    if (!started) return;
-
-    if (value === 0) {
-      setDisplay(0);
-      return;
-    }
-
-    const duration = 800;
-    const startValue = display;
-    const change = value - startValue;
-    const startTime = performance.now();
-
-    const tick = (now: number) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      setDisplay(Math.round(startValue + change * ease));
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-
-    requestAnimationFrame(tick);
-  }, [started, value]);
-
-  return (
-    <span ref={ref} className="tabular-nums">
-      {display.toLocaleString()}
-    </span>
-  );
-=======
 const POLL_INTERVAL_MS = 5_000;
 
 // ─── Helpers ─────────────────────────────────────────────────────────
@@ -127,7 +50,6 @@ function formatRelativeTime(iso: string) {
   if (diffHr < 24) return `${diffHr}h ago`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay}d ago`;
->>>>>>> Stashed changes
 }
 
 function formatExactTime(iso: string) {
@@ -203,22 +125,6 @@ function KPICard({ label, value, icon: Icon, gradient, iconBg, iconText, delay }
   }, [value, displayValue]);
 
   return (
-<<<<<<< Updated upstream
-    <Card className="overflow-hidden border-border/70 shadow-sm hover:shadow-md transition-shadow">
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold tracking-tight text-foreground">
-              <AnimatedNumber value={value} />
-            </p>
-          </div>
-          <Link href={href}>
-            <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${color} text-white shadow-sm`}>
-              <Icon className="h-5 w-5" />
-            </div>
-          </Link>
-=======
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -233,7 +139,6 @@ function KPICard({ label, value, icon: Icon, gradient, iconBg, iconText, delay }
       <div className="relative h-full flex flex-col justify-between rounded-2xl bg-card border border-border/50 p-6 shadow-sm overflow-hidden backdrop-blur-xl">
         <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
           <Icon className="w-24 h-24 -mr-6 -mt-6 transform rotate-12" />
->>>>>>> Stashed changes
         </div>
         <div className="relative flex items-start justify-between gap-4 z-10">
           <div className="min-w-0 flex-1">
@@ -288,14 +193,6 @@ function QuickActionCard({
   delay: number;
 }) {
   return (
-<<<<<<< Updated upstream
-    <Link href={href}>
-      <Card className="overflow-hidden border-border/70 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer group">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-4">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${color} text-white shadow-sm`}>
-              <Icon className="h-5 w-5" />
-=======
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -314,7 +211,6 @@ function QuickActionCard({
               )}
             >
               <Icon className="h-6 w-6" />
->>>>>>> Stashed changes
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-base font-bold text-foreground transition-colors duration-200">
@@ -506,144 +402,6 @@ const quickActions = [
 // ─── Dashboard Page ───────────────────────────────────────────────────
 
 export default function DashboardPage() {
-<<<<<<< Updated upstream
-  const stats = useDashboardStore();
-  const [refreshKey, setRefreshKey] = React.useState(0);
-
-  React.useEffect(() => {
-    const onFocus = () => setRefreshKey((prev) => prev + 1);
-    const onVisibility = () => {
-      if (!document.hidden) {
-        setRefreshKey((prev) => prev + 1);
-      }
-    };
-
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onVisibility);
-
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, []);
-
-  const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1);
-    toast.success("Dashboard refreshed");
-  };
-
-  const activities = [...(stats.activities ?? [])];
-
-  return (
-    <div className="space-y-6 max-w-7xl mx-auto" key={refreshKey}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Overview of your productivity and recent activity</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>
-          Refresh
-        </Button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          title="Queries Generated"
-          value={stats.queriesGenerated ?? 0}
-          icon={Terminal}
-          color="bg-primary"
-          href="/soql-generator"
-        />
-        <KPICard
-          title="Excel Operations"
-          value={stats.excelOperations ?? 0}
-          icon={Table2}
-          color="bg-success"
-          href="/excel-automation"
-        />
-        <KPICard
-          title="History Items"
-          value={stats.historyItems ?? 0}
-          icon={History}
-          color="bg-warning"
-          href="/history"
-        />
-        <KPICard
-          title="Favourites"
-          value={stats.favourites ?? 0}
-          icon={Star}
-          color="bg-orange-500"
-          href="/template-manager"
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-12">
-        <div className="lg:col-span-8 space-y-4">
-          <h2 className="text-base font-semibold text-foreground">Quick Actions</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <QuickActionCard
-              title="SOQL Generator"
-              description="Generate SOQL from ticket numbers"
-              icon={Terminal}
-              color="bg-primary"
-              href="/soql-generator"
-            />
-            <QuickActionCard
-              title="Excel Automation"
-              description="Clean and transform spreadsheets"
-              icon={Table2}
-              color="bg-success"
-              href="/excel-automation"
-            />
-            <QuickActionCard
-              title="Ticket Formatter"
-              description="Format tickets for any language"
-              icon={Zap}
-              color="bg-warning"
-              href="/ticket-formatter"
-            />
-            <QuickActionCard
-              title="Template Manager"
-              description="Manage query templates"
-              icon={Bookmark}
-              color="bg-orange-500"
-              href="/template-manager"
-            />
-          </div>
-        </div>
-
-        <div className="lg:col-span-4 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">Recent Activity</h2>
-            <Link href="/history">
-              <Button variant="ghost" size="sm" className="h-7 text-xs">
-                View all
-              </Button>
-            </Link>
-          </div>
-          <Card className="overflow-hidden border-border/70 shadow-sm">
-            <CardContent className="p-0">
-              {activities.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <History className="h-8 w-8 text-muted-foreground/50 mb-3" />
-                  <p className="text-sm text-muted-foreground">No activity yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">Start working to see your activity here</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-border/60">
-                  {activities.slice(0, 6).map((activity) => (
-                    <div key={activity.id} className="flex items-start gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${activityColor(activity.type)}`}>
-                        {activityIcon(activity.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{activity.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{activity.description}</p>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                        {getTimeAgo(activity.timestamp)}
-                      </span>
-=======
   const soqlGeneratedCount = useDashboardStore((s) => s.soqlGeneratedCount);
   const excelOperationCount = useDashboardStore((s) => s.excelOperationCount);
   const ticketCancellationCount = useDashboardStore((s) => s.ticketCancellationCount);
@@ -825,7 +583,6 @@ export default function DashboardPage() {
                   <div className="flex flex-col items-center gap-4 p-12 text-center bg-gradient-to-b from-transparent to-muted/30">
                     <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-muted shadow-inner">
                       <Clock className="h-8 w-8 text-muted-foreground/50" />
->>>>>>> Stashed changes
                     </div>
                     <div>
                       <p className="text-lg font-bold text-foreground">
