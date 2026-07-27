@@ -1,0 +1,24 @@
+
+> meghdoot-playground@0.1.0 build
+> next build
+
+Γû▓ Next.js 16.2.10 (Turbopack)
+- Experiments (use with caution):
+  ┬╖ optimizePackageImports
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 5.6s
+  Running TypeScript ...
+  Finished TypeScript in 6.8s ...
+  Collecting page data using 11 workers ...
+TypeError: The "paths[1]" argument must be of type string. Received undefined
+    at <unknown> (D:\MeghdootPlayground\frontend\.next\server\chunks\[root-of-the-server]__1ng4f6z._.js:11:32248) {
+  code: 'ERR_INVALID_ARG_TYPE',
+  clientVersion: '7.9.0'
+}
+
+> Build error occurred
+Error: Failed to collect page data for /api/case-owners
+    at ignore-listed frames {
+  type: 'Error'
+}
