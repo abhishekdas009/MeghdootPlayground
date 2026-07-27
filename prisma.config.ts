@@ -5,9 +5,9 @@ loadEnv({ path: ".env.local" });
 loadEnv({ path: ".env" });
 
 export default defineConfig({
-  schema: "prisma/schema.prisma",
+  schema: "frontend/prisma/schema.prisma",
   migrations: {
-    path: "prisma/migrations",
+    path: "frontend/prisma/migrations",
   },
   datasource: {
     url: env("DATABASE_URL"),

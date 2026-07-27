@@ -5,9 +5,9 @@
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend run build",
     "lint": "npm --prefix frontend run lint",
-    "postinstall": "prisma generate",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "postinstall": "npm --prefix frontend run postinstall",
+    "prisma:generate": "npm --prefix frontend run postinstall",
+    "prisma:migrate": "npm --prefix frontend exec prisma migrate dev",
     "backend:dev": "python -m uvicorn app.main:app --reload --app-dir backend --port 8000"
   },
   "dependencies": {
