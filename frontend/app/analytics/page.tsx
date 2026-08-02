@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
       {/* 1. TOP HEADER BANNER */}
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
@@ -339,7 +339,7 @@ export default function AnalyticsPage() {
       </motion.div>
 
       {/* 2. EXECUTIVE KPI CARDS (8-Card Grid) */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {[
           {
             key: "soql_generated",
@@ -357,8 +357,8 @@ export default function AnalyticsPage() {
             val: getMetricValue("excel_operations").toLocaleString(),
             trend: "+8.4% vs last week",
             icon: FileSpreadsheet,
-            gradient: "from-emerald-500 to-emerald-700",
-            iconColor: "text-emerald-600 bg-emerald-500/10",
+            gradient: "from-sky-400 to-blue-700",
+            iconColor: "text-sky-700 bg-sky-500/10 dark:text-sky-300",
             pct: 72,
           },
           {
@@ -367,8 +367,8 @@ export default function AnalyticsPage() {
             val: templates.length.toString(),
             trend: `${templates.filter((t) => t.favourite).length} bookmarked in DB`,
             icon: Database,
-            gradient: "from-purple-500 to-purple-700",
-            iconColor: "text-purple-600 bg-purple-500/10",
+            gradient: "from-indigo-400 to-blue-700",
+            iconColor: "text-indigo-700 bg-indigo-500/10 dark:text-indigo-300",
             pct: 90,
           },
           {
@@ -377,8 +377,8 @@ export default function AnalyticsPage() {
             val: getMetricValue("tickets_formatted").toLocaleString(),
             trend: "99.9% syntax precision",
             icon: FileText,
-            gradient: "from-amber-500 to-orange-500",
-            iconColor: "text-amber-600 bg-amber-500/10",
+            gradient: "from-blue-400 to-cyan-600",
+            iconColor: "text-blue-700 bg-blue-500/10 dark:text-blue-300",
             pct: 88,
           },
           {
@@ -387,8 +387,8 @@ export default function AnalyticsPage() {
             val: caseOwners.length > 0 ? caseOwners.length.toString() : "10",
             trend: "Balanced load routing",
             icon: Users,
-            gradient: "from-indigo-500 to-indigo-700",
-            iconColor: "text-indigo-600 bg-indigo-500/10",
+            gradient: "from-blue-400 to-indigo-700",
+            iconColor: "text-blue-700 bg-blue-500/10 dark:text-blue-300",
             pct: 78,
           },
           {
@@ -397,8 +397,8 @@ export default function AnalyticsPage() {
             val: getMetricValue("asset_transfer").toLocaleString(),
             trend: "0 CID mapping errors",
             icon: ArrowRightLeft,
-            gradient: "from-cyan-500 to-cyan-700",
-            iconColor: "text-cyan-600 bg-cyan-500/10",
+            gradient: "from-cyan-400 to-blue-700",
+            iconColor: "text-cyan-700 bg-cyan-500/10 dark:text-cyan-300",
             pct: 65,
           },
           {
@@ -417,8 +417,8 @@ export default function AnalyticsPage() {
             val: getMetricValue("favourites_count").toLocaleString(),
             trend: "Instant quick access",
             icon: Star,
-            gradient: "from-yellow-400 to-amber-500",
-            iconColor: "text-yellow-600 bg-yellow-500/10",
+            gradient: "from-sky-400 to-blue-600",
+            iconColor: "text-sky-700 bg-sky-500/10 dark:text-sky-300",
             pct: 95,
           },
         ].map((card, idx) => (
@@ -427,18 +427,18 @@ export default function AnalyticsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05 }}
-            whileHover={{ y: -5 }}
+            whileHover={{ y: -2 }}
             className="h-full"
           >
-            <Card className="relative h-full border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 overflow-hidden group bg-card transition-all hover:shadow-xl rounded-2xl flex flex-col">
+            <Card className="relative h-full min-h-[196px] overflow-hidden group bg-card transition-all rounded-2xl flex flex-col">
               {/* Top Gradient Accent Bar */}
               <div className={cn("absolute inset-x-0 top-0 h-1.5 opacity-80 transition-opacity duration-300 bg-gradient-to-r", card.gradient)} />
               
               {/* Card Content with Fixed Typography Alignment */}
-              <CardContent className="p-6 pt-7 flex flex-col flex-1 relative z-10">
+              <CardContent className="relative z-10 flex flex-1 flex-col p-5 pt-6 sm:p-6 sm:pt-7 lg:pt-7">
                 {/* Header: Title and Icon */}
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider leading-tight pt-1">
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <span className="min-h-[2.5rem] max-w-[12rem] text-[11px] font-bold uppercase leading-[1.35] tracking-wider text-muted-foreground">
                     {card.label}
                   </span>
                   <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 shadow-sm", card.iconColor)}>
@@ -447,7 +447,7 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Metrics */}
-                <div className="space-y-1 mb-5 flex-1">
+                <div className="mb-6 flex-1 space-y-2">
                   <div className="text-3xl font-black tracking-tight text-foreground drop-shadow-sm">
                     {card.val}
                   </div>
@@ -459,7 +459,7 @@ export default function AnalyticsPage() {
 
                 {/* Progress Bar Footer */}
                 <div className="pt-2 mt-auto">
-                  <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden shadow-inner">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${card.pct}%` }}

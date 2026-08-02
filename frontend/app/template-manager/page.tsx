@@ -536,7 +536,7 @@ export default function QueryLibraryPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
       {/* ─── 1. FULL-WIDTH SALESFORCE LIGHTNING PAGE HEADER ───────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}

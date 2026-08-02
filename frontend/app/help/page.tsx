@@ -300,7 +300,7 @@ export default function HelpPage() {
   const categories = ["All", "Core Navigation", "Query Engine", "Spreadsheet Suite", "Data Cleanser", "Database Repository", "Audit Ledger", "Executive Telemetry", "Workload Routing"];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8 pb-14">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-8 p-4 pb-14 sm:p-6 lg:p-8">
       {/* 1. HEADER BANNER */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -516,7 +516,7 @@ export default function HelpPage() {
                   <MessageCircle className="h-8 w-8" />
                 </div>
                 <div className="text-lg font-black text-foreground">No FAQs match your query</div>
-                <p className="text-sm text-slate-500 mt-2">Try searching for terms like 'Salesforce' or 'limits'.</p>
+                <p className="text-sm text-slate-500 mt-2">Try searching for terms like &apos;Salesforce&apos; or &apos;limits&apos;.</p>
               </div>
             ) : (
               <div className="grid gap-5 md:grid-cols-2">

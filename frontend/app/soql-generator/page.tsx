@@ -668,9 +668,8 @@ function QueryPreviewCard({
   const currentBatch = batches[batchIndex] ?? "";
 
   return (
-    <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl flex flex-col transition-all duration-300 hover:shadow-xl group relative h-full">
-      <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-indigo-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-indigo-500/10 transition-colors" />
-      <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 group relative h-full">
+      <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -697,7 +696,7 @@ function QueryPreviewCard({
 
       <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
         {batches.length > 0 ? (
-          <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+          <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
             <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
               <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
@@ -1666,7 +1665,7 @@ export default function SOQLGeneratorPage() {
       : `${activeTemplate?.category ?? ""} query preview`;
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 lg:space-y-8 pb-14 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-6 pb-14 p-4 sm:p-6 lg:space-y-8 lg:p-8">
       {/* ─── Header Section ──────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -1678,12 +1677,12 @@ export default function SOQLGeneratorPage() {
         <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-[#0176d3]/20 blur-3xl mix-blend-screen pointer-events-none" />
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl mix-blend-screen pointer-events-none" />
         
-        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between relative z-10">
-          <div className="flex items-center gap-4">
+        <div className="relative z-10 flex flex-col gap-6 2xl:flex-row 2xl:items-center 2xl:justify-between">
+          <div className="flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
             <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0176d3] to-indigo-600 text-white shadow-lg shadow-[#0176d3]/30 border border-white/10">
               <Terminal className="h-7 w-7" />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <Badge className="bg-[#0176d3]/20 text-blue-300 border border-[#0176d3]/40 text-[10px] sm:text-xs font-bold px-3 py-1 flex items-center gap-1.5 shadow-inner backdrop-blur-sm uppercase tracking-widest">
                   SALESFORCE DEVELOPER TOOLS
@@ -1700,7 +1699,7 @@ export default function SOQLGeneratorPage() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 self-start md:self-center shrink-0">
+          <div className="flex w-full flex-wrap items-center gap-3 self-start 2xl:w-auto 2xl:self-center">
             <Button variant="outline" onClick={handleClear} className="gap-2 h-12 px-6 rounded-xl border-slate-600 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 text-slate-300 font-bold transition-all backdrop-blur-sm bg-slate-800/50 shadow-inner">
               <Trash2 className="h-4.5 w-4.5" /> Clear All
             </Button>
@@ -1749,11 +1748,10 @@ export default function SOQLGeneratorPage() {
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.25 }}
-          className="xl:col-span-3 lg:col-span-4 md:col-span-12 space-y-4"
+          className="2xl:col-span-3 xl:col-span-4 lg:col-span-5 md:col-span-12 space-y-4"
         >
-          <Card className="border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden group">
-            <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
-            <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 relative z-10 p-6">
+          <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden group">
+            <CardHeader className="pb-4 bg-transparent relative z-10 p-6">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
@@ -1833,8 +1831,8 @@ export default function SOQLGeneratorPage() {
           </Card>
 
           {showStats && !isAssetTransfer && !isCaseAssign && (
-            <Card className="border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden group">
-              <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6">
+            <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden group">
+              <CardHeader className="pb-4 bg-transparent p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -1886,9 +1884,8 @@ export default function SOQLGeneratorPage() {
           )}
 
           {!isAssetTransfer && (
-            <Card className="flex flex-col border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden">
-              <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative">
-                 <div className="absolute top-0 right-0 p-24 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
+            <Card className="flex flex-col rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden">
+              <CardHeader className="pb-4 bg-transparent p-6 relative">
                 <div className="flex items-center gap-3 flex-wrap relative z-10">
                   <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
                     <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white shadow-inner">1</span>
@@ -1908,7 +1905,7 @@ export default function SOQLGeneratorPage() {
                         ? `Paste Case IDs here...\n500Ny00001RnGoS\n500Ny00001RnK0r\n500Ny00001RnTVV`
                         : `Paste ticket numbers here...\nA26060134750678\nA26060134750476\nA26060134750619`
                     }
-                    className="flex-1 min-h-[320px] font-mono text-xs leading-relaxed rounded-2xl border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner backdrop-blur-sm p-4 resize-y"
+                    className="flex-1 min-h-[320px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y"
                     value={ticketsInput}
                     onChange={(event) => {
                       const value = event.target.value;
@@ -1919,7 +1916,7 @@ export default function SOQLGeneratorPage() {
                       }
                     }}
                   />
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 dark:bg-slate-950/50 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                  <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
                     {isCaseAssign
                       ? "Supports spaces, commas, tabs, or newlines. Case IDs are automatically chunked into 450-value batches for Salesforce-safe SOQL."
                       : "Supports spaces, commas, tabs, or newlines. Values are automatically chunked into 450-value batches for Salesforce-safe SOQL."}
@@ -1953,9 +1950,8 @@ export default function SOQLGeneratorPage() {
           )}
 
           {isAssetTransfer && (
-            <Card className="flex flex-col border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden">
-              <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative">
-                 <div className="absolute top-0 right-0 p-24 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
+            <Card className="flex flex-col rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden">
+              <CardHeader className="pb-4 bg-transparent p-6 relative">
                 <div className="flex items-center gap-4 relative z-10">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
                     <ArrowRightLeft className="h-5 w-5" />
@@ -1971,11 +1967,11 @@ export default function SOQLGeneratorPage() {
                   <label className="text-xs font-black text-slate-500 block uppercase tracking-widest pl-1">Component & New CID Pairs</label>
                   <Textarea
                     placeholder={`COMPONENT        NEW CID\nBSL34933847      CID-2025004\nBSL29709797      CID-4206214\nBSL22295338      CID-6074821`}
-                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-2xl border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner backdrop-blur-sm p-4 resize-y"
+                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y"
                     value={assetTransferInput}
                     onChange={(event) => setAssetTransferInput(event.target.value)}
                   />
-                  <p className="text-xs text-slate-500 font-medium leading-relaxed bg-slate-50 dark:bg-slate-950/50 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                  <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
                     Paste component ID and new CID pairs. Tab or space separated. One pair per line.
                   </p>
                 </div>
@@ -2001,7 +1997,7 @@ export default function SOQLGeneratorPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.25 }}
-          className="xl:col-span-9 lg:col-span-8 md:col-span-12 grid grid-cols-1 xl:grid-cols-2 gap-6"
+          className="2xl:col-span-9 xl:col-span-8 lg:col-span-7 md:col-span-12 grid grid-cols-1 2xl:grid-cols-2 gap-6"
         >
           {isTS && (
             <>
@@ -2022,9 +2018,8 @@ export default function SOQLGeneratorPage() {
                 onCopy={handleCopy}
               />
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
@@ -2038,7 +2033,7 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                     <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
                       <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
                         STANDARD EMAIL FORMAT
@@ -2051,9 +2046,8 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-amber-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
@@ -2067,7 +2061,7 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                     <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
                       <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
                         CHATTER POST FORMAT
@@ -2095,9 +2089,8 @@ export default function SOQLGeneratorPage() {
 
           {isAssetTransfer && (
             <>
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <span className="h-2.5 w-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
@@ -2109,7 +2102,7 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                     <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
                       <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
                         COMPONENT MASTER QUERY
@@ -2122,9 +2115,8 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-emerald-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
@@ -2136,7 +2128,7 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                     <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
                       <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
                         ACCOUNT MASTER QUERY
@@ -2149,9 +2141,8 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col xl:col-span-2 transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-fuchsia-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-fuchsia-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 shadow-inner">
                       <ArrowRightLeft className="h-5 w-5" />
@@ -2170,7 +2161,7 @@ export default function SOQLGeneratorPage() {
                       <label className="text-[11px] font-black text-slate-500 mb-2 uppercase tracking-widest pl-1">Asset SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Asset SOQL result here...\n"_"\t"Component_Id__c"\t"Id"\t"Account.Customer_ID__c"\t"Record_Type__c"\t"Parent.Id"`}
-                        className="flex-1 min-h-[160px] font-mono text-xs leading-relaxed rounded-2xl border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-inner backdrop-blur-sm p-4 resize-y"
+                        className="flex-1 min-h-[160px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-none p-4 resize-y"
                         value={assetSOQLResult}
                         onChange={(event) => setAssetSOQLResult(event.target.value)}
                       />
@@ -2180,7 +2171,7 @@ export default function SOQLGeneratorPage() {
                       <label className="text-[11px] font-black text-slate-500 mb-2 uppercase tracking-widest pl-1">Account SOQL Result</label>
                       <Textarea
                         placeholder={`Paste Account SOQL result here...\n"_"\t"Customer_ID__c"\t"Id"`}
-                        className="flex-1 min-h-[160px] font-mono text-xs leading-relaxed rounded-2xl border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-inner backdrop-blur-sm p-4 resize-y"
+                        className="flex-1 min-h-[160px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-none p-4 resize-y"
                         value={accountSOQLResult}
                         onChange={(event) => setAccountSOQLResult(event.target.value)}
                       />
@@ -2199,9 +2190,8 @@ export default function SOQLGeneratorPage() {
               </Card>
 
               {transferOutput && (
-                <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col xl:col-span-2 transition-all duration-300 hover:shadow-xl group relative">
-                  <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-emerald-500/10 transition-colors" />
-                  <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
+                  <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
@@ -2220,7 +2210,7 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                    <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                       <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-emerald-200 max-h-[320px] min-h-0 selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100">
                         {transferOutput}
                       </pre>
@@ -2230,9 +2220,8 @@ export default function SOQLGeneratorPage() {
               )}
 
               {transferDebug && (
-                <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col xl:col-span-2 transition-all duration-300 hover:shadow-xl group relative">
-                  <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-amber-500/10 transition-colors" />
-                  <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
+                  <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
@@ -2246,7 +2235,7 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                    <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                       <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[240px] min-h-0 selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
                         {transferDebug}
                       </pre>
@@ -2259,9 +2248,8 @@ export default function SOQLGeneratorPage() {
 
           {isCancellation && (
             <>
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-rose-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-rose-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex flex-col gap-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="flex gap-4 items-start">
@@ -2294,7 +2282,7 @@ export default function SOQLGeneratorPage() {
 
                 <CardContent className="p-6 pt-5 space-y-4 flex-1 flex flex-col relative z-10">
                   {visibleCancellationBatches.length > 0 ? (
-                    <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                       <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
                         <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
                           Batch {cancellationExecutionBatchIndex + 1} / {visibleCancellationBatches.length}
@@ -2350,9 +2338,8 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center gap-4 flex-wrap">
                     <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
                       <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white shadow-inner">3</span>
@@ -2365,12 +2352,12 @@ export default function SOQLGeneratorPage() {
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
                   <Textarea
                     placeholder={`Paste SOQL result here...\n"_","Id","Ticket_Number_Read_Only__c","Status"`}
-                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-2xl border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner backdrop-blur-sm p-4 resize-y"
+                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y"
                     value={cancellationExecutionInput}
                     onChange={(event) => setCancellationExecutionInput(event.target.value)}
                   />
 
-                  <div className="flex flex-wrap gap-2.5 bg-slate-50 dark:bg-slate-950/50 p-3 rounded-xl border border-slate-200/50 dark:border-slate-800/50 shadow-inner">
+                  <div className="flex flex-wrap gap-2.5 pt-2">
                     <Badge className="bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Parsed: {cancellationExecutionRows.length}</Badge>
                     <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Ready: {uniqueExecutableCancellationRows.length}</Badge>
                     <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Skipped: {skippedCancellationRows.length}</Badge>
@@ -2379,9 +2366,8 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-teal-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-teal-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 shadow-inner">
                       <FileSpreadsheet className="h-5 w-5" />
@@ -2392,7 +2378,7 @@ export default function SOQLGeneratorPage() {
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                   <Textarea
                     placeholder={`Paste Excel / Data Loader output here...`}
-                    className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-2xl border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 focus-visible:ring-teal-500/40 focus-visible:border-teal-500 shadow-inner backdrop-blur-sm p-4 resize-y"
+                    className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-teal-500/40 focus-visible:border-teal-500 shadow-none p-4 resize-y"
                     value={excelInput}
                     onChange={(event) => setExcelInput(event.target.value)}
                   />
@@ -2406,9 +2392,8 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
@@ -2422,7 +2407,7 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
-                  <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                     <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-0 selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
                       {cancellationEmail || "Paste tickets to generate cancellation email"}
                     </pre>
@@ -2430,9 +2415,8 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col xl:col-span-2 transition-all duration-300 hover:shadow-xl group relative">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-amber-500/10 transition-colors" />
-                <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
@@ -2446,7 +2430,7 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
-                  <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                     <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[220px] min-h-0 selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
                       {cancellationPost || "Paste tickets to generate cancellation post"}
                     </pre>
@@ -2455,9 +2439,8 @@ export default function SOQLGeneratorPage() {
               </Card>
 
               {cancellationUpdateDebug && (
-                <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl h-full flex flex-col xl:col-span-2 transition-all duration-300 hover:shadow-xl group relative">
-                  <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-slate-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-slate-500/10 transition-colors" />
-                  <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-6 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
+                  <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400 shadow-inner">
@@ -2471,7 +2454,7 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
-                    <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                       <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 max-h-[280px] min-h-0 selection:bg-slate-500/20 selection:text-slate-900 dark:selection:text-slate-100">
                         {cancellationUpdateDebug}
                       </pre>
@@ -2497,9 +2480,8 @@ export default function SOQLGeneratorPage() {
                 />
 
                 {/* 2. Step 3: Paste fetched Case output (Compact 140px textarea) */}
-                <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl flex flex-col transition-all duration-300 hover:shadow-xl relative group">
-                  <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-[#0176d3]/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-[#0176d3]/10 transition-colors" />
-                  <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-5 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0176d3]/10 text-[#0176d3] shadow-inner">
@@ -2522,7 +2504,7 @@ export default function SOQLGeneratorPage() {
                   <CardContent className="p-5 relative z-10">
                     <Textarea
                       placeholder={`"_","Id","Status","OwnerId"\n"[Case]","500Ny00001RpOgFIAV","Open","00GNy000009qbJFMAY"`}
-                      className="min-h-[120px] max-h-[140px] font-mono text-xs leading-relaxed rounded-2xl border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 focus-visible:ring-[#0176d3]/40 focus-visible:border-[#0176d3] shadow-inner backdrop-blur-sm p-4 resize-y"
+                      className="min-h-[120px] max-h-[140px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-[#0176d3]/40 focus-visible:border-[#0176d3] shadow-none p-4 resize-y"
                       value={caseAssignInput}
                       onChange={(event) => setCaseAssignInput(event.target.value)}
                     />
@@ -2530,9 +2512,8 @@ export default function SOQLGeneratorPage() {
                 </Card>
 
                 {/* 3. Assignment Mode & Quick Execute Control Box */}
-                <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl flex flex-col transition-all duration-300 hover:shadow-xl relative group">
-                  <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-purple-500/10 transition-colors" />
-                  <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-5 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
@@ -2658,9 +2639,8 @@ export default function SOQLGeneratorPage() {
               {/* === RIGHT RESULTS & MASTER MANAGEMENT COLUMN === */}
               <div className="space-y-4 flex flex-col">
                 {/* 1. Assignment Output Box (Right at the Top so you see results without scrolling!) */}
-                <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl flex flex-col transition-all duration-300 hover:shadow-xl relative group">
-                  <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-emerald-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-emerald-500/10 transition-colors" />
-                  <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-5 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
@@ -2682,7 +2662,7 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-5 relative z-10">
-                    <div className="rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 text-foreground flex flex-col min-h-0 flex-1 shadow-inner overflow-hidden backdrop-blur-sm">
+                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                       <pre className="overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-relaxed text-slate-800 dark:text-emerald-200 h-[140px] max-h-[140px] no-scrollbar selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100">
                         {caseAssignOutput || `"_","Id","Status","OwnerId"\n"[Case]","500Ny00001RpOgFIAV","Open","005Ny00000QgwYTIAZ"`}
                       </pre>
@@ -2691,9 +2671,8 @@ export default function SOQLGeneratorPage() {
                 </Card>
 
                 {/* 2. Compact High-Density Owner Master Management */}
-                <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl flex flex-col flex-1 transition-all duration-300 hover:shadow-xl relative group">
-                  <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
-                  <CardHeader className="pb-4 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 border-b border-slate-200/50 dark:border-slate-700/50 p-5 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col flex-1 transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">

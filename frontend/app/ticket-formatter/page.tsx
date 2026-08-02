@@ -136,7 +136,7 @@ export default function TicketFormatterPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8 min-h-screen">
+    <div className="workspace-page mx-auto min-h-screen w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
       
       {/* ─── Hero / Header Section ────────────────────────────────────────────── */}
       <motion.div

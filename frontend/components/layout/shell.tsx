@@ -12,7 +12,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { sidebarCollapsed } = useUIStore();
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-background">
+    <div className="app-shell relative min-h-screen overflow-x-hidden bg-background">
       <ParticleBackground />
       <Header />
       <Sidebar />

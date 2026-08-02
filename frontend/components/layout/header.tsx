@@ -31,7 +31,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 w-full bg-transparent border-b border-border/20 backdrop-blur-lg shadow-none transition-all duration-200" suppressHydrationWarning>
+    <header className="fixed top-0 left-0 right-0 z-50 h-14 w-full border-b border-border/40 bg-background/65 backdrop-blur-xl shadow-[0_1px_0_rgb(255_255_255_/_0.04)] transition-all duration-200" suppressHydrationWarning>
       <div className="flex h-full items-center justify-between px-4 sm:px-5 gap-3" suppressHydrationWarning>
         {/* Left Section: Menu & Brand */}
         <div className="flex items-center gap-2.5 shrink-0" suppressHydrationWarning>
@@ -101,7 +101,7 @@ export function Header() {
               ref={searchInputRef}
               readOnly
               placeholder="Search 37+ templates, queries, modules, history... (Press ⌘K or Ctrl+K)"
-              className="h-9.5 border-0 bg-transparent pl-10 pr-16 text-xs font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/70 cursor-pointer"
+              className="h-9.5 border-0 bg-transparent pl-10 pr-16 text-xs font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground cursor-pointer"
               onClick={() => setSearchOpen(true)}
               onFocus={() => {
                 setSearchFocused(true);

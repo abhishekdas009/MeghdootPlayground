@@ -3,23 +3,23 @@
 @tailwind utilities;
 
 :root {
-  /* ─── Salesforce CRM-inspired light theme ─────────────────────────── */
-  --color-primary: 1 68 134;           /* SF Navy */
-  --color-primary-foreground: 255 255 255;
-  --color-secondary: 249 115 22;       /* SF Orange accent */
+  /* ─── Salesforce midnight (dark-only) ─────────────────────────────── */
+  --color-primary: 48 154 255;
+  --color-primary-foreground: 3 12 25;
+  --color-secondary: 30 112 198;
   --color-secondary-foreground: 255 255 255;
-  --color-accent: 1 118 211;           /* SF Lightning Blue */
-  --color-accent-foreground: 255 255 255;
-  --color-background: 243 244 246;     /* SF Cloud bg - warm gray */
-  --color-card: 255 255 255;
-  --color-border: 221 225 230;
-  --color-hover: 235 241 250;          /* Blueish hover tint */
-  --color-success: 46 132 74;
-  --color-warning: 245 158 11;
-  --color-danger: 234 0 30;
-  --color-muted: 243 244 246;
-  --color-muted-foreground: 100 111 128;
-  --color-foreground: 22 28 38;
+  --color-accent: 96 182 255;
+  --color-accent-foreground: 3 12 25;
+  --color-background: 3 7 18;
+  --color-card: 13 21 39;
+  --color-border: 53 75 105;
+  --color-hover: 21 35 57;
+  --color-foreground: 244 248 255;
+  --color-muted-foreground: 174 190 211;
+  --color-muted: 24 36 58;
+  --color-success: 6 95 70;
+  --color-warning: 180 83 9;
+  --color-danger: 190 24 93;
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --app-header-height: 4rem;
@@ -54,6 +54,7 @@
   body {
     min-height: 100vh;
     background-color: rgb(var(--color-background));
+    background-image: radial-gradient(circle at 15% -12%, rgb(0 119 255 / 0.08), transparent 32rem);
     color: rgb(var(--color-foreground));
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     line-height: 1.5;
@@ -142,19 +143,111 @@
   }
 }
 
-/* ─── Salesforce CRM-inspired dark theme ──────────────────────────── */
-.dark {
-  --color-primary: 248 250 252;
-  --color-primary-foreground: 11 17 32;
-  --color-secondary: 251 146 60;
-  --color-secondary-foreground: 15 23 42;
-  --color-accent: 88 166 255;           /* Lighter blue for dark bg */
-  --color-accent-foreground: 3 45 96;
-  --color-background: 13 18 30;         /* Deep navy */
-  --color-card: 20 28 46;              /* Card navy */
-  --color-border: 40 55 78;
-  --color-hover: 28 40 60;
-  --color-foreground: 241 245 249;
-  --color-muted-foreground: 148 163 184;
-  --color-muted: 28 40 60;
+.app-shell::before,
+.app-shell::after {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 9999px;
+  filter: blur(72px);
+}
+
+.app-shell::before {
+  top: 5rem;
+  left: 12%;
+  width: min(36rem, 55vw);
+  height: min(36rem, 55vw);
+  background: rgb(0 119 255 / 0.14);
+}
+
+.app-shell::after {
+  right: 4%;
+  bottom: 4%;
+  width: min(30rem, 48vw);
+  height: min(30rem, 48vw);
+  background: rgb(37 99 235 / 0.12);
+}
+
+.app-shell {
+  background-image:
+    radial-gradient(circle at 18% 8%, rgb(0 119 255 / 0.12), transparent 25rem),
+    radial-gradient(circle at 82% 18%, rgb(59 130 246 / 0.08), transparent 30rem),
+    linear-gradient(145deg, rgb(3 7 18), rgb(7 13 30) 55%, rgb(3 7 18));
+}
+
+/* Shared application workspace: one quiet glass surface per task. */
+.workspace-page .app-card {
+  border-width: 1px;
+  border-color: rgb(148 163 184 / 0.16);
+  background: linear-gradient(145deg, rgb(20 33 56 / 0.72), rgb(7 14 29 / 0.7));
+  box-shadow: none;
+  border-radius: 1.25rem;
+  backdrop-filter: blur(18px);
+}
+
+.workspace-page .app-card > .absolute.blur-2xl,
+.workspace-page .app-card > .absolute.blur-3xl {
+  display: none;
+}
+
+.workspace-page .app-card > .space-y-1\.5 {
+  border-bottom-color: rgb(var(--color-border) / 0.16);
+  background-color: transparent !important;
+  padding: 1.25rem;
+}
+
+.workspace-page .app-card .app-card {
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.workspace-page .shadow-inner {
+  box-shadow: none;
+}
+
+.workspace-page textarea:not([readonly]),
+.workspace-page input:not([type="checkbox"]):not([type="radio"]),
+.workspace-page select {
+  border-color: transparent !important;
+  background-color: rgb(var(--color-background) / 0.28) !important;
+  box-shadow: none !important;
+  border-radius: 0.875rem;
+}
+
+.workspace-page textarea[readonly] {
+  border-color: rgb(var(--color-border) / 0.2) !important;
+  background-color: rgb(var(--color-background) / 0.38) !important;
+  box-shadow: none !important;
+  border-radius: 0.875rem;
+}
+
+.workspace-page textarea:not([readonly]):focus-visible,
+.workspace-page input:not([type="checkbox"]):not([type="radio"]):focus-visible,
+.workspace-page select:focus-visible {
+  border-color: rgb(var(--color-accent) / 0.75) !important;
+  outline: 2px solid rgb(var(--color-accent) / 0.28);
+  outline-offset: 1px;
+}
+
+.workspace-page table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.workspace-page table th {
+  padding: 1rem 1.25rem;
+  vertical-align: middle;
+}
+
+.workspace-page table td {
+  padding: 1.125rem 1.25rem;
+  vertical-align: middle;
+}
+
+@media (min-width: 640px) {
+  .workspace-page .app-card > .space-y-1\.5 {
+    padding: 1.5rem;
+  }
 }

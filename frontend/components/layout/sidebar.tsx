@@ -9,8 +9,6 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Sun,
-  Moon,
   HelpCircle,
   ShieldCheck,
   LayoutDashboard,
@@ -24,7 +22,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
-import { useTheme } from "@/components/providers/theme-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface NavItem {
@@ -47,27 +44,27 @@ const NAV_ITEMS: NavItem[] = [
 
 // ─── Salesforce Lightning v2.4 color mapping ─────────────────────────
 const NAV_COLORS: Record<string, string> = {
-  "/dashboard": "from-blue-500 to-blue-600",
-  "/soql-generator": "from-[#0176d3] to-sky-600",
-  "/excel-automation": "from-emerald-500 to-emerald-600",
-  "/formula-generator": "from-purple-500 to-purple-600",
-  "/ticket-formatter": "from-amber-500 to-orange-500",
-  "/template-manager": "from-cyan-500 to-cyan-600",
-  "/history": "from-indigo-500 to-indigo-600",
-  "/analytics": "from-rose-500 to-pink-500",
-  "/help": "from-teal-500 to-teal-600",
+  "/dashboard": "from-blue-400 to-blue-600",
+  "/soql-generator": "from-sky-400 to-blue-600",
+  "/excel-automation": "from-cyan-400 to-blue-600",
+  "/formula-generator": "from-indigo-400 to-blue-700",
+  "/ticket-formatter": "from-sky-400 to-blue-700",
+  "/template-manager": "from-cyan-400 to-blue-600",
+  "/history": "from-blue-400 to-indigo-600",
+  "/analytics": "from-sky-400 to-blue-600",
+  "/help": "from-blue-400 to-cyan-600",
 };
 
 const NAV_ICON_BG: Record<string, string> = {
-  "/dashboard": "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  "/soql-generator": "bg-[#0176d3]/15 text-[#0176d3] dark:text-sky-400 font-extrabold",
-  "/excel-automation": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  "/formula-generator": "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  "/ticket-formatter": "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  "/template-manager": "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
-  "/history": "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-  "/analytics": "bg-rose-500/10 text-rose-600 dark:text-rose-400",
-  "/help": "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  "/dashboard": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  "/soql-generator": "bg-sky-500/15 text-blue-700 dark:text-sky-300 font-extrabold",
+  "/excel-automation": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
+  "/formula-generator": "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
+  "/ticket-formatter": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
+  "/template-manager": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
+  "/history": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  "/analytics": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
+  "/help": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
 };
 
 const DIVIDERS_AFTER = new Set(["/ticket-formatter", "/analytics"]);
@@ -80,8 +77,6 @@ export function Sidebar() {
     mobileSidebarOpen,
     setMobileSidebarOpen,
   } = useUIStore();
-
-  const { theme, toggleTheme } = useTheme();
 
   const renderNavItems = (onNavigate?: () => void) =>
     NAV_ITEMS.map((item) => {
@@ -161,10 +156,10 @@ export function Sidebar() {
       );
     });
 
-  // Footer section that houses Theme Toggle, User Avatar, and System Status
+  // Footer section with workspace identity and system status.
   const renderSidebarFooter = (isMobile = false) => (
     <div className="border-t border-border/20 p-3 bg-transparent space-y-2">
-      {/* User Profile & Theme Switcher Box */}
+      {/* Workspace identity */}
       <div
         className={cn(
           "flex items-center justify-between gap-2 rounded-xl p-2 bg-background/40 backdrop-blur-sm border border-border/30 shadow-none transition-all",
@@ -188,24 +183,6 @@ export function Sidebar() {
             </div>
           )}
         </div>
-
-        {/* Theme Toggle Button */}
-        <button
-          onClick={toggleTheme}
-          type="button"
-          className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/40",
-            sidebarCollapsed && !isMobile ? "w-full" : ""
-          )}
-          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4 text-amber-500" />
-          ) : (
-            <Moon className="h-4 w-4 text-[#0176d3]" />
-          )}
-        </button>
       </div>
 
       {/* Desktop Collapse Toggle */}
@@ -239,7 +216,7 @@ export function Sidebar() {
         initial={false}
         animate={{ width: sidebarCollapsed ? 72 : 256 }}
         transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-        className="fixed left-0 top-[var(--app-header-height)] z-30 hidden h-[calc(100dvh-var(--app-header-height))] flex-col overflow-hidden border-r border-border/20 bg-transparent backdrop-blur-lg md:flex shadow-none"
+        className="fixed left-0 top-[var(--app-header-height)] z-30 hidden h-[calc(100dvh-var(--app-header-height))] flex-col overflow-hidden border-r border-border/40 bg-background/45 backdrop-blur-xl md:flex shadow-[1px_0_0_rgb(255_255_255_/_0.03)]"
       >
         {/* Nav items container */}
         <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-1 no-scrollbar">

@@ -40,7 +40,6 @@ export function trackDashboardEvent(input: TrackEventInput): void {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ metricKey, incrementBy, event }),
   }).catch((err) => {
-    // eslint-disable-next-line no-console
     console.warn("[dashboard-tracker] Failed to persist event:", err);
   });
 }

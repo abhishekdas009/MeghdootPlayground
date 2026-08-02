@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useTheme } from "@/components/providers/theme-provider";
 
 interface Particle {
   x: number;
@@ -15,7 +14,6 @@ interface Particle {
 
 export function ParticleBackground() {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
-  const { theme } = useTheme();
   const mouseRef = React.useRef<{ x: number; y: number; radius: number }>({
     x: -1000,
     y: -1000,
@@ -32,17 +30,12 @@ export function ParticleBackground() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    const isDark = theme === "dark";
-    // Adjust particle styling based on Salesforce Lightning aesthetic & current theme
-    const particleColors = isDark
-      ? ["#0176d3", "#38bdf8", "#60a5fa", "#818cf8"]
-      : ["#0176d3", "#3b82f6", "#64748b", "#0284c7"];
-    const lineColor = isDark ? "56, 189, 248" : "1, 118, 211";
-    const baseLineAlpha = isDark ? 0.16 : 0.08;
-    const baseParticleAlpha = isDark ? 0.5 : 0.35;
+    const particleColors = ["#0176d3", "#38bdf8", "#60a5fa"];
+    const lineColor = "56, 189, 248";
+    const baseLineAlpha = 0.055;
+    const baseParticleAlpha = 0.22;
 
-    // Create particles based on screen size (denser on large screens, light on mobile)
-    const particleCount = Math.min(Math.floor((width * height) / 18000), 55);
+    const particleCount = Math.min(Math.floor((width * height) / 30000), 34);
     const particles: Particle[] = [];
 
     for (let i = 0; i < particleCount; i++) {
@@ -162,7 +155,7 @@ export function ParticleBackground() {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [theme]);
+  }, []);
 
   return (
     <canvas

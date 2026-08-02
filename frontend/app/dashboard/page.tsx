@@ -97,13 +97,12 @@ interface KPIConfig {
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
-  gradient: string;
   iconBg: string;
   iconText: string;
   delay: number;
 }
 
-function KPICard({ label, value, icon: Icon, gradient, iconBg, iconText, delay }: KPIConfig) {
+function KPICard({ label, value, icon: Icon, iconBg, iconText, delay }: KPIConfig) {
   const [displayValue, setDisplayValue] = React.useState(0);
 
   React.useEffect(() => {
@@ -132,17 +131,13 @@ function KPICard({ label, value, icon: Icon, gradient, iconBg, iconText, delay }
       whileHover={{ y: -4, scale: 1.02 }}
       className="relative group h-full"
     >
-      <div className={cn(
-        "absolute -inset-0.5 rounded-[20px] blur opacity-40 group-hover:opacity-100 transition duration-500",
-        gradient
-      )} />
-      <div className="relative h-full flex flex-col justify-between rounded-2xl bg-card border border-border/50 p-6 shadow-sm overflow-hidden backdrop-blur-xl">
+      <div className="relative h-full flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-6 shadow-none backdrop-blur-xl dark:border-white/10">
         <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
           <Icon className="w-24 h-24 -mr-6 -mt-6 transform rotate-12" />
         </div>
         <div className="relative flex items-start justify-between gap-4 z-10">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-muted-foreground tracking-wide">{label}</p>
+            <p className="text-sm font-semibold tracking-wide text-foreground">{label}</p>
             <div className="mt-2 flex items-baseline gap-2">
               <p className="text-4xl font-black tabular-nums text-foreground tracking-tight drop-shadow-sm">
                 {displayValue.toLocaleString()}
@@ -152,7 +147,7 @@ function KPICard({ label, value, icon: Icon, gradient, iconBg, iconText, delay }
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/15 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-200"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
                 Active Today
@@ -200,7 +195,7 @@ function QuickActionCard({
       whileHover={{ y: -2 }}
     >
       <Link href={href} className="block h-full">
-        <div className="group relative h-full overflow-hidden rounded-2xl border border-border/50 bg-card p-5 transition-all duration-300 hover:border-border hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-white/5 hover:bg-muted/30">
+        <div className="group relative h-full overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-5 shadow-none backdrop-blur-xl transition-all duration-300 hover:border-blue-300/30 hover:bg-card/70 dark:border-white/10">
           <div className={cn("absolute inset-x-0 top-0 h-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100", gradient)} />
 
           <div className="flex items-center gap-4">
@@ -253,7 +248,7 @@ function LiveIndicator({ isLive }: { isLive: boolean }) {
       <span
         className={cn(
           "text-xs font-bold tracking-wider",
-          isLive ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
+          isLive ? "text-emerald-800 dark:text-emerald-200" : "text-muted-foreground"
         )}
       >
         {isLive ? "SYSTEM LIVE" : "OFFLINE"}
@@ -294,7 +289,6 @@ const kpiRow1: Omit<KPIConfig, "value">[] = [
   {
     label: "Queries Generated",
     icon: Terminal,
-    gradient: "bg-blue-500",
     iconBg: "bg-gradient-to-br from-blue-500 to-blue-700",
     iconText: "text-white",
     delay: 0.05,
@@ -302,24 +296,21 @@ const kpiRow1: Omit<KPIConfig, "value">[] = [
   {
     label: "Excel Operations",
     icon: FileSpreadsheet,
-    gradient: "bg-emerald-500",
-    iconBg: "bg-gradient-to-br from-emerald-500 to-emerald-700",
+    iconBg: "bg-gradient-to-br from-sky-400 to-blue-700",
     iconText: "text-white",
     delay: 0.1,
   },
   {
     label: "Ticket Cancellations",
     icon: XCircle,
-    gradient: "bg-rose-500",
-    iconBg: "bg-gradient-to-br from-rose-500 to-rose-700",
+    iconBg: "bg-gradient-to-br from-cyan-400 to-blue-700",
     iconText: "text-white",
     delay: 0.15,
   },
   {
     label: "Asset Transfers",
     icon: ArrowRightLeft,
-    gradient: "bg-violet-500",
-    iconBg: "bg-gradient-to-br from-violet-500 to-violet-700",
+    iconBg: "bg-gradient-to-br from-indigo-400 to-blue-800",
     iconText: "text-white",
     delay: 0.2,
   },
@@ -329,32 +320,28 @@ const kpiRow2: Omit<KPIConfig, "value">[] = [
   {
     label: "Case Assignments",
     icon: Users,
-    gradient: "bg-teal-500",
-    iconBg: "bg-gradient-to-br from-teal-500 to-teal-700",
+    iconBg: "bg-gradient-to-br from-blue-400 to-blue-800",
     iconText: "text-white",
     delay: 0.25,
   },
   {
     label: "Query Library Templates",
     icon: FilePlus,
-    gradient: "bg-indigo-500",
-    iconBg: "bg-gradient-to-br from-indigo-500 to-indigo-700",
+    iconBg: "bg-gradient-to-br from-indigo-400 to-blue-800",
     iconText: "text-white",
     delay: 0.3,
   },
   {
     label: "History Items",
     icon: History,
-    gradient: "bg-amber-500",
-    iconBg: "bg-gradient-to-br from-orange-500 to-amber-600",
+    iconBg: "bg-gradient-to-br from-sky-400 to-blue-700",
     iconText: "text-white",
     delay: 0.35,
   },
   {
     label: "Favourites",
     icon: Star,
-    gradient: "bg-yellow-400",
-    iconBg: "bg-gradient-to-br from-yellow-400 to-amber-500",
+    iconBg: "bg-gradient-to-br from-cyan-400 to-blue-700",
     iconText: "text-white",
     delay: 0.4,
   },
@@ -375,8 +362,8 @@ const quickActions = [
     description: "Clean and transform spreadsheets",
     href: "/excel-automation",
     icon: FileSpreadsheet,
-    gradient: "bg-gradient-to-r from-emerald-500 to-emerald-700",
-    iconBg: "bg-gradient-to-br from-emerald-500 to-emerald-700",
+    gradient: "bg-gradient-to-r from-cyan-400 to-blue-700",
+    iconBg: "bg-gradient-to-br from-cyan-400 to-blue-700",
     delay: 0.15,
   },
   {
@@ -384,8 +371,8 @@ const quickActions = [
     description: "Format tickets for any language",
     href: "/ticket-formatter",
     icon: Ticket,
-    gradient: "bg-gradient-to-r from-orange-500 to-amber-500",
-    iconBg: "bg-gradient-to-br from-orange-500 to-amber-500",
+    gradient: "bg-gradient-to-r from-sky-400 to-blue-700",
+    iconBg: "bg-gradient-to-br from-sky-400 to-blue-700",
     delay: 0.2,
   },
   {
@@ -393,8 +380,8 @@ const quickActions = [
     description: "Create and manage query templates",
     href: "/template-manager",
     icon: Layers3,
-    gradient: "bg-gradient-to-r from-violet-500 to-purple-700",
-    iconBg: "bg-gradient-to-br from-violet-500 to-purple-700",
+    gradient: "bg-gradient-to-r from-indigo-400 to-blue-800",
+    iconBg: "bg-gradient-to-br from-indigo-400 to-blue-800",
     delay: 0.25,
   },
 ];
@@ -482,22 +469,22 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-8 shadow-2xl lg:p-12 border border-slate-800"
+        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl border border-blue-400/20 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 p-8 shadow-2xl shadow-blue-950/60 lg:p-12"
       >
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl mix-blend-screen" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgb(96_182_255_/_0.07)_1px,transparent_1px),linear-gradient(90deg,rgb(96_182_255_/_0.07)_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl mix-blend-screen" />
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl mix-blend-screen" />
 
         <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-indigo-500/20 border border-indigo-500/30 px-3 py-1 text-sm font-semibold text-indigo-300 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/15 px-3 py-1 text-sm font-semibold text-sky-200 backdrop-blur-md">
               <Sparkles className="h-4 w-4" />
               <span>Welcome back, Commander</span>
             </div>
             <h1 className="text-4xl font-black tracking-tight text-white lg:text-5xl">
-              Command <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">Center</span>
+              Command <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">Center</span>
             </h1>
-            <p className="max-w-xl text-lg font-medium text-slate-400">
+            <p className="max-w-xl text-lg font-medium text-slate-300">
               Your centralized hub for automation metrics, system health, and quick actions.
             </p>
           </div>
@@ -505,7 +492,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-3">
             <LiveIndicator isLive={isLive} />
             <span
-              className="hidden text-sm font-medium text-slate-400 sm:inline bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700/50 backdrop-blur-sm"
+              className="hidden rounded-full border border-blue-300/15 bg-slate-900/50 px-3 py-1.5 text-sm font-medium text-slate-300 backdrop-blur-sm sm:inline"
               title={mounted ? formatExactTime(lastRefreshed.toISOString()) : undefined}
               suppressHydrationWarning
             >
@@ -522,7 +509,7 @@ export default function DashboardPage() {
             </Button>
             <Button
               variant="primary"
-              className="h-10 gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/20 transition-all font-bold"
+              className="h-10 gap-2 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500 font-bold"
               onClick={handleRefresh}
             >
               <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -577,7 +564,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.4 }}
           >
-            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 rounded-2xl">
+            <Card className="overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 shadow-none backdrop-blur-xl dark:border-white/10">
               <CardContent className="p-0">
                 {activity.length === 0 ? (
                   <div className="flex flex-col items-center gap-4 p-12 text-center bg-gradient-to-b from-transparent to-muted/30">
@@ -626,7 +613,7 @@ export default function DashboardPage() {
                               )}
                             </div>
                             <span
-                              className="shrink-0 text-xs font-bold text-muted-foreground/70 tabular-nums bg-muted/50 px-2 py-1 rounded-md"
+                              className="shrink-0 rounded-md border border-border/45 bg-muted/70 px-2 py-1 text-xs font-bold tabular-nums text-muted-foreground"
                               title={formatExactTime(entry.timestamp)}
                             >
                               {formatRelativeTime(entry.timestamp)}

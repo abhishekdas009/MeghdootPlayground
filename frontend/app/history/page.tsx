@@ -51,7 +51,7 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
       {/* ─── Header Section ──────────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -153,7 +153,7 @@ export default function HistoryPage() {
                     <Search className="h-8 w-8" />
                   </div>
                   <p className="text-lg font-bold text-foreground">No history records found</p>
-                  <p className="text-sm text-slate-500 mt-1 max-w-sm">We couldn't find any activity matching your current search filters.</p>
+                  <p className="text-sm text-slate-500 mt-1 max-w-sm">We couldn&apos;t find any activity matching your current search filters.</p>
                 </div>
               )}
             </div>

@@ -121,7 +121,7 @@ export default function FormulaGeneratorPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6 lg:space-y-8 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:space-y-8 lg:p-8">
       {/* Hero Header Area */}
       <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-8 text-white shadow-2xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
