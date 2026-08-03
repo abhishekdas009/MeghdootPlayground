@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,8 @@ import {
   Power,
   Upload,
   Terminal,
+  Bookmark,
+  Check,
 } from "lucide-react";
 
 interface Template {
@@ -60,10 +63,16 @@ interface CancellationExecutionRow {
 }
 
 interface CaseAssignmentRow {
-  rawType: string;
   id: string;
-  status: string;
-  ownerId: string;
+  status: "Open";
+}
+
+interface CaseAssignmentResult {
+  output: string;
+  assignedCount: number;
+  unassignedCaseIds: string[];
+  ownerCount: number;
+  casesPerOwner: number;
 }
 
 interface CaseOwner {
@@ -134,7 +143,7 @@ const defaultTemplates: Template[] = [
     id: "4",
     name: "Case Assign",
     category: "Case",
-    soql: `SELECT Id,Status,OwnerId\nFROM Case\nWHERE Id IN (\n{{tickets}}\n)`,
+    soql: "",
     favourite: false,
   },
   {
@@ -238,6 +247,7 @@ const EMAIL_TEMPLATE = `Hello,\nYour service ticket status has been updated to A
 const POST_TEMPLATE = `@tag_user Your service ticket status has been updated to Accepted. Kindly check and revert.`;
 
 const TICKET_REGEX = /[BISXCAD]\d{14,}/g;
+const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?)(?![\p{L}\p{N}])/gu;
 const SOQL_BATCH_SIZE = 400;
 const UPDATE_BATCH_SIZE = 200;
 
@@ -405,6 +415,23 @@ function parseAssetTransferPairs(input: string): AssetTransferPair[] {
   return pairs;
 }
 
+function parseCaseIds(input: string): string[] {
+  if (!input.trim()) return [];
+
+  const seen = new Set<string>();
+  const caseIds: string[] = [];
+
+  for (const match of input.matchAll(CASE_ID_REGEX)) {
+    const caseId = match[1];
+    const recordKey = caseId?.slice(0, 15);
+    if (!caseId || !recordKey || seen.has(recordKey)) continue;
+    seen.add(recordKey);
+    caseIds.push(caseId);
+  }
+
+  return caseIds;
+}
+
 function parseCSVLine(line: string): string[] {
   const values: string[] = [];
   let current = "";
@@ -525,17 +552,8 @@ function parseCancellationExecutionRows(input: string): CancellationExecutionRow
     .filter((row) => row.id && row.ticket && row.status);
 }
 
-function parseCaseAssignmentRows(input: string): CaseAssignmentRow[] {
-  const rows = parseSOQLResult(input);
-
-  return rows
-    .map((row) => ({
-      rawType: "[Case]",
-      id: row.id || "",
-      status: row.status || "",
-      ownerId: row.ownerid || row.owner_id || "",
-    }))
-    .filter((row) => row.id && row.status);
+function buildCaseAssignmentRows(caseIds: string[]): CaseAssignmentRow[] {
+  return caseIds.map((id) => ({ id, status: "Open" }));
 }
 
 function chunkArray<T>(items: T[], size: number): T[][] {
@@ -567,73 +585,105 @@ function buildCaseAssignmentOutput(assignments: Array<{ row: CaseAssignmentRow; 
   return outputLines.join("\n");
 }
 
-function buildEqualAssignments(rows: CaseAssignmentRow[], owners: CaseOwner[]) {
-  if (!rows.length || !owners.length) return "";
+function getSecureRandomIndex(maxExclusive: number): number {
+  if (maxExclusive <= 1) return 0;
 
-  const baseCount = Math.floor(rows.length / owners.length);
-  const extraCount = rows.length % owners.length;
-  const assignments: Array<{ row: CaseAssignmentRow; owner: Pick<CaseOwner, "ownerId"> }> = [];
-  let rowIndex = 0;
+  if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
+    const maxUint32 = 0x1_0000_0000;
+    const limit = Math.floor(maxUint32 / maxExclusive) * maxExclusive;
+    const buffer = new Uint32Array(1);
+    let value = 0;
 
-  owners.forEach((owner, index) => {
-    const count = baseCount + (index < extraCount ? 1 : 0);
-    for (let i = 0; i < count; i += 1) {
-      const row = rows[rowIndex];
-      if (!row) break;
-      assignments.push({ row, owner });
-      rowIndex += 1;
-    }
-  });
+    do {
+      crypto.getRandomValues(buffer);
+      value = buffer[0] ?? 0;
+    } while (value >= limit);
 
-  return buildCaseAssignmentOutput(assignments);
+    return value % maxExclusive;
+  }
+
+  return Math.floor(Math.random() * maxExclusive);
 }
 
-function buildOwnerWiseAssignments(rows: CaseAssignmentRow[], owners: CaseOwner[]) {
-  if (!rows.length || !owners.length) return "";
+function shuffleItems<T>(items: T[]): T[] {
+  const shuffled = [...items];
 
-  const assignments: Array<{ row: CaseAssignmentRow; owner: Pick<CaseOwner, "ownerId"> }> = [];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = getSecureRandomIndex(index + 1);
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
+  }
 
-  rows.forEach((row, index) => {
-    const owner = owners[index % owners.length];
-    if (!owner) return;
-    assignments.push({ row, owner });
-  });
-
-  return buildCaseAssignmentOutput(assignments);
+  return shuffled;
 }
 
-function buildQuantityWiseAssignments(rows: CaseAssignmentRow[], ownerConfigs: QuantityOwnerConfig[]) {
-  if (!rows.length) return { output: "", error: "No rows found" };
+function buildBalancedAssignments(rows: CaseAssignmentRow[], owners: CaseOwner[]): CaseAssignmentResult {
+  const shuffledRows = shuffleItems(rows);
+  const shuffledOwners = shuffleItems(owners);
+  const casesPerOwner = owners.length > 0 ? Math.floor(rows.length / owners.length) : 0;
+  const assignedCount = casesPerOwner * owners.length;
+  const assignments: Array<{ row: CaseAssignmentRow; owner: Pick<CaseOwner, "ownerId"> }> = [];
 
-  const selectedOwners = ownerConfigs
-    .filter((owner) => owner.selected)
-    .map((owner) => ({
-      ownerId: owner.ownerId,
-      quantity: Number(owner.quantity || 0),
-    }));
+  for (let index = 0; index < assignedCount; index += 1) {
+    const row = shuffledRows[index];
+    const owner = shuffledOwners[index % shuffledOwners.length];
+    if (row && owner) assignments.push({ row, owner });
+  }
+
+  return {
+    output: buildCaseAssignmentOutput(assignments),
+    assignedCount,
+    unassignedCaseIds: shuffledRows.slice(assignedCount).map((row) => row.id),
+    ownerCount: owners.length,
+    casesPerOwner,
+  };
+}
+
+function buildQuantityWiseAssignments(
+  rows: CaseAssignmentRow[],
+  ownerConfigs: QuantityOwnerConfig[]
+): { result?: CaseAssignmentResult; error?: string } {
+  if (!rows.length) return { error: "No Case IDs found" };
+
+  const selectedOwners = ownerConfigs.filter((owner) => owner.selected).map((owner) => ({
+    ownerId: owner.ownerId,
+    quantity: Number(owner.quantity || 0),
+  }));
 
   if (!selectedOwners.length) {
-    return { output: "", error: "Select at least one owner" };
+    return { error: "Select at least one owner" };
+  }
+
+  if (selectedOwners.some((owner) => !Number.isSafeInteger(owner.quantity) || owner.quantity < 0)) {
+    return { error: "Each quantity must be a whole number of zero or more" };
   }
 
   const totalQuantity = selectedOwners.reduce((sum, owner) => sum + owner.quantity, 0);
-  if (totalQuantity !== rows.length) {
-    return { output: "", error: `Selected owner quantity total must equal parsed rows count (${rows.length})` };
+  if (totalQuantity > rows.length) {
+    return { error: `Selected quantity (${totalQuantity}) cannot exceed ${rows.length} Case IDs` };
   }
 
+  const shuffledRows = shuffleItems(rows);
   const assignments: Array<{ row: CaseAssignmentRow; owner: { ownerId: string } }> = [];
   let rowIndex = 0;
 
   selectedOwners.forEach((owner) => {
     for (let i = 0; i < owner.quantity; i += 1) {
-      const row = rows[rowIndex];
+      const row = shuffledRows[rowIndex];
       if (!row) break;
       assignments.push({ row, owner: { ownerId: owner.ownerId } });
       rowIndex += 1;
     }
   });
 
-  return { output: buildCaseAssignmentOutput(assignments), error: "" };
+  return {
+    result: {
+      output: buildCaseAssignmentOutput(assignments),
+      assignedCount: assignments.length,
+      unassignedCaseIds: shuffledRows.slice(rowIndex).map((row) => row.id),
+      ownerCount: selectedOwners.length,
+      casesPerOwner: 0,
+    } satisfies CaseAssignmentResult,
+  };
 }
 
 function StatPill({ code, count }: { code: string; count: number }) {
@@ -783,6 +833,257 @@ function CancellationModeButton({
   );
 }
 
+function TemplatePicker({
+  templates,
+  value,
+  onChange,
+}: {
+  templates: Template[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [highlightedId, setHighlightedId] = React.useState(value);
+  const [menuPosition, setMenuPosition] = React.useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+    maxHeight: number;
+  } | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const listboxId = React.useId();
+  const selectedTemplate = templates.find((template) => template.id === value);
+  const builtInTemplates = templates.filter((template) => template.source !== "library");
+  const savedTemplates = templates.filter((template) => template.source === "library");
+
+  const updateMenuPosition = React.useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 12;
+    const gap = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const opensBelow = spaceBelow >= 260 || spaceBelow >= spaceAbove;
+    const availableHeight = Math.max(180, Math.min(460, (opensBelow ? spaceBelow : spaceAbove) - gap));
+
+    setMenuPosition({
+      left: Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - rect.width - viewportPadding)),
+      width: Math.min(rect.width, window.innerWidth - viewportPadding * 2),
+      ...(opensBelow ? { top: rect.bottom + gap } : { bottom: window.innerHeight - rect.top + gap }),
+      maxHeight: availableHeight,
+    });
+  }, []);
+
+  const closeMenu = React.useCallback((restoreFocus = false) => {
+    setIsOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  }, []);
+
+  const openMenu = React.useCallback(() => {
+    setHighlightedId(value);
+    updateMenuPosition();
+    setIsOpen(true);
+  }, [updateMenuPosition, value]);
+
+  const selectTemplate = React.useCallback(
+    (templateId: string) => {
+      onChange(templateId);
+      setHighlightedId(templateId);
+      closeMenu(true);
+    },
+    [closeMenu, onChange]
+  );
+
+  React.useEffect(() => {
+    if (!templates.some((template) => template.id === highlightedId)) {
+      setHighlightedId(value);
+    }
+  }, [highlightedId, templates, value]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
+        closeMenu();
+      }
+    };
+    const handleViewportChange = () => updateMenuPosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [closeMenu, isOpen, updateMenuPosition]);
+
+  const moveHighlight = (direction: 1 | -1) => {
+    const currentIndex = Math.max(0, templates.findIndex((template) => template.id === highlightedId));
+    const nextIndex = (currentIndex + direction + templates.length) % templates.length;
+    setHighlightedId(templates[nextIndex]?.id ?? value);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!isOpen) openMenu();
+      moveHighlight(event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      if (!isOpen) openMenu();
+      setHighlightedId(event.key === "Home" ? templates[0]?.id ?? value : templates.at(-1)?.id ?? value);
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (isOpen) selectTemplate(highlightedId);
+      else openMenu();
+      return;
+    }
+
+    if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      closeMenu();
+    }
+  };
+
+  const renderTemplate = (template: Template) => {
+    const isSelected = template.id === value;
+    const isHighlighted = template.id === highlightedId;
+    const isLibraryTemplate = template.source === "library";
+
+    return (
+      <button
+        key={template.id}
+        id={`${listboxId}-${template.id}`}
+        type="button"
+        role="option"
+        aria-selected={isSelected}
+        onClick={() => selectTemplate(template.id)}
+        onMouseEnter={() => setHighlightedId(template.id)}
+        className={cn(
+          "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
+          isSelected
+            ? "bg-blue-500/20 text-white shadow-[inset_0_0_0_1px_rgba(96,182,255,0.38)]"
+            : isHighlighted
+              ? "bg-sky-400/10 text-sky-50"
+              : "text-slate-300 hover:bg-sky-400/10 hover:text-sky-50"
+        )}
+      >
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+            isSelected
+              ? "border-blue-300/30 bg-blue-400/15 text-sky-200"
+              : "border-slate-700/80 bg-slate-800/75 text-slate-400 group-hover:border-sky-400/20 group-hover:text-sky-300"
+          )}
+        >
+          {isLibraryTemplate ? <Bookmark className="h-3.5 w-3.5" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
+          <span className={cn("mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em]", isSelected ? "text-sky-200/80" : "text-slate-500 group-hover:text-sky-200/70")}>
+            {template.category}
+          </span>
+        </span>
+        {isSelected && (
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-400 text-slate-950 shadow-[0_0_12px_rgba(96,182,255,0.3)]">
+            <Check className="h-3.5 w-3.5 stroke-[3]" />
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div className="relative">
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? listboxId : undefined}
+        onClick={() => (isOpen ? closeMenu() : openMenu())}
+        onKeyDown={handleKeyDown}
+        className={cn(
+          "group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-200",
+          isOpen
+            ? "border-blue-400/60 bg-slate-900 text-white ring-2 ring-blue-400/20"
+            : "border-slate-700/80 bg-slate-900/90 text-slate-100 hover:border-sky-400/45 hover:bg-slate-900"
+        )}
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10 text-blue-300">
+          {selectedTemplate?.source === "library" ? <Bookmark className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold leading-tight">{selectedTemplate?.name ?? "Select a template"}</span>
+          <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            {selectedTemplate?.source === "library" ? "Saved template" : selectedTemplate?.category ?? "Choose a query type"}
+          </span>
+        </span>
+        <ChevronDown className={cn("h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-sky-300", isOpen && "rotate-180 text-sky-300")} />
+      </button>
+
+      {isOpen && menuPosition && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[100] overflow-hidden rounded-2xl border border-slate-600/80 bg-[#071426]/[0.98] p-1.5 text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(96,182,255,0.08)] backdrop-blur-2xl"
+            style={{
+              left: menuPosition.left,
+              width: menuPosition.width,
+              top: menuPosition.top,
+              bottom: menuPosition.bottom,
+              maxHeight: menuPosition.maxHeight,
+            }}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-slate-700/70 px-3 py-2.5">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Choose a query template</span>
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-400">{templates.length}</span>
+            </div>
+            <div
+              id={listboxId}
+              role="listbox"
+              aria-label="Query templates"
+              className="space-y-1 overflow-y-auto p-1.5"
+              style={{ maxHeight: Math.max(120, menuPosition.maxHeight - 58) }}
+            >
+              {builtInTemplates.length > 0 && (
+                <div className="pb-1 pt-1.5">
+                  <span className="px-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Built-in templates</span>
+                </div>
+              )}
+              {builtInTemplates.map(renderTemplate)}
+              {savedTemplates.length > 0 && (
+                <>
+                  <div className="my-1.5 border-t border-slate-700/70" />
+                  <div className="flex items-center gap-2 px-2 pb-1 pt-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-300/80">
+                    <Bookmark className="h-3 w-3" /> Saved templates
+                  </div>
+                  {savedTemplates.map(renderTemplate)}
+                </>
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+}
+
 export default function SOQLGeneratorPage() {
   const [templates, setTemplates] = React.useState<Template[]>(defaultTemplates);
   const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
@@ -805,8 +1106,8 @@ export default function SOQLGeneratorPage() {
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
   const [cancellationViewMode, setCancellationViewMode] = React.useState<CancellationViewMode>("query");
 
-  const [caseAssignInput, setCaseAssignInput] = React.useState("");
   const [caseAssignOutput, setCaseAssignOutput] = React.useState("");
+  const [caseAssignmentResult, setCaseAssignmentResult] = React.useState<CaseAssignmentResult | null>(null);
   const [caseAssignMode, setCaseAssignMode] = React.useState<CaseAssignMode>("equal");
   const [caseOwners, setCaseOwners] = React.useState<CaseOwner[]>([]);
   const [caseOwnerLoadState, setCaseOwnerLoadState] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -895,10 +1196,15 @@ export default function SOQLGeneratorPage() {
     refreshSOQLLibrary();
   }, [refreshSOQLLibrary]);
 
-  const activeCaseOwners = React.useMemo(
-    () => caseOwners.filter((owner) => owner.isActive),
-    [caseOwners]
-  );
+  const activeCaseOwners = React.useMemo(() => {
+    const ownerIds = new Set<string>();
+    return caseOwners.filter((owner) => {
+      const normalizedOwnerId = owner.ownerId.trim();
+      if (!owner.isActive || !normalizedOwnerId || ownerIds.has(normalizedOwnerId)) return false;
+      ownerIds.add(normalizedOwnerId);
+      return true;
+    });
+  }, [caseOwners]);
 
   React.useEffect(() => {
     setSelectedOwnerIds(activeCaseOwners.map((owner) => owner.ownerId));
@@ -931,7 +1237,11 @@ export default function SOQLGeneratorPage() {
     return tickets.map((ticket) => `    '${ticket}'`).join(",\n");
   }, []);
 
-  const parsedTickets = React.useMemo(() => parseTickets(ticketsInput), [parseTickets, ticketsInput]);
+  const parsedCaseIds = React.useMemo(() => parseCaseIds(ticketsInput), [ticketsInput]);
+  const parsedTickets = React.useMemo(
+    () => (isCaseAssign ? parsedCaseIds : parseTickets(ticketsInput)),
+    [isCaseAssign, parseTickets, parsedCaseIds, ticketsInput]
+  );
   const batchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / SOQL_BATCH_SIZE) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
   const failedTickets = React.useMemo(() => parseFailedTickets(excelInput), [excelInput]);
@@ -1017,7 +1327,7 @@ export default function SOQLGeneratorPage() {
     return `@_tag_user ${cancellationBody}`;
   }, [cancellationBody]);
 
-  const caseAssignmentRows = React.useMemo(() => parseCaseAssignmentRows(caseAssignInput), [caseAssignInput]);
+  const caseAssignmentRows = React.useMemo(() => buildCaseAssignmentRows(parsedCaseIds), [parsedCaseIds]);
 
   const selectedOwnerObjects = React.useMemo(
     () => activeCaseOwners.filter((owner) => selectedOwnerIds.includes(owner.ownerId)),
@@ -1031,6 +1341,11 @@ export default function SOQLGeneratorPage() {
         .reduce((sum, owner) => sum + Number(owner.quantity || 0), 0),
     [quantityOwnerConfigs]
   );
+
+  React.useEffect(() => {
+    setCaseAssignOutput("");
+    setCaseAssignmentResult(null);
+  }, [caseAssignmentRows, caseAssignMode, activeCaseOwners, selectedOwnerIds, quantityOwnerConfigs]);
 
   const buildPreviewBatches = React.useCallback(
     (templateId: string) => {
@@ -1152,13 +1467,13 @@ export default function SOQLGeneratorPage() {
   };
 
   const handleRunCaseAssignment = () => {
-    if (!caseAssignInput.trim()) {
-      toast.error("Paste Case SOQL result first");
+    if (!ticketsInput.trim()) {
+      toast.error("Paste one or more Case IDs first");
       return;
     }
 
     if (caseAssignmentRows.length === 0) {
-      toast.error("No valid Case rows found");
+      toast.error("No valid Case IDs found. Paste 15- or 18-character Salesforce Case IDs beginning with 500.");
       return;
     }
 
@@ -1167,33 +1482,46 @@ export default function SOQLGeneratorPage() {
       return;
     }
 
-    if (caseAssignMode === "equal") {
-      const output = buildEqualAssignments(caseAssignmentRows, activeCaseOwners);
-      setCaseAssignOutput(output);
-      toast.success(`Assigned ${caseAssignmentRows.length} case(s) equally`);
-      return;
-    }
+    let result: CaseAssignmentResult;
 
-    if (caseAssignMode === "owner-wise") {
+    if (caseAssignMode === "equal") {
+      result = buildBalancedAssignments(caseAssignmentRows, activeCaseOwners);
+    } else if (caseAssignMode === "owner-wise") {
       if (!selectedOwnerObjects.length) {
         toast.error("Select at least one owner");
         return;
       }
 
-      const output = buildOwnerWiseAssignments(caseAssignmentRows, selectedOwnerObjects);
-      setCaseAssignOutput(output);
-      toast.success(`Assigned ${caseAssignmentRows.length} case(s) owner wise`);
-      return;
-    }
-
-    const result = buildQuantityWiseAssignments(caseAssignmentRows, quantityOwnerConfigs);
-    if (result.error) {
-      toast.error(result.error);
-      return;
+      result = buildBalancedAssignments(caseAssignmentRows, selectedOwnerObjects);
+    } else {
+      const quantityResult = buildQuantityWiseAssignments(caseAssignmentRows, quantityOwnerConfigs);
+      if (quantityResult.error || !quantityResult.result) {
+        toast.error(quantityResult.error ?? "Unable to build the quantity-wise assignment");
+        return;
+      }
+      result = quantityResult.result;
     }
 
     setCaseAssignOutput(result.output);
-    toast.success(`Assigned ${caseAssignmentRows.length} case(s) quantity wise`);
+    setCaseAssignmentResult(result);
+    if (result.assignedCount > 0) {
+      dashboardStore.recordSOQL("Case assignment", result.assignedCount);
+      trackDashboardEvent({
+        metricKey: "case_assignment",
+        incrementBy: result.assignedCount,
+        event: {
+          type: "case-assignment",
+          label: `Case assignment · ${result.assignedCount} cases assigned`,
+          meta: `${result.unassignedCaseIds.length} left unassigned · ${caseAssignMode}`,
+          module: "soql-generator",
+        },
+      });
+    }
+
+    const remainderMessage = result.unassignedCaseIds.length
+      ? ` ${result.unassignedCaseIds.length} case${result.unassignedCaseIds.length === 1 ? " was" : "s were"} left unassigned.`
+      : "";
+    toast.success(`Assigned ${result.assignedCount} case${result.assignedCount === 1 ? "" : "s"} across ${result.ownerCount} owner${result.ownerCount === 1 ? "" : "s"}.${remainderMessage}`);
   };
 
   const handleDownloadCaseAssignment = () => {
@@ -1468,8 +1796,8 @@ export default function SOQLGeneratorPage() {
     setTransferDebug("");
     setCancellationExecutionInput("");
     setCancellationViewMode("query");
-    setCaseAssignInput("");
     setCaseAssignOutput("");
+    setCaseAssignmentResult(null);
     setCaseAssignMode("equal");
     resetCaseOwnerSelectionState();
     setSelectedTemplate(value);
@@ -1510,8 +1838,8 @@ export default function SOQLGeneratorPage() {
     setTransferDebug("");
     setCancellationExecutionInput("");
     setCancellationViewMode("query");
-    setCaseAssignInput("");
     setCaseAssignOutput("");
+    setCaseAssignmentResult(null);
     setCaseAssignMode("equal");
     resetCaseOwnerSelectionState();
   };
@@ -1591,8 +1919,13 @@ export default function SOQLGeneratorPage() {
       return;
     }
 
+    if (isCaseAssign) {
+      handleRunCaseAssignment();
+      return;
+    }
+
     if (parsedTickets.length === 0) {
-      toast.error(isCaseAssign ? "Paste at least one Case ID" : "Paste at least one ticket number");
+      toast.error("Paste at least one ticket number");
       return;
     }
 
@@ -1622,21 +1955,10 @@ export default function SOQLGeneratorPage() {
           module: "soql-generator",
         },
       });
-    } else if (isCaseAssign) {
-      trackDashboardEvent({
-        metricKey: "case_assignment",
-        incrementBy: parsedTickets.length,
-        event: {
-          type: "case-assignment",
-          label: `Case assignment · ${parsedTickets.length} cases`,
-          meta: `${parsedTickets.length} case${parsedTickets.length === 1 ? "" : "s"}`,
-          module: "soql-generator",
-        },
-      });
     }
 
     toast.success(
-      `Generated SOQL for ${parsedTickets.length} ${isCaseAssign ? "case id" : "ticket"}${parsedTickets.length === 1 ? "" : "s"}`
+      `Generated SOQL for ${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`
     );
   };
 
@@ -1771,21 +2093,11 @@ export default function SOQLGeneratorPage() {
             </CardHeader>
 
             <CardContent className="space-y-4 p-6 pt-5 relative z-10">
-              <div className="relative group/select">
-                <div className="absolute inset-0 bg-slate-50/50 dark:bg-slate-800/50 rounded-2xl blur-md group-hover/select:bg-slate-100/50 transition-colors pointer-events-none" />
-                <select
-                  value={selectedTemplate}
-                  onChange={(event) => handleTemplateChange(event.target.value)}
-                  className="relative w-full appearance-none rounded-2xl border border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-5 py-3.5 pr-12 text-sm font-bold text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all truncate cursor-pointer hover:border-blue-500/50"
-                >
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id} className="font-bold text-sm py-2">
-                      {template.source === "library" ? `⭐ [Library] ${template.name}` : template.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 transition-transform group-hover/select:-translate-y-1 group-focus-within/select:rotate-180" />
-              </div>
+              <TemplatePicker
+                templates={templates}
+                value={selectedTemplate}
+                onChange={handleTemplateChange}
+              />
 
               <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950/50 px-4 py-3 border border-slate-200/50 dark:border-slate-800/50 shadow-inner">
                 <div className="flex items-center gap-3 min-w-0">
@@ -1902,7 +2214,7 @@ export default function SOQLGeneratorPage() {
                   <Textarea
                     placeholder={
                       isCaseAssign
-                        ? `Paste Case IDs here...\n500Ny00001RnGoS\n500Ny00001RnK0r\n500Ny00001RnTVV`
+                        ? `Paste Case IDs here...\n1\n500Ny00001RnGoS\n2\n500Ny00001RnTVV`
                         : `Paste ticket numbers here...\nA26060134750678\nA26060134750476\nA26060134750619`
                     }
                     className="flex-1 min-h-[320px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y"
@@ -1918,7 +2230,7 @@ export default function SOQLGeneratorPage() {
                   />
                   <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
                     {isCaseAssign
-                      ? "Supports spaces, commas, tabs, or newlines. Case IDs are automatically chunked into 400-value batches for Salesforce-safe SOQL."
+                      ? "Paste raw text, spreadsheet rows, or CSV. Only valid 15- or 18-character Case IDs beginning with 500 are extracted; serial numbers, duplicates, and malformed IDs are ignored. All generated rows use Open status."
                       : "Supports spaces, commas, tabs, or newlines. Values are automatically chunked into 400-value batches for Salesforce-safe SOQL."}
                   </p>
                 </div>
@@ -1931,18 +2243,26 @@ export default function SOQLGeneratorPage() {
                         : "No tickets"
                       : `${parsedTickets.length} ${isCaseAssign ? "case id" : "ticket"}${parsedTickets.length === 1 ? "" : "s"}`}
                   </Badge>
-                  <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                    {batchCount === 0 ? "0 batches" : `${batchCount} batch${batchCount === 1 ? "" : "es"}`}
-                  </Badge>
-                  <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                    Max 400 / block
-                  </Badge>
+                  {isCaseAssign ? (
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                      Open by default
+                    </Badge>
+                  ) : (
+                    <>
+                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                        {batchCount === 0 ? "0 batches" : `${batchCount} batch${batchCount === 1 ? "" : "es"}`}
+                      </Badge>
+                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                        Max 400 / block
+                      </Badge>
+                    </>
+                  )}
                   <div className="flex-1" />
                   <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
                     <Trash2 className="h-4 w-4" /> Clear
                   </Button>
                   <Button onClick={triggerGenerate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold gap-2 h-10 px-5 rounded-xl text-xs shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
-                    <PlayCircle className="h-4 w-4 fill-white/20" /> Generate
+                    {isCaseAssign ? <CheckCircle2 className="h-4 w-4" /> : <PlayCircle className="h-4 w-4 fill-white/20" />} {isCaseAssign ? "Generate Assignment" : "Generate"}
                   </Button>
                 </div>
               </CardContent>
@@ -2469,59 +2789,24 @@ export default function SOQLGeneratorPage() {
             <div className="xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
               {/* === LEFT WORKBENCH COLUMN === */}
               <div className="space-y-4 flex flex-col">
-                {/* 1. Case Query Preview Card (Compact) */}
-                <QueryPreviewCard
-                  title="Case Assign"
-                  subtitle="Case query preview"
-                  batches={otherPreview}
-                  batchIndex={otherBatchIndex}
-                  setBatchIndex={setOtherBatchIndex}
-                  onCopy={handleCopy}
-                />
-
-                {/* 2. Step 3: Paste fetched Case output (Compact 140px textarea) */}
+                {/* Assignment Mode & Quick Execute Control Box */}
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
                   <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#0176d3]/10 text-[#0176d3] shadow-inner">
-                          <Users className="h-4.5 w-4.5" />
-                        </div>
-                        <CardTitle className="text-sm font-black tracking-tight text-foreground">Step 2: Paste fetched Case output</CardTitle>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">Rows: {caseAssignmentRows.length}</Badge>
-                        <Badge className="bg-[#0176d3]/10 text-[#0176d3] border border-[#0176d3]/20 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">Active: {activeCaseOwners.length}</Badge>
-                        <Badge variant={caseOwnerLoadState === "error" ? "danger" : "outline"} className={cn("text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm", caseOwnerLoadState === "error" ? "bg-rose-500/10 text-rose-600 border-rose-500/20" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20")}>
-                          DB: {caseOwnerLoadState === "loading" ? "Syncing" : caseOwnerLoadState === "error" ? "Offline" : "Ready"}
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 pl-12">
-                      Paste SOQL result from Workbench. Format: Id, Status, OwnerId.
-                    </p>
-                  </CardHeader>
-                  <CardContent className="p-5 relative z-10">
-                    <Textarea
-                      placeholder={`"_","Id","Status","OwnerId"\n"[Case]","500Ny00001RpOgFIAV","Open","00GNy000009qbJFMAY"`}
-                      className="min-h-[120px] max-h-[140px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-[#0176d3]/40 focus-visible:border-[#0176d3] shadow-none p-4 resize-y"
-                      value={caseAssignInput}
-                      onChange={(event) => setCaseAssignInput(event.target.value)}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* 3. Assignment Mode & Quick Execute Control Box */}
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
-                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
-                    <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
                           <CheckCircle2 className="h-4.5 w-4.5" />
                         </div>
                         <CardTitle className="text-sm font-black tracking-tight text-foreground">Assignment Mode &amp; Execution</CardTitle>
                       </div>
-                      <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 shadow-sm">Round Robin</span>
+                      <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 shadow-sm">Randomized</span>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">{caseAssignmentRows.length} valid IDs</Badge>
+                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">Open status</Badge>
+                      <Badge variant={caseOwnerLoadState === "error" ? "danger" : "outline"} className={cn("text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm", caseOwnerLoadState === "error" ? "bg-rose-500/10 text-rose-600 border-rose-500/20" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20")}>
+                        {caseOwnerLoadState === "loading" ? "Roster syncing" : caseOwnerLoadState === "error" ? "Roster offline" : `${activeCaseOwners.length} active owners`}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4 relative z-10">
@@ -2541,7 +2826,9 @@ export default function SOQLGeneratorPage() {
                     {caseAssignMode === "equal" && (
                       <div className="p-4 rounded-2xl bg-white/50 dark:bg-slate-900/50 border border-slate-200/60 dark:border-slate-700/60 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-3 shadow-inner backdrop-blur-sm">
                         <CheckCircle2 className="h-4.5 w-4.5 text-purple-500 shrink-0 mt-0.5" />
-                        <span className="leading-relaxed">Automatically distributes cases as evenly as possible across all {activeCaseOwners.length} active employees.</span>
+                        <span className="leading-relaxed">
+                          Securely shuffles Case IDs, then gives every active owner exactly {activeCaseOwners.length ? Math.floor(caseAssignmentRows.length / activeCaseOwners.length) : 0} case{activeCaseOwners.length && Math.floor(caseAssignmentRows.length / activeCaseOwners.length) === 1 ? "" : "s"}. {activeCaseOwners.length ? caseAssignmentRows.length % activeCaseOwners.length : caseAssignmentRows.length} remainder case{(activeCaseOwners.length ? caseAssignmentRows.length % activeCaseOwners.length : caseAssignmentRows.length) === 1 ? " is" : "s are"} left unassigned.
+                        </span>
                       </div>
                     )}
 
@@ -2551,6 +2838,9 @@ export default function SOQLGeneratorPage() {
                           <span>Target Owners</span>
                           <span className="bg-purple-500/10 text-purple-600 border border-purple-500/20 px-2 py-0.5 rounded-md">{selectedOwnerIds.length} selected</span>
                         </div>
+                        <p className="text-[11px] leading-relaxed font-medium text-slate-500">
+                          Selected owners receive an equal whole-number share after the Case IDs are shuffled. Any remainder stays unassigned.
+                        </p>
                         <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto no-scrollbar pr-1">
                           {activeCaseOwners.map((owner) => {
                             const checked = selectedOwnerIds.includes(owner.ownerId);
@@ -2581,6 +2871,9 @@ export default function SOQLGeneratorPage() {
                           <span>Set Quantities</span>
                           <span className="bg-purple-500/10 text-purple-600 border border-purple-500/20 px-2 py-0.5 rounded-md">Total: {quantitySelectedTotal} / {caseAssignmentRows.length}</span>
                         </div>
+                        <p className="text-[11px] leading-relaxed font-medium text-slate-500">
+                          Set any whole-number quantity per owner. IDs are shuffled before assignment; any unallocated IDs remain unassigned.
+                        </p>
                         <div className="grid grid-cols-1 gap-2 max-h-[120px] overflow-y-auto no-scrollbar pr-1">
                           {quantityOwnerConfigs.map((owner, index) => (
                             <div key={owner.id} className={cn("flex items-center justify-between gap-3 rounded-xl border p-2 transition-all", owner.selected ? "bg-purple-500/5 border-purple-500/30 shadow-sm" : "bg-card border-slate-200 dark:border-slate-700")}>
@@ -2660,6 +2953,21 @@ export default function SOQLGeneratorPage() {
                         </Button>
                       </div>
                     </div>
+                    {caseAssignmentResult && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">
+                          {caseAssignmentResult.assignedCount} assigned
+                        </Badge>
+                        <Badge className={cn("text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm border", caseAssignmentResult.unassignedCaseIds.length ? "bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700")}>
+                          {caseAssignmentResult.unassignedCaseIds.length} unassigned
+                        </Badge>
+                        {caseAssignMode !== "quantity-wise" && (
+                          <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-300 border border-purple-500/20 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">
+                            {caseAssignmentResult.casesPerOwner} each
+                          </Badge>
+                        )}
+                      </div>
+                    )}
                   </CardHeader>
                   <CardContent className="p-5 relative z-10">
                     <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
@@ -2667,6 +2975,12 @@ export default function SOQLGeneratorPage() {
                         {caseAssignOutput || `"_","Id","Status","OwnerId"\n"[Case]","500Ny00001RpOgFIAV","Open","005Ny00000QgwYTIAZ"`}
                       </pre>
                     </div>
+                    {caseAssignmentResult && caseAssignmentResult.unassignedCaseIds.length > 0 && (
+                      <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-200">
+                        <strong className="font-black">{caseAssignmentResult.unassignedCaseIds.length} Case ID{caseAssignmentResult.unassignedCaseIds.length === 1 ? "" : "s"} not included:</strong>{" "}
+                        Kept out of this Data Loader file by the current allocation. {caseAssignmentResult.unassignedCaseIds.slice(0, 3).join(", ")}{caseAssignmentResult.unassignedCaseIds.length > 3 ? "…" : ""}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
