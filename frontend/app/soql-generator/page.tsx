@@ -46,7 +46,7 @@ interface Template {
   category: string;
   soql: string;
   favourite: boolean;
-  type?: "normal" | "asset-transfer";
+  type?: "normal" | "asset-transfer" | "child-details-to-parent";
   source?: "default" | "library";
   usageCount?: number;
 }
@@ -54,6 +54,31 @@ interface Template {
 interface AssetTransferPair {
   componentId: string;
   newCid: string;
+}
+
+interface ComponentIdParseResult {
+  totalCount: number;
+  componentIds: string[];
+  duplicateCount: number;
+  ignoredCount: number;
+}
+
+interface ChildDetailsParentTransformResult {
+  output: string;
+  sourceRows: number;
+  returnedComponentCount: number;
+  generatedRows: number;
+  skippedRows: number;
+  duplicateRows: number;
+  unexpectedComponentRows: number;
+  missingComponentIdRows: number;
+  missingAssetIdRows: number;
+  missingParentAccountIdRows: number;
+  invalidAssetIdRows: number;
+  invalidParentAccountIdRows: number;
+  conflictingAssetIds: string[];
+  missingComponentIds: string[];
+  missingHeaders: string[];
 }
 
 interface CancellationExecutionRow {
@@ -92,8 +117,36 @@ interface QuantityOwnerConfig {
   quantity: string;
 }
 
-type CancellationViewMode = "query" | "update-output" | "requested-query";
 type CaseAssignMode = "equal" | "owner-wise" | "quantity-wise";
+
+const CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID = "012Ny0000003SvrIAE";
+const SALESFORCE_ID_REGEX = /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/;
+const CHILD_DETAILS_COMPONENT_ID_HEADERS = [
+  "component_id__c",
+  "componentid__c",
+  "component_id",
+  "componentid",
+] as const;
+const CHILD_DETAILS_PARENT_ACCOUNT_ID_HEADERS = [
+  "parent.accountid",
+  "parentaccountid",
+  "parent_accountid",
+  "parent.account.id",
+] as const;
+const COMPONENT_INPUT_HEADERS = new Set([
+  "component",
+  "componentid",
+  "component_id",
+  "componentid__c",
+  "component_id__c",
+  "id",
+]);
+const CANCELLATION_QUERY_TEMPLATE = `SELECT Id, Ticket_Number_Read_Only__c, Status
+FROM WorkOrder
+WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
+{{tickets}}
+)`;
+const CANCELLATION_BATCH_SIZE = 500;
 
 const defaultTemplates: Template[] = [
   {
@@ -115,7 +168,7 @@ const defaultTemplates: Template[] = [
     id: "13",
     name: "CANCELLATION TICKETS",
     category: "WorkOrder",
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
+    soql: CANCELLATION_QUERY_TEMPLATE,
     favourite: false,
   },
   {
@@ -206,8 +259,9 @@ const defaultTemplates: Template[] = [
     id: "15",
     name: "Child Details to Parent",
     category: "Asset",
-    soql: `SELECT Parent.Id, Model_Number__c, Product_Family__c, Product_Sub_Family__c, Product2Id\nFROM Asset\nWHERE Parent.Component_Id__c IN (\n{{tickets}}\n)`,
+    soql: `SELECT Id,\nComponent_Id__c,\nParent.AccountId,\nParentId,\nRecordTypeId\nFROM Asset\nWHERE Component_Id__c IN (\n{{tickets}}\n)`,
     favourite: false,
+    type: "child-details-to-parent",
   },
   {
     id: "16",
@@ -246,10 +300,9 @@ const EMAIL_TEMPLATE = `Hello,\nYour service ticket status has been updated to A
 
 const POST_TEMPLATE = `@tag_user Your service ticket status has been updated to Accepted. Kindly check and revert.`;
 
-const TICKET_REGEX = /[BISXCAD]\d{14,}/g;
 const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?)(?![\p{L}\p{N}])/gu;
+const SALESFORCE_TICKET_REGEX = /(?:^|[^A-Za-z0-9])([BISXCAD]\d{14,})(?![A-Za-z0-9])/gi;
 const SOQL_BATCH_SIZE = 400;
-const UPDATE_BATCH_SIZE = 200;
 
 interface TicketStats {
   total: number;
@@ -349,37 +402,6 @@ function getTicketStats(tickets: string[]): TicketStats {
   return stats;
 }
 
-function parseFailedTickets(input: string): string[] {
-  if (!input.trim()) return [];
-  const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
-  const failed: string[] = [];
-  const hasFailedLines = lines.some((line) => line.toLowerCase().includes("failed"));
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (
-      trimmed.includes("Ticket_Number_Read_Only__c") ||
-      trimmed.includes("__Status") ||
-      trimmed.includes("_Id") ||
-      trimmed.includes("_Errors")
-    ) {
-      continue;
-    }
-
-    if (hasFailedLines) {
-      if (trimmed.toLowerCase().includes("failed") && !trimmed.toLowerCase().includes("succeeded")) {
-        const matches = trimmed.match(TICKET_REGEX);
-        if (matches) failed.push(matches[0]);
-      }
-    } else {
-      const matches = trimmed.match(TICKET_REGEX);
-      if (matches) failed.push(matches[0]);
-    }
-  }
-
-  return [...new Set(failed)];
-}
-
 function parseAssetTransferPairs(input: string): AssetTransferPair[] {
   if (!input.trim()) return [];
   const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
@@ -472,12 +494,18 @@ function cleanValue(value: string): string {
   return value.replace(/["\[\]]/g, "").trim();
 }
 
-function parseSOQLResult(input: string): Array<Record<string, string>> {
-  if (!input.trim()) return [];
+interface ParsedSOQLResult {
+  headers: string[];
+  rows: Array<Record<string, string>>;
+}
+
+function parseSOQLResultWithHeaders(input: string): ParsedSOQLResult {
+  if (!input.trim()) return { headers: [], rows: [] };
 
   const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
   const rows: Array<Record<string, string>> = [];
   let headers: string[] = [];
+  const detectedHeaders = new Set<string>();
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -495,6 +523,9 @@ function parseSOQLResult(input: string): Array<Record<string, string>> {
       firstVal.toLowerCase() === "id"
     ) {
       headers = values.map(cleanHeader);
+      headers.forEach((header) => {
+        if (header) detectedHeaders.add(header);
+      });
       continue;
     }
 
@@ -511,7 +542,258 @@ function parseSOQLResult(input: string): Array<Record<string, string>> {
     rows.push(row);
   }
 
-  return rows;
+  return { headers: [...detectedHeaders], rows };
+}
+
+function parseSOQLResult(input: string): Array<Record<string, string>> {
+  return parseSOQLResultWithHeaders(input).rows;
+}
+
+function parseComponentIds(input: string): ComponentIdParseResult {
+  if (!input.trim()) {
+    return { totalCount: 0, componentIds: [], duplicateCount: 0, ignoredCount: 0 };
+  }
+
+  const seen = new Set<string>();
+  const componentIds: string[] = [];
+  let totalCount = 0;
+  let duplicateCount = 0;
+  let ignoredCount = 0;
+  const values = input
+    .replace(/^\uFEFF/, "")
+    .split(/[\r\n,\t;]+/)
+    .flatMap((part) => part.trim().split(/\s+/));
+
+  for (const rawValue of values) {
+    const componentId = cleanValue(rawValue).replace(/^'+|'+$/g, "").trim();
+    const normalizedHeader = cleanHeader(componentId);
+
+    if (!componentId || COMPONENT_INPUT_HEADERS.has(normalizedHeader)) continue;
+    totalCount += 1;
+
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{2,39}$/.test(componentId)) {
+      ignoredCount += 1;
+      continue;
+    }
+
+    const componentKey = componentId.toLowerCase();
+    if (seen.has(componentKey)) {
+      duplicateCount += 1;
+      continue;
+    }
+
+    seen.add(componentKey);
+    componentIds.push(componentId);
+  }
+
+  return { totalCount, componentIds, duplicateCount, ignoredCount };
+}
+
+function escapeSOQLString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
+
+function formatSOQLValues(values: string[]): string {
+  return values.map((value) => "    '" + escapeSOQLString(value) + "'").join(",\n");
+}
+
+function buildChildDetailsParentSOQL(componentIds: string[]): string {
+  if (componentIds.length === 0) return "";
+
+  return [
+    "SELECT Id,",
+    "Component_Id__c,",
+    "Parent.AccountId,",
+    "ParentId,",
+    "RecordTypeId",
+    "FROM Asset",
+    "WHERE Component_Id__c IN (",
+    formatSOQLValues(componentIds),
+    ")",
+  ].join("\n");
+}
+
+function getRowValue(row: Record<string, string>, headers: readonly string[]): string {
+  for (const header of headers) {
+    const value = row[header]?.trim();
+    if (value) return value;
+  }
+
+  return "";
+}
+
+function hasAnyHeader(headers: string[], candidates: readonly string[]): boolean {
+  return candidates.some((candidate) => headers.includes(candidate));
+}
+
+function quoteCSVCell(value: string): string {
+  return '"' + value.replace(/"/g, '""') + '"';
+}
+
+function buildCSVRow(values: string[]): string {
+  return values.map(quoteCSVCell).join(",");
+}
+
+function buildTSVRow(values: string[]): string {
+  return values.map(quoteCSVCell).join("\t");
+}
+
+function getSalesforceRecordKey(value: string): string {
+  return value.slice(0, 15).toLowerCase();
+}
+
+function transformChildDetailsToParent(
+  componentIds: string[],
+  sourceResult: string
+): ChildDetailsParentTransformResult {
+  const parsed = parseSOQLResultWithHeaders(sourceResult);
+  const requiredColumns = [
+    { label: "Id", headers: ["id"] },
+    { label: "Component_Id__c", headers: CHILD_DETAILS_COMPONENT_ID_HEADERS },
+    { label: "Parent.AccountId", headers: CHILD_DETAILS_PARENT_ACCOUNT_ID_HEADERS },
+  ];
+  const result: ChildDetailsParentTransformResult = {
+    output: "",
+    sourceRows: parsed.rows.length,
+    returnedComponentCount: 0,
+    generatedRows: 0,
+    skippedRows: 0,
+    duplicateRows: 0,
+    unexpectedComponentRows: 0,
+    missingComponentIdRows: 0,
+    missingAssetIdRows: 0,
+    missingParentAccountIdRows: 0,
+    invalidAssetIdRows: 0,
+    invalidParentAccountIdRows: 0,
+    conflictingAssetIds: [],
+    missingComponentIds: [],
+    missingHeaders: requiredColumns
+      .filter((column) => !hasAnyHeader(parsed.headers, column.headers))
+      .map((column) => column.label),
+  };
+
+  if (result.missingHeaders.length > 0) return result;
+
+  const requestedComponents = new Map<string, string>();
+  for (const componentId of componentIds) {
+    const componentKey = componentId.toLowerCase();
+    if (!requestedComponents.has(componentKey)) {
+      requestedComponents.set(componentKey, componentId);
+    }
+  }
+
+  type Candidate = {
+    assetId: string;
+    assetKey: string;
+    parentAccountId: string;
+    accountKey: string;
+  };
+
+  const returnedComponentKeys = new Set<string>();
+  const candidatesByComponent = new Map<string, Candidate[]>();
+  const candidateByAsset = new Map<string, Candidate>();
+  const conflictingAssetKeys = new Set<string>();
+
+  for (const sourceRow of parsed.rows) {
+    const componentId = getRowValue(sourceRow, CHILD_DETAILS_COMPONENT_ID_HEADERS);
+    if (!componentId) {
+      result.missingComponentIdRows += 1;
+      continue;
+    }
+
+    const componentKey = componentId.toLowerCase();
+    if (!requestedComponents.has(componentKey)) {
+      result.unexpectedComponentRows += 1;
+      continue;
+    }
+
+    returnedComponentKeys.add(componentKey);
+
+    const assetId = getRowValue(sourceRow, ["id"]);
+    if (!assetId) {
+      result.missingAssetIdRows += 1;
+      continue;
+    }
+    if (!SALESFORCE_ID_REGEX.test(assetId)) {
+      result.invalidAssetIdRows += 1;
+      continue;
+    }
+
+    const parentAccountId = getRowValue(sourceRow, CHILD_DETAILS_PARENT_ACCOUNT_ID_HEADERS);
+    if (!parentAccountId) {
+      result.missingParentAccountIdRows += 1;
+      continue;
+    }
+    if (!SALESFORCE_ID_REGEX.test(parentAccountId)) {
+      result.invalidParentAccountIdRows += 1;
+      continue;
+    }
+
+    const assetKey = getSalesforceRecordKey(assetId);
+    const accountKey = getSalesforceRecordKey(parentAccountId);
+    const existingCandidate = candidateByAsset.get(assetKey);
+    if (existingCandidate) {
+      if (existingCandidate.accountKey === accountKey) {
+        result.duplicateRows += 1;
+      } else {
+        conflictingAssetKeys.add(assetKey);
+      }
+      continue;
+    }
+
+    const candidate: Candidate = {
+      assetId,
+      assetKey,
+      parentAccountId,
+      accountKey,
+    };
+    candidateByAsset.set(assetKey, candidate);
+    const componentCandidates = candidatesByComponent.get(componentKey) ?? [];
+    componentCandidates.push(candidate);
+    candidatesByComponent.set(componentKey, componentCandidates);
+  }
+
+  const processedComponentKeys = new Set<string>();
+  const outputRows = [
+    buildCSVRow(["_", "Id", "RecordTypeId", "ParentId", "AccountId"]),
+  ];
+
+  for (const componentId of componentIds) {
+    const componentKey = componentId.toLowerCase();
+    if (processedComponentKeys.has(componentKey)) continue;
+    processedComponentKeys.add(componentKey);
+
+    for (const candidate of candidatesByComponent.get(componentKey) ?? []) {
+      if (conflictingAssetKeys.has(candidate.assetKey)) continue;
+      outputRows.push(
+        buildCSVRow([
+          "[Asset]",
+          candidate.assetId,
+          CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID,
+          "",
+          candidate.parentAccountId,
+        ])
+      );
+      result.generatedRows += 1;
+    }
+  }
+
+  for (const [componentKey, componentId] of requestedComponents) {
+    if (!returnedComponentKeys.has(componentKey)) {
+      result.missingComponentIds.push(componentId);
+    }
+  }
+
+  for (const assetKey of conflictingAssetKeys) {
+    const candidate = candidateByAsset.get(assetKey);
+    if (candidate) result.conflictingAssetIds.push(candidate.assetId);
+  }
+
+  result.returnedComponentCount = returnedComponentKeys.size;
+  result.skippedRows = Math.max(0, result.sourceRows - result.generatedRows);
+  result.output = outputRows.join("\n");
+
+  return result;
 }
 
 function parseAssetResult(input: string): Record<string, Record<string, string>> {
@@ -550,6 +832,16 @@ function parseCancellationExecutionRows(input: string): CancellationExecutionRow
       return { id, ticket, status };
     })
     .filter((row) => row.id && row.ticket && row.status);
+}
+
+function buildCancellationCanceledOutput(rows: CancellationExecutionRow[]): string {
+  const outputRows = [buildTSVRow(["_", "Id", "Ticket_Number_Read_Only__c", "Status"])];
+
+  for (const row of rows) {
+    outputRows.push(buildTSVRow(["[WorkOrder]", row.id, row.ticket, "Canceled"]));
+  }
+
+  return outputRows.join("\n");
 }
 
 function buildCaseAssignmentRows(caseIds: string[]): CaseAssignmentRow[] {
@@ -805,31 +1097,6 @@ function QueryPreviewCard({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function CancellationModeButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex items-center justify-center min-h-[40px] w-full rounded-lg px-3.5 py-2 text-xs font-semibold transition-all duration-200 border shadow-2xs",
-        active
-          ? "bg-accent text-white border-accent shadow-sm ring-2 ring-accent/20"
-          : "bg-card text-muted-foreground border-border/80 hover:bg-hover/80 hover:text-foreground hover:border-border"
-      )}
-    >
-      <span className="block w-full text-center leading-tight">{children}</span>
-    </button>
   );
 }
 
@@ -1089,7 +1356,6 @@ export default function SOQLGeneratorPage() {
   const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
   const [libraryLoadState, setLibraryLoadState] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [ticketsInput, setTicketsInput] = React.useState("");
-  const [excelInput, setExcelInput] = React.useState("");
   const [favourites, setFavourites] = React.useState<Set<string>>(new Set(["1"]));
   const [tsBatchIndex, setTsBatchIndex] = React.useState(0);
   const [saBatchIndex, setSaBatchIndex] = React.useState(0);
@@ -1102,9 +1368,16 @@ export default function SOQLGeneratorPage() {
   const [transferOutput, setTransferOutput] = React.useState("");
   const [transferDebug, setTransferDebug] = React.useState("");
 
+  const [childDetailsComponentInput, setChildDetailsComponentInput] = React.useState("");
+  const [childDetailsSOQLResult, setChildDetailsSOQLResult] = React.useState("");
+  const [childDetailsOutput, setChildDetailsOutput] = React.useState("");
+  const [childDetailsTransformResult, setChildDetailsTransformResult] =
+    React.useState<ChildDetailsParentTransformResult | null>(null);
+  const [childDetailsBatchIndex, setChildDetailsBatchIndex] = React.useState(0);
+
   const [cancellationExecutionInput, setCancellationExecutionInput] = React.useState("");
+  const [cancellationStoredRows, setCancellationStoredRows] = React.useState<CancellationExecutionRow[]>([]);
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
-  const [cancellationViewMode, setCancellationViewMode] = React.useState<CancellationViewMode>("query");
 
   const [caseAssignOutput, setCaseAssignOutput] = React.useState("");
   const [caseAssignmentResult, setCaseAssignmentResult] = React.useState<CaseAssignmentResult | null>(null);
@@ -1131,6 +1404,8 @@ export default function SOQLGeneratorPage() {
   const isTS = selectedTemplate === "1";
   const isSA = selectedTemplate === "2";
   const isAssetTransfer = selectedTemplate === "3" || (activeTemplate?.name?.toLowerCase()?.includes("transfer") ?? false) || (activeTemplate?.type === "asset-transfer");
+  const isChildDetailsToParent =
+    selectedTemplate === "15" || activeTemplate?.type === "child-details-to-parent";
   const isCaseAssign = selectedTemplate === "4";
   const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19" || (activeTemplate?.name?.toLowerCase()?.includes("cancellation") ?? false);
 
@@ -1233,8 +1508,7 @@ export default function SOQLGeneratorPage() {
   }, []);
 
   const formatTicketsForSOQL = React.useCallback((tickets: string[]): string => {
-    if (tickets.length === 0) return "";
-    return tickets.map((ticket) => `    '${ticket}'`).join(",\n");
+    return formatSOQLValues(tickets);
   }, []);
 
   const parsedCaseIds = React.useMemo(() => parseCaseIds(ticketsInput), [ticketsInput]);
@@ -1242,22 +1516,27 @@ export default function SOQLGeneratorPage() {
     () => (isCaseAssign ? parsedCaseIds : parseTickets(ticketsInput)),
     [isCaseAssign, parseTickets, parsedCaseIds, ticketsInput]
   );
-  const batchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / SOQL_BATCH_SIZE) : 0;
+  const inputBatchSize = isCancellation ? CANCELLATION_BATCH_SIZE : SOQL_BATCH_SIZE;
+  const inputBatchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / inputBatchSize) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
-  const failedTickets = React.useMemo(() => parseFailedTickets(excelInput), [excelInput]);
   const assetPairs = React.useMemo(() => parseAssetTransferPairs(assetTransferInput), [assetTransferInput]);
+  const childDetailsComponentParse = React.useMemo(
+    () => parseComponentIds(childDetailsComponentInput),
+    [childDetailsComponentInput]
+  );
+  const childDetailsComponentIds = childDetailsComponentParse.componentIds;
   const cancellationExecutionRows = React.useMemo(
     () => parseCancellationExecutionRows(cancellationExecutionInput),
     [cancellationExecutionInput]
   );
 
   const executableCancellationRows = React.useMemo(
-    () => cancellationExecutionRows.filter((row) => row.status.trim().toLowerCase() === "cancellation requested"),
-    [cancellationExecutionRows]
+    () => cancellationStoredRows,
+    [cancellationStoredRows]
   );
 
   const skippedCancellationRows = React.useMemo(
-    () => cancellationExecutionRows.filter((row) => row.status.trim().toLowerCase() !== "cancellation requested"),
+    () => cancellationExecutionRows.filter((row) => !SALESFORCE_ID_REGEX.test(row.id)),
     [cancellationExecutionRows]
   );
 
@@ -1270,17 +1549,39 @@ export default function SOQLGeneratorPage() {
     });
   }, [executableCancellationRows]);
 
-  const cancellationUpdateBatches = React.useMemo(() => {
-    const chunks = chunkArray(uniqueExecutableCancellationRows, UPDATE_BATCH_SIZE);
+  const cancellationCanceledOutput = React.useMemo(
+    () => buildCancellationCanceledOutput(uniqueExecutableCancellationRows),
+    [uniqueExecutableCancellationRows]
+  );
 
-    return chunks.map((chunk) => {
-      const rows = ['"_","Id","Status"'];
-      for (const item of chunk) {
-        rows.push(`"[WorkOrder]","${item.id}","Canceled"`);
-      }
-      return rows.join("\n");
+  const cancellationStoredTicketKeys = React.useMemo(
+    () => new Set(uniqueExecutableCancellationRows.map((row) => row.ticket.trim().toLowerCase()).filter(Boolean)),
+    [uniqueExecutableCancellationRows]
+  );
+  const cancellationRequestedTicketKeys = React.useMemo(
+    () => new Set(parsedTickets.map((ticket) => ticket.trim().toLowerCase()).filter(Boolean)),
+    [parsedTickets]
+  );
+  const cancellationMatchedTicketCount = React.useMemo(() => {
+    let matchedCount = 0;
+    cancellationRequestedTicketKeys.forEach((ticket) => {
+      if (cancellationStoredTicketKeys.has(ticket)) matchedCount += 1;
     });
-  }, [uniqueExecutableCancellationRows]);
+    return matchedCount;
+  }, [cancellationRequestedTicketKeys, cancellationStoredTicketKeys]);
+  const cancellationUnexpectedResultCount = React.useMemo(() => {
+    let unexpectedCount = 0;
+    cancellationStoredTicketKeys.forEach((ticket) => {
+      if (!cancellationRequestedTicketKeys.has(ticket)) unexpectedCount += 1;
+    });
+    return unexpectedCount;
+  }, [cancellationRequestedTicketKeys, cancellationStoredTicketKeys]);
+  const cancellationRemainingTicketCount = Math.max(0, parsedTickets.length - cancellationMatchedTicketCount);
+
+  const cancellationResultBatchCount =
+    uniqueExecutableCancellationRows.length > 0
+      ? Math.ceil(uniqueExecutableCancellationRows.length / CANCELLATION_BATCH_SIZE)
+      : 0;
 
   const cancellationUpdateDebug = React.useMemo(() => {
     if (!cancellationExecutionRows.length) return "";
@@ -1292,7 +1593,7 @@ export default function SOQLGeneratorPage() {
 
     if (skippedCancellationRows.length > 0) {
       lines.push("");
-      lines.push("Skipped rows because status is not 'Cancellation Requested':");
+      lines.push("Skipped rows because the WorkOrder Id is missing or invalid:");
       skippedCancellationRows.slice(0, 100).forEach((row) => {
         lines.push(`${row.ticket} | ${row.id} | ${row.status}`);
       });
@@ -1304,28 +1605,6 @@ export default function SOQLGeneratorPage() {
 
     return lines.join("\n");
   }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows]);
-
-  const cancellationBody = React.useMemo(() => {
-    const total = parsedTickets.length;
-    if (total === 0) return "";
-
-    let message = "Cancellation has been done successfully for this slot.";
-    if (failedTickets.length > 0) {
-      message += "\n\nExcept ST:\n" + failedTickets.join("\n");
-    }
-    message += `\n\nTotal Tickets Count : ${total}`;
-    return message;
-  }, [parsedTickets, failedTickets]);
-
-  const cancellationEmail = React.useMemo(() => {
-    if (!cancellationBody) return "";
-    return `Hello,\n${cancellationBody}\n\n`;
-  }, [cancellationBody]);
-
-  const cancellationPost = React.useMemo(() => {
-    if (!cancellationBody) return "";
-    return `@_tag_user ${cancellationBody}`;
-  }, [cancellationBody]);
 
   const caseAssignmentRows = React.useMemo(() => buildCaseAssignmentRows(parsedCaseIds), [parsedCaseIds]);
 
@@ -1372,7 +1651,15 @@ export default function SOQLGeneratorPage() {
   const workOrderPreview = React.useMemo(() => buildPreviewBatches("1"), [buildPreviewBatches]);
   const serviceAppointmentPreview = React.useMemo(() => buildPreviewBatches("2"), [buildPreviewBatches]);
   const otherPreview = React.useMemo(() => buildPreviewBatches(selectedTemplate), [buildPreviewBatches, selectedTemplate]);
-  const cancellationRequestedPreview = React.useMemo(() => buildPreviewBatches("19"), [buildPreviewBatches]);
+  const cancellationQueryBatches = React.useMemo(() => {
+    if (parsedTickets.length === 0) {
+      return [];
+    }
+
+    return chunkArray(parsedTickets, CANCELLATION_BATCH_SIZE).map((tickets) =>
+      CANCELLATION_QUERY_TEMPLATE.replace("{{tickets}}", formatTicketsForSOQL(tickets))
+    );
+  }, [formatTicketsForSOQL, parsedTickets]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
@@ -1389,6 +1676,100 @@ export default function SOQLGeneratorPage() {
 
     return `SELECT Customer_ID__c, Id\nFROM Account\nWHERE Customer_ID__c IN (\n${formatted}\n)`;
   }, [assetPairs, formatTicketsForSOQL]);
+
+  const childDetailsSOQLBatches = React.useMemo(
+    () =>
+      chunkArray(childDetailsComponentIds, SOQL_BATCH_SIZE).map((componentIds) =>
+        buildChildDetailsParentSOQL(componentIds)
+      ),
+    [childDetailsComponentIds]
+  );
+  const childDetailsCurrentSOQLBatch =
+    childDetailsSOQLBatches[childDetailsBatchIndex] ?? childDetailsSOQLBatches[0] ?? "";
+  const childDetailsValidationPreview = React.useMemo(() => {
+    if (childDetailsComponentIds.length === 0 || !childDetailsSOQLResult.trim()) return null;
+    return transformChildDetailsToParent(childDetailsComponentIds, childDetailsSOQLResult);
+  }, [childDetailsComponentIds, childDetailsSOQLResult]);
+  const childDetailsVisibleResult = childDetailsTransformResult ?? childDetailsValidationPreview;
+  const childDetailsInvalidIdCount =
+    (childDetailsVisibleResult?.invalidAssetIdRows ?? 0) +
+    (childDetailsVisibleResult?.invalidParentAccountIdRows ?? 0);
+  const childDetailsMissingParentAccountCount =
+    (childDetailsVisibleResult?.missingParentAccountIdRows ?? 0) +
+    (childDetailsVisibleResult?.invalidParentAccountIdRows ?? 0);
+  const childDetailsValidationIssues = React.useMemo(() => {
+    if (!childDetailsVisibleResult) return [];
+
+    const issues: Array<{ label: string; tone: "danger" | "warning" }> = [];
+    if (childDetailsVisibleResult.missingHeaders.length > 0) {
+      issues.push({
+        label: "Missing columns: " + childDetailsVisibleResult.missingHeaders.join(", "),
+        tone: "danger",
+      });
+    }
+    if (childDetailsVisibleResult.missingComponentIds.length > 0) {
+      issues.push({
+        label:
+          childDetailsVisibleResult.missingComponentIds.length +
+          " requested Component ID" +
+          (childDetailsVisibleResult.missingComponentIds.length === 1 ? " is" : "s are") +
+          " missing from the Salesforce result",
+        tone: "warning",
+      });
+    }
+    if (childDetailsVisibleResult.duplicateRows > 0) {
+      issues.push({
+        label:
+          childDetailsVisibleResult.duplicateRows +
+          " duplicate Asset row" +
+          (childDetailsVisibleResult.duplicateRows === 1 ? " was" : "s were") +
+          " skipped",
+        tone: "warning",
+      });
+    }
+    if (childDetailsVisibleResult.conflictingAssetIds.length > 0) {
+      issues.push({
+        label:
+          childDetailsVisibleResult.conflictingAssetIds.length +
+          " Asset ID" +
+          (childDetailsVisibleResult.conflictingAssetIds.length === 1 ? " has" : "s have") +
+          " conflicting Parent.AccountId values",
+        tone: "danger",
+      });
+    }
+    if (childDetailsInvalidIdCount > 0) {
+      issues.push({
+        label:
+          childDetailsInvalidIdCount +
+          " invalid Salesforce ID" +
+          (childDetailsInvalidIdCount === 1 ? " was" : "s were") +
+          " skipped",
+        tone: "warning",
+      });
+    }
+    if (childDetailsVisibleResult.missingParentAccountIdRows > 0) {
+      issues.push({
+        label:
+          childDetailsVisibleResult.missingParentAccountIdRows +
+          " row" +
+          (childDetailsVisibleResult.missingParentAccountIdRows === 1 ? " is" : "s are") +
+          " missing Parent.AccountId",
+        tone: "warning",
+      });
+    }
+    if (childDetailsVisibleResult.unexpectedComponentRows > 0) {
+      issues.push({
+        label:
+          childDetailsVisibleResult.unexpectedComponentRows +
+          " unexpected Component row" +
+          (childDetailsVisibleResult.unexpectedComponentRows === 1 ? " was" : "s were") +
+          " ignored",
+        tone: "warning",
+      });
+    }
+
+    return issues;
+  }, [childDetailsInvalidIdCount, childDetailsVisibleResult]);
 
   const handleProcessTransfer = () => {
     const assetData = parseAssetResult(assetSOQLResult);
@@ -1466,6 +1847,146 @@ export default function SOQLGeneratorPage() {
     toast.success("Transfer CSV downloaded");
   };
 
+  const handleProcessChildDetailsToParent = () => {
+    if (childDetailsComponentIds.length === 0) {
+      toast.error("Paste at least one valid Component ID first");
+      return;
+    }
+
+    if (!childDetailsSOQLResult.trim()) {
+      toast.error("Paste the Asset SOQL result first");
+      return;
+    }
+
+    const transformResult = transformChildDetailsToParent(
+      childDetailsComponentIds,
+      childDetailsSOQLResult
+    );
+    setChildDetailsTransformResult(transformResult);
+
+    if (transformResult.missingHeaders.length > 0) {
+      setChildDetailsOutput("");
+      toast.error(
+        "Missing required result column" +
+          (transformResult.missingHeaders.length === 1 ? ": " : "s: ") +
+          transformResult.missingHeaders.join(", ")
+      );
+      return;
+    }
+
+    if (transformResult.generatedRows === 0) {
+      setChildDetailsOutput("");
+      toast.error("No import-ready Asset rows were found. Review the validation summary.");
+      return;
+    }
+
+    setChildDetailsOutput(transformResult.output);
+    const skippedMessage = transformResult.skippedRows
+      ? " · " +
+        transformResult.skippedRows +
+        " row" +
+        (transformResult.skippedRows === 1 ? "" : "s") +
+        " skipped"
+      : "";
+    toast.success(
+      "Generated " +
+        transformResult.generatedRows +
+        " parent-ready Asset row" +
+        (transformResult.generatedRows === 1 ? "" : "s") +
+        skippedMessage
+    );
+  };
+
+  const handleDownloadChildDetailsQuery = () => {
+    if (childDetailsSOQLBatches.length === 0) {
+      toast.error("Paste at least one valid Component ID first");
+      return;
+    }
+
+    downloadTextFile(
+      "child-details-to-parent-query-" + Date.now() + ".soql",
+      childDetailsSOQLBatches.join("\n\n"),
+      "text/plain;charset=utf-8;"
+    );
+    toast.success("Child Details SOQL downloaded");
+  };
+
+  const handleDownloadChildDetailsToParent = () => {
+    if (!childDetailsOutput.trim()) {
+      toast.error("Generate the parent-ready Asset file first");
+      return;
+    }
+
+    downloadTextFile(
+      "child-details-to-parent-" + Date.now() + ".csv",
+      childDetailsOutput,
+      "text/csv;charset=utf-8;"
+    );
+    toast.success("Parent-ready Asset CSV downloaded");
+  };
+
+  const appendCancellationResultBatch = React.useCallback(
+    (rawResult: string) => {
+      const parsedRows = parseCancellationExecutionRows(rawResult);
+      const validRows = parsedRows.filter((row) => SALESFORCE_ID_REGEX.test(row.id));
+
+      if (validRows.length === 0) {
+        toast.error("No valid WorkOrder rows found in the pasted Salesforce result");
+        return;
+      }
+
+      const existingKeys = new Set(cancellationStoredRows.map((row) => getSalesforceRecordKey(row.id)));
+      const nextRows = [...cancellationStoredRows];
+      let addedRows = 0;
+      let duplicateRows = 0;
+
+      for (const row of validRows) {
+        const rowKey = getSalesforceRecordKey(row.id);
+        if (existingKeys.has(rowKey)) {
+          duplicateRows += 1;
+          continue;
+        }
+
+        existingKeys.add(rowKey);
+        nextRows.push(row);
+        addedRows += 1;
+      }
+
+      setCancellationStoredRows(nextRows);
+
+      if (addedRows === 0) {
+        toast.info("All pasted WorkOrder rows were already stored");
+        return;
+      }
+
+      const duplicateMessage = duplicateRows
+        ? " · " + duplicateRows + " duplicate" + (duplicateRows === 1 ? "" : "s") + " ignored"
+        : "";
+      toast.success(
+        "Stored " +
+          addedRows +
+          " cancellation row" +
+          (addedRows === 1 ? "" : "s") +
+          " as Canceled" +
+          duplicateMessage
+      );
+    },
+    [cancellationStoredRows]
+  );
+
+  const handleCancellationResultPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pastedText = event.clipboardData.getData("text");
+    if (!pastedText.trim()) return;
+
+    event.preventDefault();
+    setCancellationExecutionInput(pastedText);
+    appendCancellationResultBatch(pastedText);
+  };
+
+  const handleCancellationResultInputChange = (value: string) => {
+    setCancellationExecutionInput(value);
+  };
+
   const handleRunCaseAssignment = () => {
     if (!ticketsInput.trim()) {
       toast.error("Paste one or more Case IDs first");
@@ -1534,47 +2055,25 @@ export default function SOQLGeneratorPage() {
     toast.success("Case assignment CSV downloaded");
   };
 
-  const handleDownloadCancellationBatch = () => {
-    const currentBatch = cancellationUpdateBatches[cancellationExecutionBatchIndex] ?? "";
-    if (!currentBatch.trim()) {
-      toast.error("No cancellation update batch available");
-      return;
-    }
-    downloadTextFile(`iis-cancellation-batch-${cancellationExecutionBatchIndex + 1}.csv`, currentBatch, "text/csv;charset=utf-8;");
-    trackDashboardEvent({
-      metricKey: "ticket_cancellation",
-      incrementBy: uniqueExecutableCancellationRows.length || 1,
-      event: {
-        type: "ticket-cancellation",
-        label: `IIS Cancellation Update Downloaded`,
-        meta: `${uniqueExecutableCancellationRows.length} ticket${uniqueExecutableCancellationRows.length === 1 ? "" : "s"}`,
-        module: "soql-generator",
-      },
-    });
-    toast.success("Cancellation batch downloaded & KPI recorded");
-  };
-
-  const handleDownloadAllCancellationBatches = () => {
-    if (cancellationUpdateBatches.length === 0) {
+  const handleDownloadCancellationOutput = () => {
+    if (!cancellationCanceledOutput.trim() || uniqueExecutableCancellationRows.length === 0) {
       toast.error("No cancellation update output available");
       return;
     }
 
-    cancellationUpdateBatches.forEach((batch, index) => {
-      downloadTextFile(`iis-cancellation-batch-${index + 1}.csv`, batch, "text/csv;charset=utf-8;");
-    });
+    downloadTextFile(`iis-cancellation-all-${Date.now()}.tsv`, cancellationCanceledOutput, "text/tab-separated-values;charset=utf-8;");
     trackDashboardEvent({
       metricKey: "ticket_cancellation",
-      incrementBy: uniqueExecutableCancellationRows.length || cancellationUpdateBatches.length,
+      incrementBy: uniqueExecutableCancellationRows.length,
       event: {
         type: "ticket-cancellation",
-        label: `IIS Cancellation All Batches Downloaded`,
-        meta: `${uniqueExecutableCancellationRows.length || cancellationUpdateBatches.length} ticket${(uniqueExecutableCancellationRows.length || cancellationUpdateBatches.length) === 1 ? "" : "s"}`,
+        label: `IIS Cancellation Output Downloaded`,
+        meta: `${uniqueExecutableCancellationRows.length} ticket${uniqueExecutableCancellationRows.length === 1 ? "" : "s"}`,
         module: "soql-generator",
       },
     });
 
-    toast.success(`Downloaded ${cancellationUpdateBatches.length} cancellation batch files & KPI recorded`);
+    toast.success("Cancellation output downloaded");
   };
 
   const resetCaseOwnerSelectionState = React.useCallback(() => {
@@ -1779,8 +2278,17 @@ export default function SOQLGeneratorPage() {
   }, [ticketsInput]);
 
   React.useEffect(() => {
+    setChildDetailsBatchIndex(0);
+  }, [childDetailsComponentInput]);
+
+  React.useEffect(() => {
+    setChildDetailsOutput("");
+    setChildDetailsTransformResult(null);
+  }, [childDetailsComponentInput, childDetailsSOQLResult]);
+
+  React.useEffect(() => {
     setCancellationExecutionBatchIndex(0);
-  }, [cancellationExecutionInput, cancellationViewMode]);
+  }, [cancellationQueryBatches.length]);
 
   const handleTemplateChange = (value: string) => {
     if (selectedTemplate === "1" && ticketsInput.trim()) {
@@ -1788,14 +2296,18 @@ export default function SOQLGeneratorPage() {
     }
 
     setTicketsInput("");
-    setExcelInput("");
     setAssetTransferInput("");
     setAssetSOQLResult("");
     setAccountSOQLResult("");
     setTransferOutput("");
     setTransferDebug("");
+    setChildDetailsComponentInput("");
+    setChildDetailsSOQLResult("");
+    setChildDetailsOutput("");
+    setChildDetailsTransformResult(null);
+    setChildDetailsBatchIndex(0);
     setCancellationExecutionInput("");
-    setCancellationViewMode("query");
+    setCancellationStoredRows([]);
     setCaseAssignOutput("");
     setCaseAssignmentResult(null);
     setCaseAssignMode("equal");
@@ -1830,14 +2342,18 @@ export default function SOQLGeneratorPage() {
 
   const handleClear = () => {
     setTicketsInput("");
-    setExcelInput("");
     setAssetTransferInput("");
     setAssetSOQLResult("");
     setAccountSOQLResult("");
     setTransferOutput("");
     setTransferDebug("");
+    setChildDetailsComponentInput("");
+    setChildDetailsSOQLResult("");
+    setChildDetailsOutput("");
+    setChildDetailsTransformResult(null);
+    setChildDetailsBatchIndex(0);
     setCancellationExecutionInput("");
-    setCancellationViewMode("query");
+    setCancellationStoredRows([]);
     setCaseAssignOutput("");
     setCaseAssignmentResult(null);
     setCaseAssignMode("equal");
@@ -1882,6 +2398,37 @@ export default function SOQLGeneratorPage() {
   };
 
   const triggerGenerate = () => {
+    if (isChildDetailsToParent) {
+      if (childDetailsComponentIds.length === 0) {
+        toast.error("Paste at least one valid Component ID");
+        return;
+      }
+
+      setGeneratedAtLeastOnce(true);
+      const templateName = activeTemplate?.name ?? "Child Details to Parent";
+      dashboardStore.recordSOQL(templateName, childDetailsComponentIds.length);
+      trackDashboardEvent({
+        metricKey: "soql_generated",
+        incrementBy: 1,
+        event: {
+          type: "soql-generated",
+          label: "SOQL generated · " + templateName,
+          meta:
+            childDetailsComponentIds.length +
+            " Component ID" +
+            (childDetailsComponentIds.length === 1 ? "" : "s"),
+          module: "soql-generator",
+        },
+      });
+      toast.success(
+        "Generated " +
+          childDetailsSOQLBatches.length +
+          " Asset query batch" +
+          (childDetailsSOQLBatches.length === 1 ? "" : "es")
+      );
+      return;
+    }
+
     if (isAssetTransfer) {
       if (assetPairs.length === 0) {
         toast.error("Paste at least one Component ID & New CID pair");
@@ -1965,26 +2512,23 @@ export default function SOQLGeneratorPage() {
   const showStats = parsedTickets.length > 0;
   const statEntries = Object.entries(ticketStats.breakdown).sort((a, b) => b[1] - a[1]);
 
-  const visibleCancellationBatches =
-    cancellationViewMode === "update-output"
-      ? cancellationUpdateBatches
-      : cancellationViewMode === "requested-query"
-      ? cancellationRequestedPreview
-      : otherPreview;
+  const childDetailsInputStats = [
+    { label: "Total Component IDs", value: childDetailsComponentParse.totalCount, tone: "blue" },
+    { label: "Duplicate Removed", value: childDetailsComponentParse.duplicateCount, tone: "amber" },
+    { label: "Invalid IDs", value: childDetailsComponentParse.ignoredCount, tone: "rose" },
+    { label: "Valid IDs", value: childDetailsComponentIds.length, tone: "emerald" },
+  ];
 
-  const visibleCancellationTitle =
-    cancellationViewMode === "update-output"
-      ? "ALL IN ONE CANCELLATION ARENA"
-      : cancellationViewMode === "requested-query"
-      ? "CANCELLATION REQUESTED QUERY"
-      : activeTemplate?.name ?? "Query Preview";
-
-  const visibleCancellationSubtitle =
-    cancellationViewMode === "update-output"
-      ? 'Data Loader update file to set Status = "Canceled"'
-      : cancellationViewMode === "requested-query"
-      ? "Fetch only rows in Cancellation Requested"
-      : `${activeTemplate?.category ?? ""} query preview`;
+  const childDetailsSummaryStats = [
+    { label: "Total Component IDs", value: childDetailsComponentIds.length, tone: "blue" },
+    { label: "Rows Returned", value: childDetailsVisibleResult?.sourceRows ?? 0, tone: "slate" },
+    { label: "Rows Generated", value: childDetailsTransformResult?.generatedRows ?? 0, tone: "emerald" },
+    { label: "Duplicate Rows", value: childDetailsVisibleResult?.duplicateRows ?? 0, tone: "amber" },
+    { label: "Missing Components", value: childDetailsVisibleResult?.missingComponentIds.length ?? 0, tone: "rose" },
+    { label: "Missing Parent Account", value: childDetailsMissingParentAccountCount, tone: "rose" },
+    { label: "Invalid IDs", value: childDetailsInvalidIdCount, tone: "rose" },
+    { label: "Unexpected Rows", value: childDetailsVisibleResult?.unexpectedComponentRows ?? 0, tone: "amber" },
+  ];
 
   return (
     <div className="workspace-page mx-auto w-full max-w-7xl space-y-6 pb-14 p-4 sm:p-6 lg:space-y-8 lg:p-8">
@@ -2035,7 +2579,7 @@ export default function SOQLGeneratorPage() {
         </div>
       </motion.div>
 
-      {showStats && !isAssetTransfer && !isCaseAssign && (
+      {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2142,7 +2686,7 @@ export default function SOQLGeneratorPage() {
             </CardContent>
           </Card>
 
-          {showStats && !isAssetTransfer && !isCaseAssign && (
+          {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && (
             <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden group">
               <CardHeader className="pb-4 bg-transparent p-6">
                 <div className="flex items-center gap-3">
@@ -2195,7 +2739,7 @@ export default function SOQLGeneratorPage() {
             </Card>
           )}
 
-          {!isAssetTransfer && (
+          {!isAssetTransfer && !isChildDetailsToParent && (
             <Card className="flex flex-col rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden">
               <CardHeader className="pb-4 bg-transparent p-6 relative">
                 <div className="flex items-center gap-3 flex-wrap relative z-10">
@@ -2204,7 +2748,7 @@ export default function SOQLGeneratorPage() {
                     Step 1
                   </Badge>
                   <CardTitle className="text-base font-black tracking-tight">
-                    {isCaseAssign ? "Paste Case IDs" : "Paste Ticket Numbers"}
+                    {isCancellation ? "Paste Cancellation Tickets" : isCaseAssign ? "Paste Case IDs" : "Paste Ticket Numbers"}
                   </CardTitle>
                 </div>
               </CardHeader>
@@ -2231,7 +2775,7 @@ export default function SOQLGeneratorPage() {
                   <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
                     {isCaseAssign
                       ? "Paste raw text, spreadsheet rows, or CSV. Only valid 15- or 18-character Case IDs beginning with 500 are extracted; serial numbers, duplicates, and malformed IDs are ignored. All generated rows use Open status."
-                      : "Supports spaces, commas, tabs, or newlines. Values are automatically chunked into 400-value batches for Salesforce-safe SOQL."}
+                      : `Supports spaces, commas, tabs, or newlines. Values are automatically chunked into ${inputBatchSize}-value batches for Salesforce-safe SOQL.`}
                   </p>
                 </div>
 
@@ -2250,10 +2794,10 @@ export default function SOQLGeneratorPage() {
                   ) : (
                     <>
                       <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                        {batchCount === 0 ? "0 batches" : `${batchCount} batch${batchCount === 1 ? "" : "es"}`}
+                        {inputBatchCount === 0 ? "0 batches" : `${inputBatchCount} batch${inputBatchCount === 1 ? "" : "es"}`}
                       </Badge>
                       <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                        Max 400 / block
+                        Max {inputBatchSize} / block
                       </Badge>
                     </>
                   )}
@@ -2405,6 +2949,211 @@ export default function SOQLGeneratorPage() {
               setBatchIndex={setSaBatchIndex}
               onCopy={handleCopy}
             />
+          )}
+
+          {isChildDetailsToParent && (
+            <div className="xl:col-span-2 space-y-3">
+              <div className="rounded-2xl border border-slate-200/50 bg-white/45 p-2.5 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { step: "1", label: "Component IDs", active: childDetailsComponentIds.length > 0 },
+                    { step: "2", label: "Salesforce Result", active: childDetailsSOQLResult.trim().length > 0 },
+                    { step: "3", label: "Parent CSV", active: childDetailsOutput.trim().length > 0 },
+                  ].map((item) => (
+                    <div key={item.step} className={cn("flex min-h-12 items-center gap-2 rounded-xl border px-2.5 py-2 transition-all", item.active ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-slate-200/70 bg-white/35 text-slate-500 dark:border-slate-700/60 dark:bg-slate-900/40")}>
+                      <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black shadow-inner", item.active ? "bg-emerald-500 text-white" : "bg-blue-500 text-white")}>{item.step}</span>
+                      <span className="min-w-0 text-[12px] font-black leading-tight">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
+                <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45">
+                  <CardHeader className="p-4 pb-3 bg-transparent relative z-10">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-xs font-black text-white shadow-inner">1</span>
+                          <CardTitle className="text-sm font-black leading-tight text-foreground">Paste Component IDs</CardTitle>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-500">Clean IDs and generate the Asset query.</p>
+                      </div>
+                      <Badge className="shrink-0 border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-600 shadow-sm dark:text-emerald-300">AUTO</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 space-y-3 relative z-10">
+                    <Textarea
+                      placeholder={`2400895187\n2400895188\n2400895189`}
+                      className="h-[118px] min-h-[118px] resize-none rounded-xl border border-transparent bg-slate-100/40 p-3 font-mono text-xs leading-relaxed shadow-none focus-visible:border-blue-500 focus-visible:ring-blue-500/40 dark:bg-black/20"
+                      value={childDetailsComponentInput}
+                      onChange={(event) => setChildDetailsComponentInput(event.target.value)}
+                    />
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {childDetailsInputStats.map((item) => (
+                        <div key={item.label} className={cn("rounded-xl border px-2 py-2 shadow-inner", item.tone === "blue" && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-300", item.tone === "amber" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300", item.tone === "rose" && "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300", item.tone === "emerald" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300")}>
+                          <div className="text-base font-black tabular-nums leading-none">{item.value}</div>
+                          <div className="mt-1 text-[8px] font-black uppercase leading-tight opacity-75">{item.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50/60 shadow-inner dark:border-slate-700/60 dark:bg-slate-900/50">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 px-3 py-2 dark:border-slate-700/60">
+                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500">
+                          <Terminal className="h-3.5 w-3.5 text-blue-500" />
+                          Batch {childDetailsSOQLBatches.length ? childDetailsBatchIndex + 1 : 0}/{childDetailsSOQLBatches.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-lg p-0 text-slate-400 hover:bg-blue-500/10 hover:text-blue-600" disabled={childDetailsBatchIndex <= 0} onClick={() => setChildDetailsBatchIndex((value) => Math.max(0, value - 1))} title="Previous query batch">
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-lg p-0 text-slate-400 hover:bg-blue-500/10 hover:text-blue-600" disabled={childDetailsBatchIndex >= childDetailsSOQLBatches.length - 1} onClick={() => setChildDetailsBatchIndex((value) => Math.min(childDetailsSOQLBatches.length - 1, value + 1))} title="Next query batch">
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-blue-500/10 hover:text-blue-600" onClick={() => handleCopy(childDetailsCurrentSOQLBatch)} disabled={!childDetailsCurrentSOQLBatch}>
+                            <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-blue-500/10 hover:text-blue-600" onClick={handleDownloadChildDetailsQuery} disabled={childDetailsSOQLBatches.length === 0}>
+                            <Download className="mr-1 h-3.5 w-3.5" /> SOQL
+                          </Button>
+                        </div>
+                      </div>
+                      <pre className="h-[155px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-slate-800 selection:bg-blue-500/20 selection:text-blue-900 dark:text-sky-200 dark:selection:text-blue-100">
+                        {childDetailsCurrentSOQLBatch || "Paste valid Component IDs to generate the Asset SOQL query"}
+                      </pre>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45">
+                  <CardHeader className="p-4 pb-3 bg-transparent relative z-10">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500 text-xs font-black text-white shadow-inner">2</span>
+                          <CardTitle className="text-sm font-black leading-tight text-foreground">Paste Salesforce Result</CardTitle>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-500">Validate export rows before CSV.</p>
+                      </div>
+                      <Badge className={cn("shrink-0 border px-2 py-1 text-[10px] font-black shadow-sm", childDetailsVisibleResult?.missingHeaders.length ? "bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20" : childDetailsVisibleResult ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700")}>
+                        {childDetailsVisibleResult?.missingHeaders.length ? "FIX" : childDetailsVisibleResult ? "VALID" : "WAIT"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 space-y-3 relative z-10">
+                    <Textarea
+                      placeholder={`"_","Id","Component_Id__c","Parent.AccountId"\n"[Asset]","02iNy00000CKkhCIAT","2400895187","001Ny00001iPnOgIAK"`}
+                      className="h-[210px] min-h-[210px] resize-none rounded-xl border border-transparent bg-slate-100/40 p-3 font-mono text-[11px] leading-relaxed shadow-none focus-visible:border-indigo-500 focus-visible:ring-indigo-500/40 dark:bg-black/20"
+                      value={childDetailsSOQLResult}
+                      onChange={(event) => setChildDetailsSOQLResult(event.target.value)}
+                    />
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: "Rows", value: childDetailsVisibleResult?.sourceRows ?? 0 },
+                        { label: "Ready", value: childDetailsVisibleResult?.generatedRows ?? 0 },
+                        { label: "Columns", value: childDetailsVisibleResult?.missingHeaders.length ?? 0 },
+                        { label: "Skipped", value: childDetailsVisibleResult?.skippedRows ?? 0 },
+                      ].map((item) => (
+                        <div key={item.label} className="rounded-xl border border-slate-200/60 bg-white/45 px-2 py-2 text-slate-600 shadow-inner dark:border-slate-700/60 dark:bg-slate-900/50 dark:text-slate-300">
+                          <div className="text-base font-black leading-none tabular-nums">{item.value}</div>
+                          <div className="mt-1 text-[8px] font-black uppercase leading-tight text-slate-400">{item.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={cn("h-[90px] overflow-auto rounded-xl border px-3 py-2.5", !childDetailsVisibleResult ? "border-slate-200/70 bg-slate-50/70 text-slate-500 dark:border-slate-700/60 dark:bg-slate-900/40" : childDetailsValidationIssues.some((issue) => issue.tone === "danger") ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-200" : childDetailsValidationIssues.length > 0 ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-200" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200")}>
+                      <div className="flex items-start gap-2">
+                        {!childDetailsVisibleResult ? (
+                          <Filter className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                        ) : childDetailsValidationIssues.length > 0 ? (
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        ) : (
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[10px] font-black uppercase">
+                            {!childDetailsVisibleResult ? "Validation" : childDetailsValidationIssues.length > 0 ? "Review" : "Ready"}
+                          </div>
+                          <div className="mt-1 space-y-1 text-[11px] font-semibold leading-relaxed">
+                            {!childDetailsVisibleResult ? (
+                              <p>Paste export to validate columns and rows.</p>
+                            ) : childDetailsValidationIssues.length > 0 ? (
+                              childDetailsValidationIssues.map((issue) => <p key={issue.label}>{issue.label}</p>)
+                            ) : (
+                              <p>Required columns are present and rows are import-ready.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45">
+                  <CardHeader className="p-4 pb-3 bg-transparent relative z-10">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="mb-1.5 flex items-center gap-2">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-xs font-black text-white shadow-inner">3</span>
+                          <CardTitle className="text-sm font-black leading-tight text-foreground">Generate Parent CSV</CardTitle>
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-500">Fixed RecordTypeId and blank ParentId.</p>
+                      </div>
+                      <Badge className="shrink-0 border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-600 shadow-sm dark:text-emerald-300">CSV</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0 space-y-3 relative z-10">
+                    <Button className="h-9 w-full gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-[12px] font-black text-white shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:from-emerald-500 hover:to-teal-500" onClick={handleProcessChildDetailsToParent}>
+                      <FileSpreadsheet className="h-4 w-4" /> Generate Parent Asset CSV
+                    </Button>
+
+                    <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50/60 shadow-inner dark:border-slate-700/60 dark:bg-slate-900/50">
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 px-3 py-2 dark:border-slate-700/60">
+                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500">
+                          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" /> Output CSV
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-emerald-500/10 hover:text-emerald-600" onClick={() => handleCopy(childDetailsOutput)} disabled={!childDetailsOutput}>
+                            <Copy className="mr-1 h-3.5 w-3.5" /> Copy
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-emerald-500/10 hover:text-emerald-600" onClick={handleDownloadChildDetailsToParent} disabled={!childDetailsOutput}>
+                            <Download className="mr-1 h-3.5 w-3.5" /> CSV
+                          </Button>
+                        </div>
+                      </div>
+                      <pre className="h-[145px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-slate-800 selection:bg-emerald-500/20 selection:text-emerald-900 dark:text-emerald-200 dark:selection:text-emerald-100">
+                        {childDetailsOutput || `"_","Id","RecordTypeId","ParentId","AccountId"\n"[Asset]","02iNy00000CKkhCIAT","${CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID}","","001Ny00001iPnOgIAK"`}
+                      </pre>
+                    </div>
+
+                    {childDetailsTransformResult && (
+                      <div className={cn("rounded-xl border px-3 py-2 text-[11px] font-bold leading-relaxed", childDetailsTransformResult.generatedRows > 0 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200" : "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-200")}>
+                        {childDetailsTransformResult.generatedRows > 0 ? `${childDetailsTransformResult.generatedRows} row${childDetailsTransformResult.generatedRows === 1 ? "" : "s"} generated for Data Loader.` : "No rows generated. Fix validation and try again."}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {childDetailsSummaryStats.map((item) => (
+                        <div key={item.label} className={cn("rounded-xl border px-2 py-2 shadow-inner", item.tone === "blue" && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-300", item.tone === "slate" && "border-slate-200/70 bg-slate-50/70 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/50 dark:text-slate-300", item.tone === "emerald" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300", item.tone === "amber" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300", item.tone === "rose" && "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300")}>
+                          <div className="text-sm font-black leading-none tabular-nums">{item.value}</div>
+                          <div className="mt-1 text-[8px] font-black uppercase leading-tight opacity-75">{item.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {childDetailsVisibleResult?.missingComponentIds.length ? (
+                      <div className="max-h-[54px] overflow-auto rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold leading-relaxed text-amber-700 dark:text-amber-200">
+                        Missing: {childDetailsVisibleResult.missingComponentIds.slice(0, 8).join(", ")}
+                        {childDetailsVisibleResult.missingComponentIds.length > 8 ? "..." : ""}
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           )}
 
           {isAssetTransfer && (
@@ -2570,58 +3319,49 @@ export default function SOQLGeneratorPage() {
             <>
               <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
                 <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex gap-4 items-start">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-inner mt-1">
-                          <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]" />
-                        </div>
-                        <div>
-                          <CardTitle className="text-base font-black tracking-tight text-foreground">{visibleCancellationTitle}</CardTitle>
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">{visibleCancellationSubtitle}</p>
-                        </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex gap-4 items-start">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shadow-inner mt-1">
+                        <Terminal className="h-5 w-5" />
                       </div>
-                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm self-start mt-2 sm:mt-0">
-                        {visibleCancellationBatches.length} batch{visibleCancellationBatches.length === 1 ? "" : "es"}
-                      </Badge>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Step 2</Badge>
+                          <CardTitle className="text-base font-black tracking-tight text-foreground">Cancellation SOQL Batches</CardTitle>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                          Status not completed, 500 tickets per query
+                        </p>
+                      </div>
                     </div>
-
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 mt-2">
-                      <CancellationModeButton active={cancellationViewMode === "query"} onClick={() => setCancellationViewMode("query")}>
-                        Normal Query
-                      </CancellationModeButton>
-                      <CancellationModeButton active={cancellationViewMode === "update-output"} onClick={() => setCancellationViewMode("update-output")}>
-                        Update Output
-                      </CancellationModeButton>
-                      <CancellationModeButton active={cancellationViewMode === "requested-query"} onClick={() => setCancellationViewMode("requested-query")}>
-                        Cancellation Requested Query
-                      </CancellationModeButton>
-                    </div>
+                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm self-start">
+                      {cancellationQueryBatches.length} batch{cancellationQueryBatches.length === 1 ? "" : "es"}
+                    </Badge>
                   </div>
                 </CardHeader>
 
                 <CardContent className="p-6 pt-5 space-y-4 flex-1 flex flex-col relative z-10">
-                  {visibleCancellationBatches.length > 0 ? (
+                  {cancellationQueryBatches.length > 0 ? (
                     <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
                       <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
                         <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
-                          Batch {cancellationExecutionBatchIndex + 1} / {visibleCancellationBatches.length}
+                          Batch {Math.min(cancellationExecutionBatchIndex + 1, cancellationQueryBatches.length)} / {cancellationQueryBatches.length}
                         </span>
                         <div className="flex items-center gap-1.5">
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg transition-colors" disabled={cancellationExecutionBatchIndex <= 0} onClick={() => setCancellationExecutionBatchIndex((value) => Math.max(0, value - 1))}>
                             <ChevronLeft className="h-4.5 w-4.5" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg transition-colors" disabled={cancellationExecutionBatchIndex >= visibleCancellationBatches.length - 1} onClick={() => setCancellationExecutionBatchIndex((value) => Math.min(visibleCancellationBatches.length - 1, value + 1))}>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 rounded-lg transition-colors" disabled={cancellationExecutionBatchIndex >= cancellationQueryBatches.length - 1} onClick={() => setCancellationExecutionBatchIndex((value) => Math.min(cancellationQueryBatches.length - 1, value + 1))}>
                             <ChevronRight className="h-4.5 w-4.5" />
                           </Button>
                           <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1.5" />
-                          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 px-3 text-xs font-bold rounded-lg transition-colors" onClick={() => handleCopy(visibleCancellationBatches[cancellationExecutionBatchIndex] ?? "")}>
+                          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 px-3 text-xs font-bold rounded-lg transition-colors" onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] ?? "")}>
                             <Copy className="h-3.5 w-3.5 text-rose-400" /> Copy
                           </Button>
                         </div>
                       </div>
                       <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-rose-200 min-h-0 max-h-[320px] selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100">
-                        {visibleCancellationBatches[cancellationExecutionBatchIndex] ?? ""}
+                        {cancellationQueryBatches[cancellationExecutionBatchIndex] ?? ""}
                       </pre>
                     </div>
                   ) : (
@@ -2629,130 +3369,101 @@ export default function SOQLGeneratorPage() {
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-400 mb-3 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
                         <PlayCircle className="h-6 w-6" />
                       </div>
-                      <p className="text-sm font-black text-foreground max-w-[250px] mx-auto">
-                        {cancellationViewMode === "update-output"
-                          ? "Paste IIS cancellation SOQL result to generate update output"
-                          : cancellationViewMode === "requested-query"
-                          ? "Paste tickets to generate Cancellation Requested query"
-                          : "Paste tickets to generate normal cancellation query"}
-                      </p>
+                      <p className="text-sm font-black text-foreground max-w-[250px] mx-auto">Paste tickets on the left to generate the cancellation query</p>
                     </div>
                   )}
 
                   <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all shadow-sm" onClick={() => handleCopy(visibleCancellationBatches.join("\n\n"))} disabled={visibleCancellationBatches.length === 0}>
+                    <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all shadow-sm" onClick={() => handleCopy(cancellationQueryBatches.join("\n\n"))} disabled={cancellationQueryBatches.length === 0}>
                       <Copy className="h-4 w-4 mr-1.5" /> Copy All
                     </Button>
-
-                    {cancellationViewMode === "update-output" && (
-                      <>
-                        <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm" onClick={handleDownloadCancellationBatch} disabled={cancellationUpdateBatches.length === 0}>
-                          <Download className="h-4 w-4 mr-1.5 text-slate-400" /> Download Current Batch
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm" onClick={handleDownloadAllCancellationBatches} disabled={cancellationUpdateBatches.length === 0}>
-                          <FileSpreadsheet className="h-4 w-4 mr-1.5 text-emerald-500" /> Download All Batches
-                        </Button>
-                      </>
-                    )}
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
                 <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white shadow-inner">3</span>
-                      Step 3
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
+                        <FileSpreadsheet className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Step 3</Badge>
+                          <CardTitle className="text-base font-black tracking-tight text-foreground">Paste SOQL Result Batch</CardTitle>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                          Each paste is stored and converted to Canceled
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm self-start">
+                      {cancellationResultBatchCount} stored batch{cancellationResultBatchCount === 1 ? "" : "es"}
                     </Badge>
-                    <CardTitle className="text-base font-black tracking-tight text-foreground">Paste SOQL Result for email /post ticket entry</CardTitle>
                   </div>
                 </CardHeader>
 
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
                   <Textarea
-                    placeholder={`Paste SOQL result here...\n"_","Id","Ticket_Number_Read_Only__c","Status"`}
+                    placeholder={`Paste Salesforce SOQL result here...\n"_"\t"Id"\t"Ticket_Number_Read_Only__c"\t"Status"\n"[WorkOrder]"\t"0WONy000008eHgfOAE"\t"B25031925463529"\t"Cancellation Requested"`}
                     className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y"
                     value={cancellationExecutionInput}
-                    onChange={(event) => setCancellationExecutionInput(event.target.value)}
+                    onPaste={handleCancellationResultPaste}
+                    onChange={(event) => handleCancellationResultInputChange(event.target.value)}
                   />
 
                   <div className="flex flex-wrap gap-2.5 pt-2">
+                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Pasted tickets: {parsedTickets.length}</Badge>
                     <Badge className="bg-white dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Parsed: {cancellationExecutionRows.length}</Badge>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Ready: {uniqueExecutableCancellationRows.length}</Badge>
-                    <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Skipped: {skippedCancellationRows.length}</Badge>
-                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Update batches: {cancellationUpdateBatches.length}</Badge>
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Stored: {uniqueExecutableCancellationRows.length}</Badge>
+                    <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Remaining: {cancellationRemainingTicketCount}</Badge>
+                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Matched: {cancellationMatchedTicketCount}</Badge>
+                    {cancellationUnexpectedResultCount > 0 && (
+                      <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Outside pasted tickets: {cancellationUnexpectedResultCount}</Badge>
+                    )}
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col 2xl:col-span-2 transition-all duration-300 group relative">
                 <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 shadow-inner">
-                      <FileSpreadsheet className="h-5 w-5" />
-                    </div>
-                    <CardTitle className="text-base font-black tracking-tight text-foreground">Paste Excel / Data Loader Output</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
-                  <Textarea
-                    placeholder={`Paste Excel / Data Loader output here...`}
-                    className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-teal-500/40 focus-visible:border-teal-500 shadow-none p-4 resize-y"
-                    value={excelInput}
-                    onChange={(event) => setExcelInput(event.target.value)}
-                  />
-                  {failedTickets.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase px-3 py-1.5 tracking-widest shadow-sm">
-                        {failedTickets.length} failed ticket{failedTickets.length === 1 ? "" : "s"} extracted
-                      </Badge>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
-                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-                        <Mail className="h-5 w-5" />
+                        <CheckCircle2 className="h-5 w-5" />
                       </div>
-                      <CardTitle className="text-base font-black tracking-tight text-foreground">Email</CardTitle>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Final</Badge>
+                          <CardTitle className="text-base font-black tracking-tight text-foreground">All Records With Canceled Status</CardTitle>
+                        </div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                          Copy one complete table after all result batches are pasted
+                        </p>
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationEmail)}>
-                      <Copy className="h-3.5 w-3.5" /> Copy
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" className="h-9 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationCanceledOutput)} disabled={uniqueExecutableCancellationRows.length === 0}>
+                        <Copy className="h-3.5 w-3.5" /> Copy All
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-9 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={handleDownloadCancellationOutput} disabled={uniqueExecutableCancellationRows.length === 0}>
+                        <Download className="h-3.5 w-3.5" /> TSV
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-0 selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
-                      {cancellationEmail || "Paste tickets to generate cancellation email"}
-                    </pre>
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
+                  <div className="flex flex-wrap gap-2.5">
+                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Total pasted tickets: {parsedTickets.length}</Badge>
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Final rows: {uniqueExecutableCancellationRows.length}</Badge>
+                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Status: Canceled</Badge>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
-                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
-                        <MessageSquare className="h-5 w-5" />
-                      </div>
-                      <CardTitle className="text-base font-black tracking-tight text-foreground">Post</CardTitle>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationPost)}>
-                      <Copy className="h-3.5 w-3.5" /> Copy
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                   <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[220px] min-h-0 selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
-                      {cancellationPost || "Paste tickets to generate cancellation post"}
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[260px] max-h-[520px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
+                      {uniqueExecutableCancellationRows.length > 0
+                        ? cancellationCanceledOutput
+                        : "\"_\"\t\"Id\"\t\"Ticket_Number_Read_Only__c\"\t\"Status\"\n\"[WorkOrder]\"\t\"0WONy000008eHgfOAE\"\t\"B25031925463529\"\t\"Canceled\""}
                     </pre>
                   </div>
                 </CardContent>
@@ -3083,7 +3794,7 @@ export default function SOQLGeneratorPage() {
           )}
 
 
-          {!isTS && !isSA && !isAssetTransfer && !isCancellation && !isCaseAssign && (
+          {!isTS && !isSA && !isAssetTransfer && !isChildDetailsToParent && !isCancellation && !isCaseAssign && (
             <QueryPreviewCard
               title={activeTemplate?.name ?? "Query Preview"}
               subtitle={`${activeTemplate?.category ?? ""} query preview`}
