@@ -146,7 +146,7 @@ FROM WorkOrder
 WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
 {{tickets}}
 )`;
-const CANCELLATION_BATCH_SIZE = 500;
+const CANCELLATION_BATCH_SIZE = 400;
 
 const defaultTemplates: Template[] = [
   {
