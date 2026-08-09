@@ -254,11 +254,18 @@ export function Sidebar() {
               <div className="flex min-h-16 items-center justify-between border-b border-border/20 px-4 bg-transparent">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <Image
+                    src="/logo%20white.png"
+                    alt="Meghdoot Logo"
+                    width={42}
+                    height={42}
+                    className="shrink-0 rounded-xl shadow-sm dark:hidden"
+                  />
+                  <Image
                     src="/logo1.png"
                     alt="Meghdoot Logo"
                     width={42}
                     height={42}
-                    className="shrink-0 rounded-xl shadow-sm"
+                    className="hidden shrink-0 rounded-xl shadow-sm dark:block"
                   />
                   <div className="flex flex-col leading-none">
                     <span className="truncate text-lg font-extrabold text-foreground tracking-tight">

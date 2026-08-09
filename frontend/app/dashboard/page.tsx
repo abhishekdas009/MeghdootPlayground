@@ -131,15 +131,15 @@ function KPICard({ label, value, icon: Icon, iconBg, iconText, delay }: KPIConfi
       whileHover={{ y: -4, scale: 1.02 }}
       className="relative group h-full"
     >
-      <div className="relative h-full flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-6 shadow-none backdrop-blur-xl dark:border-white/10">
+      <div className="relative h-full min-h-[11rem] flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-[clamp(1rem,2vw,1.5rem)] shadow-none backdrop-blur-xl dark:border-white/10">
         <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
           <Icon className="w-24 h-24 -mr-6 -mt-6 transform rotate-12" />
         </div>
         <div className="relative flex items-start justify-between gap-4 z-10">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold tracking-wide text-foreground">{label}</p>
+            <p className="text-[clamp(0.8125rem,1.2vw,0.95rem)] font-semibold tracking-wide text-foreground break-words">{label}</p>
             <div className="mt-2 flex items-baseline gap-2">
-              <p className="text-4xl font-black tabular-nums text-foreground tracking-tight drop-shadow-sm">
+              <p className="text-[clamp(2rem,5vw,2.75rem)] font-black tabular-nums text-foreground tracking-tight drop-shadow-sm">
                 {displayValue.toLocaleString()}
               </p>
             </div>
@@ -147,7 +147,7 @@ function KPICard({ label, value, icon: Icon, iconBg, iconText, delay }: KPIConfi
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/15 px-2.5 py-1 text-xs font-bold text-emerald-800 dark:text-emerald-200"
+                className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/15 px-2.5 py-1 text-[11px] font-bold leading-tight text-emerald-800 dark:text-emerald-200"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
                 Active Today
@@ -156,11 +156,11 @@ function KPICard({ label, value, icon: Icon, iconBg, iconText, delay }: KPIConfi
           </div>
           <div
             className={cn(
-              "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl shadow-lg ring-1 ring-white/20 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6",
+              "flex h-[var(--icon-box-md)] w-[var(--icon-box-md)] shrink-0 items-center justify-center rounded-2xl shadow-lg ring-1 ring-white/20 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-3",
               iconBg, iconText
             )}
           >
-            <Icon className="h-6 w-6" />
+            <Icon className="h-[var(--icon-size-md)] w-[var(--icon-size-md)]" />
           </div>
         </div>
       </div>
@@ -463,28 +463,27 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
       {/* ─── Hero Header ─────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl border border-blue-400/20 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 p-8 shadow-2xl shadow-blue-950/60 lg:p-12"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8 lg:p-12"
       >
-        <div className="absolute inset-0 bg-[linear-gradient(rgb(96_182_255_/_0.07)_1px,transparent_1px),linear-gradient(90deg,rgb(96_182_255_/_0.07)_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:linear-gradient(to_bottom,black,transparent)]" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl mix-blend-screen" />
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
+        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-sky-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
 
         <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/15 px-3 py-1 text-sm font-semibold text-sky-200 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-700 backdrop-blur-md dark:bg-blue-500/15 dark:text-sky-200">
               <Sparkles className="h-4 w-4" />
               <span>Welcome back, Commander</span>
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-white lg:text-5xl">
+            <h1 className="text-4xl font-black tracking-tight text-slate-950 dark:text-white lg:text-5xl">
               Command <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">Center</span>
             </h1>
-            <p className="max-w-xl text-lg font-medium text-slate-300">
+            <p className="max-w-xl text-lg font-medium text-slate-600 dark:text-slate-300">
               Your centralized hub for automation metrics, system health, and quick actions.
             </p>
           </div>
@@ -492,7 +491,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center gap-3">
             <LiveIndicator isLive={isLive} />
             <span
-              className="hidden rounded-full border border-blue-300/15 bg-slate-900/50 px-3 py-1.5 text-sm font-medium text-slate-300 backdrop-blur-sm sm:inline"
+              className="hidden rounded-full border border-blue-300/30 bg-white/55 px-3 py-1.5 text-sm font-medium text-slate-600 backdrop-blur-sm dark:border-blue-300/15 dark:bg-slate-900/50 dark:text-slate-300 sm:inline"
               title={mounted ? formatExactTime(lastRefreshed.toISOString()) : undefined}
               suppressHydrationWarning
             >
@@ -520,14 +519,14 @@ export default function DashboardPage() {
       </motion.div>
 
       {/* ─── Primary KPI Row ────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="responsive-grid">
         {kpiRow1.map((kpi, i) => (
           <KPICard key={kpi.label} {...kpi} value={row1Values[i] ?? 0} />
         ))}
       </div>
 
       {/* ─── Secondary KPI Row ──────────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="responsive-grid">
         {kpiRow2.map((kpi, i) => (
           <KPICard key={kpi.label} {...kpi} value={row2Values[i] ?? 0} />
         ))}
@@ -538,7 +537,7 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="space-y-6">
           <SectionHeader title="Quick Actions" icon={Zap} />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="responsive-grid-sm">
             {quickActions.map((action) => (
               <QuickActionCard key={action.href} {...action} />
             ))}

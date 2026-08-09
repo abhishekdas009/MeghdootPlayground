@@ -57,11 +57,10 @@ export default function HistoryPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-zinc-900 p-8 shadow-2xl border border-slate-700/80"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05)_0%,transparent_50%)]" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-slate-500/20 blur-3xl mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-zinc-500/20 blur-3xl mix-blend-screen" />
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-slate-500/10 blur-3xl dark:bg-slate-500/20 dark:mix-blend-screen" />
+        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-zinc-500/20 dark:mix-blend-screen" />
         
         <div className="relative z-10 flex flex-col gap-4">
           <div className="flex items-center gap-4">
@@ -70,16 +69,16 @@ export default function HistoryPage() {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Badge className="bg-slate-500/20 text-slate-300 border border-slate-500/40 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-sm uppercase tracking-widest">
+                <Badge className="bg-slate-500/10 text-slate-700 border border-slate-300 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-sm uppercase tracking-widest dark:bg-slate-500/20 dark:text-slate-300 dark:border-slate-500/40">
                   Activity Log
                 </Badge>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-sm">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
                 Action <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-300 to-zinc-400">History</span>
               </h1>
             </div>
           </div>
-          <p className="text-slate-400 font-medium max-w-2xl leading-relaxed mt-2 text-sm">
+          <p className="text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed mt-2 text-sm">
             A complete record of your operations across Meghdoot. Review past queries, Excel automation tasks, and formatting jobs.
           </p>
         </div>

@@ -1244,30 +1244,30 @@ function TemplatePicker({
         className={cn(
           "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
           isSelected
-            ? "bg-blue-500/20 text-white shadow-[inset_0_0_0_1px_rgba(96,182,255,0.38)]"
+            ? "bg-blue-500/10 text-blue-950 shadow-[inset_0_0_0_1px_rgba(1,118,211,0.32)] dark:bg-blue-500/20 dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(96,182,255,0.38)]"
             : isHighlighted
-              ? "bg-sky-400/10 text-sky-50"
-              : "text-slate-300 hover:bg-sky-400/10 hover:text-sky-50"
+              ? "bg-sky-500/10 text-blue-950 dark:bg-sky-400/10 dark:text-sky-50"
+              : "text-slate-700 hover:bg-sky-500/10 hover:text-blue-950 dark:text-slate-300 dark:hover:bg-sky-400/10 dark:hover:text-sky-50"
         )}
       >
         <span
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
             isSelected
-              ? "border-blue-300/30 bg-blue-400/15 text-sky-200"
-              : "border-slate-700/80 bg-slate-800/75 text-slate-400 group-hover:border-sky-400/20 group-hover:text-sky-300"
+              ? "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:border-blue-300/30 dark:bg-blue-400/15 dark:text-sky-200"
+              : "border-slate-200 bg-white/70 text-slate-500 group-hover:border-sky-500/30 group-hover:text-blue-600 dark:border-slate-700/80 dark:bg-slate-800/75 dark:text-slate-400 dark:group-hover:border-sky-400/20 dark:group-hover:text-sky-300"
           )}
         >
           {isLibraryTemplate ? <Bookmark className="h-3.5 w-3.5" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
-          <span className={cn("mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em]", isSelected ? "text-sky-200/80" : "text-slate-500 group-hover:text-sky-200/70")}>
+          <span className={cn("mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em]", isSelected ? "text-blue-600 dark:text-sky-200/80" : "text-slate-500 group-hover:text-blue-500 dark:group-hover:text-sky-200/70")}>
             {template.category}
           </span>
         </span>
         {isSelected && (
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-400 text-slate-950 shadow-[0_0_12px_rgba(96,182,255,0.3)]">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-[0_0_12px_rgba(96,182,255,0.3)] dark:bg-blue-400 dark:text-slate-950">
             <Check className="h-3.5 w-3.5 stroke-[3]" />
           </span>
         )}
@@ -1288,11 +1288,11 @@ function TemplatePicker({
         className={cn(
           "group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-200",
           isOpen
-            ? "border-blue-400/60 bg-slate-900 text-white ring-2 ring-blue-400/20"
-            : "border-slate-700/80 bg-slate-900/90 text-slate-100 hover:border-sky-400/45 hover:bg-slate-900"
+            ? "border-blue-400/60 bg-white/90 text-slate-950 ring-2 ring-blue-400/20 dark:bg-slate-900 dark:text-white"
+            : "border-slate-200/80 bg-white/75 text-slate-900 hover:border-sky-400/45 hover:bg-white dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-900"
         )}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-400/20 bg-blue-500/10 text-blue-300">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-blue-400/20 dark:text-blue-300">
           {selectedTemplate?.source === "library" ? <Bookmark className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />}
         </span>
         <span className="min-w-0 flex-1">
@@ -1301,14 +1301,14 @@ function TemplatePicker({
             {selectedTemplate?.source === "library" ? "Saved template" : selectedTemplate?.category ?? "Choose a query type"}
           </span>
         </span>
-        <ChevronDown className={cn("h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-sky-300", isOpen && "rotate-180 text-sky-300")} />
+        <ChevronDown className={cn("h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-blue-600 dark:group-hover:text-sky-300", isOpen && "rotate-180 text-blue-600 dark:text-sky-300")} />
       </button>
 
       {isOpen && menuPosition && typeof document !== "undefined" &&
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[100] overflow-hidden rounded-2xl border border-slate-600/80 bg-[#071426]/[0.98] p-1.5 text-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(96,182,255,0.08)] backdrop-blur-2xl"
+            className="fixed z-[100] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/[0.98] p-1.5 text-slate-900 shadow-[0_20px_60px_rgba(15,23,42,0.16),0_0_0_1px_rgba(1,118,211,0.08)] backdrop-blur-2xl dark:border-slate-600/80 dark:bg-[#071426]/[0.98] dark:text-slate-100 dark:shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(96,182,255,0.08)]"
             style={{
               left: menuPosition.left,
               width: menuPosition.width,
@@ -1317,9 +1317,9 @@ function TemplatePicker({
               maxHeight: menuPosition.maxHeight,
             }}
           >
-            <div className="flex items-center justify-between gap-3 border-b border-slate-700/70 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700/70">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Choose a query template</span>
-              <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-400">{templates.length}</span>
+              <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{templates.length}</span>
             </div>
             <div
               id={listboxId}
@@ -1336,8 +1336,8 @@ function TemplatePicker({
               {builtInTemplates.map(renderTemplate)}
               {savedTemplates.length > 0 && (
                 <>
-                  <div className="my-1.5 border-t border-slate-700/70" />
-                  <div className="flex items-center gap-2 px-2 pb-1 pt-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-300/80">
+                  <div className="my-1.5 border-t border-slate-200/80 dark:border-slate-700/70" />
+                  <div className="flex items-center gap-2 px-2 pb-1 pt-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300/80">
                     <Bookmark className="h-3 w-3" /> Saved templates
                   </div>
                   {savedTemplates.map(renderTemplate)}
@@ -2537,11 +2537,10 @@ export default function SOQLGeneratorPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-8 shadow-2xl border border-slate-700/80"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05)_0%,transparent_50%)]" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-[#0176d3]/20 blur-3xl mix-blend-screen pointer-events-none" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl mix-blend-screen pointer-events-none" />
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-[#0176d3]/10 blur-3xl pointer-events-none dark:bg-[#0176d3]/20 dark:mix-blend-screen" />
+        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none dark:bg-indigo-500/20 dark:mix-blend-screen" />
         
         <div className="relative z-10 flex flex-col gap-6 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <div className="flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
@@ -2550,23 +2549,23 @@ export default function SOQLGeneratorPage() {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <Badge className="bg-[#0176d3]/20 text-blue-300 border border-[#0176d3]/40 text-[10px] sm:text-xs font-bold px-3 py-1 flex items-center gap-1.5 shadow-inner backdrop-blur-sm uppercase tracking-widest">
+                <Badge className="bg-[#0176d3]/10 text-blue-700 border border-[#0176d3]/30 text-[10px] sm:text-xs font-bold px-3 py-1 flex items-center gap-1.5 shadow-inner backdrop-blur-sm uppercase tracking-widest dark:bg-[#0176d3]/20 dark:text-blue-300 dark:border-[#0176d3]/40">
                   SALESFORCE DEVELOPER TOOLS
                 </Badge>
-                <Badge className="bg-white/10 text-slate-300 border border-white/20 text-[10px] font-bold px-2 py-1 shadow-inner backdrop-blur-sm hidden sm:inline-flex">
+                <Badge className="bg-white/60 text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-1 shadow-inner backdrop-blur-sm hidden sm:inline-flex dark:bg-white/10 dark:text-slate-300 dark:border-white/20">
                   Lightning v2.4
                 </Badge>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-sm">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
                 SOQL <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Generator</span>
               </h1>
-              <p className="text-sm text-slate-400 font-medium mt-2 max-w-xl">
+              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium mt-2 max-w-xl">
                 Paste values, pick a template, generate production-ready Salesforce SOQL and Data Loader batches instantly.
               </p>
             </div>
           </div>
           <div className="flex w-full flex-wrap items-center gap-3 self-start 2xl:w-auto 2xl:self-center">
-            <Button variant="outline" onClick={handleClear} className="gap-2 h-12 px-6 rounded-xl border-slate-600 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 text-slate-300 font-bold transition-all backdrop-blur-sm bg-slate-800/50 shadow-inner">
+            <Button variant="outline" onClick={handleClear} className="gap-2 h-12 px-6 rounded-xl border-slate-200 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-slate-600 font-bold transition-all backdrop-blur-sm bg-white/55 shadow-inner dark:border-slate-600 dark:text-slate-300 dark:bg-slate-800/50 dark:hover:text-red-400">
               <Trash2 className="h-4.5 w-4.5" /> Clear All
             </Button>
             <Button

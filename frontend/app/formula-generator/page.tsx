@@ -123,30 +123,28 @@ export default function FormulaGeneratorPage() {
   return (
     <div className="workspace-page mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:space-y-8 lg:p-8">
       {/* Hero Header Area */}
-      <div className="relative flex flex-col gap-4 overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 p-8 text-white shadow-2xl">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:24px_24px] [mask-image:linear-gradient(to_bottom,white,transparent)]" />
+      <div className="page-hero relative flex flex-col gap-4 overflow-hidden rounded-3xl p-8">
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }} 
           animate={{ opacity: 1, y: 0 }} 
           className="relative z-10 max-w-2xl"
         >
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium backdrop-blur-md border border-white/20">
-            <Sparkles className="h-4 w-4 text-emerald-200" />
-            <span className="text-white/95 tracking-wide">Excel Magic</span>
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-1.5 text-sm font-medium backdrop-blur-md border border-emerald-500/20 dark:bg-white/10 dark:border-white/20">
+            <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-200" />
+            <span className="text-emerald-700 tracking-wide dark:text-white/95">Excel Magic</span>
           </div>
-          <h1 className="mb-4 text-4xl font-extrabold tracking-tight lg:text-5xl leading-tight">
-            Formula Generator <br className="hidden sm:block"/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 to-cyan-200">Without the Headache</span>
+          <h1 className="mb-4 text-4xl font-extrabold tracking-tight lg:text-5xl leading-tight text-slate-950 dark:text-white">
+            Formula Generator <br className="hidden sm:block"/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600 dark:from-emerald-200 dark:to-cyan-200">Without the Headache</span>
           </h1>
-          <p className="text-lg text-white/80 max-w-xl font-light">
+          <p className="text-lg text-slate-600 dark:text-white/80 max-w-xl font-light">
             Build complex Excel formulas visually. Never worry about commas, brackets, or syntax errors again.
           </p>
         </motion.div>
         
         {/* Abstract shapes */}
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-400/20 blur-3xl mix-blend-screen" />
-        <div className="absolute -bottom-32 right-10 h-64 w-64 rounded-full bg-cyan-400/30 blur-3xl mix-blend-screen" />
+        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl dark:bg-emerald-400/20 dark:mix-blend-screen" />
+        <div className="absolute -bottom-32 right-10 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl dark:bg-cyan-400/30 dark:mix-blend-screen" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">

@@ -265,11 +265,10 @@ export default function AnalyticsPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 p-8 shadow-2xl border border-slate-800/80"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05)_0%,transparent_50%)]" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl mix-blend-screen" />
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-500/20 dark:mix-blend-screen" />
+        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
 
         <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">
@@ -278,18 +277,18 @@ export default function AnalyticsPage() {
                 <BarChart3 className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-sm">
+                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
                   Executive <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Analytics</span>
                 </h1>
               </div>
             </div>
             <div className="flex items-center gap-3 mt-2">
-              <Badge className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-sm">
+              <Badge className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/30 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-sm dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/50">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping absolute" />
                 <span className="h-2 w-2 rounded-full bg-emerald-500 relative z-10" />
                 Live Telemetry Connected
               </Badge>
-              <p className="text-sm text-slate-400 font-medium max-w-xl hidden sm:block">
+              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-xl hidden sm:block">
                 Real-time PostgreSQL telemetry, CRM workload distribution, and automated operational audit logs.
               </p>
             </div>
@@ -298,7 +297,7 @@ export default function AnalyticsPage() {
           {/* Right Actions Bar */}
           <div className="flex items-center gap-3 flex-wrap md:justify-end shrink-0">
             {/* Time Range Tabs */}
-            <div className="flex items-center rounded-xl bg-slate-900/80 p-1.5 border border-slate-700/80 backdrop-blur-md shadow-inner">
+            <div className="flex items-center rounded-xl bg-white/65 p-1.5 border border-slate-200/80 backdrop-blur-md shadow-inner dark:bg-slate-900/80 dark:border-slate-700/80">
               {(["24h", "7d", "30d", "all"] as TimeRange[]).map((range) => (
                 <button
                   key={range}
@@ -307,7 +306,7 @@ export default function AnalyticsPage() {
                     "px-4 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wide",
                     timeRange === range
                       ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/50"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800"
                   )}
                 >
                   {range === "all" ? "All Time" : range}
@@ -319,7 +318,7 @@ export default function AnalyticsPage() {
               variant="outline"
               onClick={() => fetchDatabaseTelemetry(true)}
               disabled={loading}
-              className="h-10 gap-2 font-bold text-sm rounded-xl border-slate-700 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white shadow-lg backdrop-blur-md transition-all"
+              className="h-10 gap-2 font-bold text-sm rounded-xl border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-lg backdrop-blur-md transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
             >
               <RefreshCw className={cn("h-4 w-4 text-indigo-400", loading && "animate-spin")} />
               <span>Sync DB</span>

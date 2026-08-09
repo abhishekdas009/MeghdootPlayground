@@ -306,50 +306,49 @@ export default function HelpPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-[#0176d3]/90 via-[#015ba7] to-indigo-900 p-8 shadow-2xl border border-[#0176d3]/40"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-white/10 blur-3xl mix-blend-screen pointer-events-none" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-400/20 blur-3xl mix-blend-screen pointer-events-none" />
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl pointer-events-none dark:bg-white/10 dark:mix-blend-screen" />
+        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-400/10 blur-3xl pointer-events-none dark:bg-indigo-400/20 dark:mix-blend-screen" />
         
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between relative z-10">
           <div className="space-y-4 max-w-3xl">
             <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/20 text-white font-bold backdrop-blur-md shadow-lg border border-white/20">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-700 font-bold backdrop-blur-md shadow-lg border border-blue-500/20 dark:bg-white/20 dark:text-white dark:border-white/20">
                 <BookOpen className="h-7 w-7" />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge className="bg-white/20 text-white border border-white/30 text-xs font-bold px-3 py-1 flex items-center gap-1.5 shadow-inner backdrop-blur-sm uppercase tracking-widest hover:bg-white/30 transition-colors">
+                  <Badge className="bg-blue-500/10 text-blue-700 border border-blue-500/30 text-xs font-bold px-3 py-1 flex items-center gap-1.5 shadow-inner backdrop-blur-sm uppercase tracking-widest hover:bg-blue-500/15 transition-colors dark:bg-white/20 dark:text-white dark:border-white/30 dark:hover:bg-white/30">
                     <Sparkles className="h-3 w-3" />
                     Lightning v2.4 Docs
                   </Badge>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-sm">
+                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
                   Knowledge Center &amp; Architecture Hub
                 </h1>
               </div>
             </div>
-            <p className="text-sm sm:text-base text-blue-100 font-medium leading-relaxed max-w-2xl">
+            <p className="text-sm sm:text-base text-slate-600 dark:text-blue-100 font-medium leading-relaxed max-w-2xl">
               Comprehensive operational guides, component specifications, database telemetry workflows, and best practices for every core utility in the MeghdootPlayground ecosystem.
             </p>
           </div>
 
           {/* Global Search inside Help */}
           <div className="relative w-full md:w-80 shrink-0 group">
-            <div className="absolute inset-0 bg-white/5 rounded-2xl blur group-hover:bg-white/10 transition-colors" />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-white/60 group-focus-within:text-white transition-colors z-10" />
+            <div className="absolute inset-0 bg-blue-500/5 rounded-2xl blur group-hover:bg-blue-500/10 transition-colors dark:bg-white/5 dark:group-hover:bg-white/10" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors z-10 dark:text-white/60 dark:group-focus-within:text-white" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search guides, FAQs..."
-              className="relative w-full h-14 pl-12 pr-12 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-md text-sm font-bold text-white placeholder:text-white/60 focus:outline-none focus:ring-2 focus:ring-white/40 focus:border-white shadow-inner transition-all"
+              className="relative w-full h-14 pl-12 pr-12 rounded-2xl border border-slate-200 bg-white/65 backdrop-blur-md text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 shadow-inner transition-all dark:border-white/20 dark:bg-white/10 dark:text-white dark:placeholder:text-white/60 dark:focus:ring-white/40 dark:focus:border-white"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-white/20 text-white hover:bg-white/40 transition-colors z-10"
+                className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors z-10 dark:bg-white/20 dark:text-white dark:hover:bg-white/40"
               >
                 <Search className="h-3 w-3" />
               </button>

@@ -542,11 +542,10 @@ export default function QueryLibraryPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 p-8 shadow-2xl border border-slate-800/80"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.05)_0%,transparent_50%)]" />
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/20 blur-3xl mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/20 blur-3xl mix-blend-screen" />
+        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-500/20 dark:mix-blend-screen" />
+        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
         
         <div className="relative z-10 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="space-y-4">
@@ -556,17 +555,17 @@ export default function QueryLibraryPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className="bg-[#0176d3]/20 text-blue-300 border border-[#0176d3]/40 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-sm">
+                  <Badge className="bg-[#0176d3]/10 text-blue-700 border border-[#0176d3]/30 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-sm dark:bg-[#0176d3]/20 dark:text-blue-300 dark:border-[#0176d3]/40">
                     Lightning Repository
                   </Badge>
-                  <span className="text-xs font-semibold text-slate-400">• Salesforce CRM v2.4</span>
+                  <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">• Salesforce CRM v2.4</span>
                 </div>
-                <h1 className="mt-1 text-3xl sm:text-4xl font-black tracking-tight text-white drop-shadow-sm">
+                <h1 className="mt-1 text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
                   SOQL Query <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Library</span>
                 </h1>
               </div>
             </div>
-            <p className="mt-2 text-sm text-slate-400 font-medium max-w-2xl leading-relaxed">
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
               Save, categorize, and execute custom SOQL query templates. Organize by Salesforce object types and run them directly in your generator workbench.
             </p>
           </div>
@@ -575,7 +574,7 @@ export default function QueryLibraryPage() {
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 self-start md:self-center">
             <Button
               variant="outline"
-              className="h-11 px-5 rounded-xl font-bold border-indigo-500/40 text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200 shadow-lg backdrop-blur-md gap-2 whitespace-nowrap transition-all w-full sm:w-auto"
+              className="h-11 px-5 rounded-xl font-bold border-indigo-500/30 text-indigo-700 hover:bg-indigo-500/10 hover:text-indigo-800 shadow-lg backdrop-blur-md gap-2 whitespace-nowrap transition-all w-full sm:w-auto dark:border-indigo-500/40 dark:text-indigo-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-200"
               onClick={handleLoadSamples}
               disabled={loading}
               title="Load 18 standard Salesforce operation queries"
@@ -595,7 +594,7 @@ export default function QueryLibraryPage() {
         </div>
 
         {/* Bottom Toolbar Row: Secondary utility tools */}
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-6 mt-2 border-t border-slate-700/60">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-6 mt-2 border-t border-slate-200/70 dark:border-slate-700/60">
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 backdrop-blur-sm">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Repository Active & Syncing</span>
@@ -605,7 +604,7 @@ export default function QueryLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-4 rounded-lg font-bold border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-white shadow-sm backdrop-blur-md gap-1.5 transition-all"
+              className="h-9 px-4 rounded-lg font-bold border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm backdrop-blur-md gap-1.5 transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
               onClick={loadQueries}
               disabled={loading}
             >
@@ -616,7 +615,7 @@ export default function QueryLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-4 rounded-lg font-bold border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-white shadow-sm backdrop-blur-md gap-1.5 transition-all"
+              className="h-9 px-4 rounded-lg font-bold border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm backdrop-blur-md gap-1.5 transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="h-3.5 w-3.5" />
@@ -626,7 +625,7 @@ export default function QueryLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-4 rounded-lg font-bold border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 hover:text-white shadow-sm backdrop-blur-md gap-1.5 transition-all"
+              className="h-9 px-4 rounded-lg font-bold border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm backdrop-blur-md gap-1.5 transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
               onClick={handleExport}
               disabled={queries.length === 0}
             >
@@ -635,7 +634,7 @@ export default function QueryLibraryPage() {
             </Button>
 
             <Link href="/soql-generator">
-              <Button size="sm" className="h-9 px-4 rounded-lg font-bold bg-[#0176d3]/20 text-blue-300 hover:bg-[#0176d3]/40 border border-[#0176d3]/50 shadow-sm backdrop-blur-md gap-1.5 transition-all ml-2">
+              <Button size="sm" className="h-9 px-4 rounded-lg font-bold bg-[#0176d3]/10 text-blue-700 hover:bg-[#0176d3]/20 border border-[#0176d3]/30 shadow-sm backdrop-blur-md gap-1.5 transition-all ml-2 dark:bg-[#0176d3]/20 dark:text-blue-300 dark:hover:bg-[#0176d3]/40 dark:border-[#0176d3]/50">
                 <PlayCircle className="h-3.5 w-3.5" />
                 <span>Launch Workbench</span>
               </Button>

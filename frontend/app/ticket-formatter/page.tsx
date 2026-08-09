@@ -143,12 +143,11 @@ export default function TicketFormatterPage() {
         initial={{ opacity: 0, y: -20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-950 via-slate-900 to-black p-8 shadow-[0_20px_50px_rgba(8,_112,_184,_0.15)] border border-white/10"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
       >
         {/* Dynamic Background Elements */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.03)_0%,transparent_50%)]" />
-        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-indigo-500/20 blur-[100px] mix-blend-screen pointer-events-none" />
-        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[100px] mix-blend-screen pointer-events-none" />
+        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-[100px] pointer-events-none dark:bg-indigo-500/20 dark:mix-blend-screen" />
+        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[100px] pointer-events-none dark:bg-blue-500/10 dark:mix-blend-screen" />
         
         <div className="relative z-10 flex flex-col gap-4">
           <div className="flex items-center gap-5">
@@ -157,16 +156,16 @@ export default function TicketFormatterPage() {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1.5">
-                <Badge className="bg-[#0176d3]/20 text-blue-300 border border-[#0176d3]/40 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-md uppercase tracking-widest">
+                <Badge className="bg-[#0176d3]/10 text-blue-700 border border-[#0176d3]/30 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-md uppercase tracking-widest dark:bg-[#0176d3]/20 dark:text-blue-300 dark:border-[#0176d3]/40">
                   Formatter Tool
                 </Badge>
               </div>
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white drop-shadow-md">
+              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950 drop-shadow-md dark:text-white">
                 Ticket <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">Formatter</span>
               </h1>
             </div>
           </div>
-          <p className="text-slate-300 font-medium max-w-2xl leading-relaxed mt-2 text-sm sm:text-base opacity-90">
+          <p className="text-slate-600 dark:text-slate-300 font-medium max-w-2xl leading-relaxed mt-2 text-sm sm:text-base opacity-90">
             Convert large lists of ticket numbers into any code or query format instantly. Automatically chunks large sets into 500-ticket batches for seamless integration.
           </p>
         </div>

@@ -9,13 +9,37 @@ import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GlobalSearchModal } from "@/components/layout/global-search-modal";
 
+type ThemeMode = "light" | "dark";
+
+const THEME_STORAGE_KEY = "meghdoot-theme";
+
 export function Header() {
   const router = useRouter();
   const { toggleSidebar, setMobileSidebarOpen } = useUIStore();
 
   const [searchFocused, setSearchFocused] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const [theme, setTheme] = React.useState<ThemeMode>("light");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const nextTheme: ThemeMode = savedTheme === "dark" ? "dark" : "light";
+
+    setTheme(nextTheme);
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) => {
+      const nextTheme: ThemeMode = currentTheme === "dark" ? "light" : "dark";
+
+      document.documentElement.classList.toggle("dark", nextTheme === "dark");
+      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+
+      return nextTheme;
+    });
+  };
 
   // Enable the Cmd+K / Ctrl+K keyboard shortcut for global search
   React.useEffect(() => {
@@ -61,11 +85,19 @@ export function Header() {
             tabIndex={0}
           >
             <Image
+              src="/logo%20white.png"
+              alt="Meghdoot Logo"
+              width={42}
+              height={42}
+              className="shrink-0 rounded-xl shadow-sm dark:hidden"
+              priority
+            />
+            <Image
               src="/logo1.png"
               alt="Meghdoot Logo"
               width={42}
               height={42}
-              className="shrink-0 rounded-xl shadow-sm"
+              className="hidden shrink-0 rounded-xl shadow-sm dark:block"
               priority
             />
             <div className="flex flex-col leading-none">
@@ -79,8 +111,8 @@ export function Header() {
           </div>
         </div>
 
-        {/* Center / Right Section: ONLY Global Search Bar */}
-        <div className="flex-1 max-w-2xl mx-auto flex justify-end md:justify-center">
+        {/* Center / Right Section: Global Search Bar and Theme Toggle */}
+        <div className="flex flex-1 items-center justify-end gap-2 md:mx-auto md:max-w-2xl md:justify-center">
           {/* Desktop Search Bar */}
           <div
             onClick={() => setSearchOpen(true)}
@@ -124,6 +156,48 @@ export function Header() {
           >
             <Search className="h-3.5 w-3.5 text-[#0176d3]" />
             <span>Search...</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-2xs transition-all hover:border-[#0176d3]/40 hover:bg-muted/60 hover:text-[#0176d3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/50"
+            aria-label={theme === "dark" ? "Enable light theme" : "Enable dark theme"}
+            title={theme === "dark" ? "Enable light theme" : "Enable dark theme"}
+          >
+            {theme === "dark" ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
+                />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="h-5 w-5"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"
+                />
+              </svg>
+            )}
           </button>
         </div>
       </div>
