@@ -447,18 +447,18 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
   if (!open) return null;
 
   return (
-    <div className="fixed top-16 left-0 right-0 bottom-0 z-50 flex items-start justify-center pt-6 px-4 bg-black/20 dark:bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4 bg-slate-900/30 dark:bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
       {/* Click outside to close */}
-      <div className="fixed inset-0" onClick={() => onOpenChange(false)} />
+      <div className="absolute inset-0" onClick={() => onOpenChange(false)} />
 
       {/* Modal Container */}
       <div
-        className="relative w-full max-w-2xl rounded-xl bg-card border border-border shadow-2xl overflow-hidden z-10 flex flex-col max-h-[75vh] animate-in zoom-in-95 duration-150"
+        className="relative w-full max-w-[700px] rounded-2xl bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-white/10 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.2)] dark:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[75vh] animate-in zoom-in-95 duration-200"
         onKeyDown={handleKeyDown}
       >
-        {/* Simple Search Input Bar */}
-        <div className="relative flex items-center border-b border-border bg-card px-4 py-3.5 gap-3">
-          <Search className="h-5 w-5 text-muted-foreground shrink-0" />
+        {/* Sleek Search Input Bar */}
+        <div className="relative flex items-center px-6 py-4 gap-4 bg-slate-50/50 dark:bg-slate-900/50">
+          <Search className="h-6 w-6 text-[#0176d3] shrink-0 drop-shadow-sm" />
           <div className="flex-1 relative" suppressHydrationWarning data-protonpass-ignore="true">
             <input
               ref={inputRef}
@@ -466,7 +466,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
               placeholder="Search modules, pages, or SOQL queries..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-transparent text-foreground placeholder:text-muted-foreground/60 text-base font-normal focus:outline-none pr-8"
+              className="w-full bg-transparent text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xl font-medium focus:outline-none pr-8 tracking-tight"
               autoComplete="off"
               data-lpignore="true"
               data-protonpass-ignore="true"
@@ -477,21 +477,24 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
           {query && (
             <button
               onClick={() => setQuery("")}
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors"
               title="Clear text"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </button>
           )}
         </div>
+        
+        {/* Soft Divider */}
+        <div className="h-px w-full bg-slate-100 dark:bg-slate-800/60" />
 
         {/* Simple Results List Area */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-[200px] max-h-[50vh]">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1 min-h-[250px] max-h-[55vh] custom-scrollbar bg-white dark:bg-slate-950">
           {filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
-              <Search className="h-8 w-8 text-muted-foreground/40 mb-2" />
-              <p className="text-sm font-medium text-foreground">No results found</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Try a different search term</p>
+              <Search className="h-10 w-10 text-slate-300 dark:text-slate-700 mb-4" />
+              <p className="text-base font-bold text-slate-600 dark:text-slate-400">No results found</p>
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Try a different search term or category</p>
             </div>
           ) : (
             filteredItems.map((item, index) => {
@@ -502,33 +505,42 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-lg transition-colors gap-3 cursor-pointer",
+                    "flex items-center justify-between p-3 rounded-xl transition-all gap-4 cursor-pointer group",
                     isSelected
-                      ? "bg-muted text-foreground font-medium"
-                      : "hover:bg-muted/60 text-foreground"
+                      ? "bg-blue-50 dark:bg-blue-500/10 shadow-sm ring-1 ring-blue-500/20"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-900/50"
                   )}
                 >
                   {/* Left Icon + Info */}
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <div className="flex items-start gap-4 min-w-0 flex-1">
+                    <div className={cn(
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-105",
+                      isSelected ? "bg-white dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10" : "bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-white/5"
+                    )}>
                       {item.icon}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-foreground truncate">
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={cn(
+                          "text-sm font-bold truncate transition-colors",
+                          isSelected ? "text-[#0176d3] dark:text-blue-400" : "text-slate-700 dark:text-slate-200"
+                        )}>
                           {item.title}
                         </span>
                         {item.typeTag && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground uppercase tracking-wider shrink-0">
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase tracking-widest shrink-0">
                             {item.typeTag}
                           </span>
                         )}
                       </div>
                       {item.subtitle && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</p>
+                        <p className={cn(
+                          "text-[13px] truncate",
+                          isSelected ? "text-slate-600 dark:text-slate-400 font-medium" : "text-slate-500 dark:text-slate-500"
+                        )}>{item.subtitle}</p>
                       )}
                       {item.soql && (
-                        <div className="mt-1.5 p-1.5 rounded bg-background border font-mono text-[11px] text-muted-foreground truncate">
+                        <div className="mt-2 px-2 py-1.5 rounded-md bg-slate-100/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate shadow-inner">
                           {item.soql.replace(/\n/g, " ")}
                         </div>
                       )}
@@ -536,34 +548,39 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                   </div>
 
                   {/* Right Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 pl-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {item.category === "soql" && item.soql && (
                       <button
                         type="button"
                         onClick={(e) => handleCopySOQL(e, item)}
                         className={cn(
-                          "flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border transition-colors",
+                          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm",
                           copiedId === item.id
-                            ? "bg-emerald-500 text-white border-emerald-500"
-                            : "bg-card hover:bg-muted text-foreground border-border"
+                            ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                            : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                         )}
                         title="Copy SOQL"
                       >
                         {copiedId === item.id ? (
                           <>
-                            <Check className="h-3 w-3" /> Copied
+                            <Check className="h-3.5 w-3.5" /> Copied
                           </>
                         ) : (
                           <>
-                            <Copy className="h-3 w-3" /> Copy
+                            <Copy className="h-3.5 w-3.5" /> Copy
                           </>
                         )}
                       </button>
                     )}
 
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-background border text-foreground">
+                    <div className={cn(
+                      "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors",
+                      isSelected 
+                        ? "bg-[#0176d3] text-white shadow-blue-500/20" 
+                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                    )}>
                       <span>{item.category === "navigation" ? "Open" : "Run"}</span>
-                      <ArrowRight className="h-3 w-3" />
+                      <ArrowRight className="h-3.5 w-3.5" />
                     </div>
                   </div>
                 </div>

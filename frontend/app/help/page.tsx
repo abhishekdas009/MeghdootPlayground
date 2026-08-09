@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -356,6 +357,77 @@ export default function HelpPage() {
           </div>
         </div>
       </motion.div>
+
+      <motion.section
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.08, ease: "easeOut" }}
+        className="group relative overflow-hidden rounded-[2rem] border border-white/40 dark:border-white/10 bg-gradient-to-br from-slate-100/80 via-white/90 to-slate-50/80 dark:from-slate-900/90 dark:via-slate-950/90 dark:to-slate-900/90 px-[clamp(1.5rem,4vw,2.5rem)] py-[clamp(1.5rem,3.5vw,2.25rem)] shadow-2xl shadow-blue-900/5 backdrop-blur-2xl transition-all duration-500 hover:shadow-blue-900/10 dark:shadow-black/50"
+      >
+        {/* Animated Glow Backgrounds */}
+        <div className="pointer-events-none absolute -inset-[100%] animate-[spin_20s_linear_infinite] opacity-30 mix-blend-soft-light" style={{ background: 'conic-gradient(from 0deg, transparent 0 340deg, rgba(59,130,246,0.4) 360deg)' }} />
+        <div className="pointer-events-none absolute right-0 top-0 h-[300px] w-[300px] -translate-y-1/2 translate-x-1/3 rounded-full bg-blue-500/10 blur-[80px] transition-all duration-700 group-hover:bg-blue-500/20 dark:bg-blue-500/20 dark:group-hover:bg-blue-500/30" />
+        <div className="pointer-events-none absolute bottom-0 left-0 h-[250px] w-[250px] -translate-x-1/3 translate-y-1/3 rounded-full bg-violet-500/10 blur-[80px] transition-all duration-700 group-hover:bg-violet-500/20 dark:bg-violet-500/20 dark:group-hover:bg-violet-500/30" />
+
+        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-sm shadow-orange-500/20">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-slate-950">
+                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                </div>
+              </div>
+              <Badge className="bg-white/50 text-slate-800 border-slate-200/50 backdrop-blur-md px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest shadow-sm dark:bg-white/5 dark:text-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 transition-colors">
+                Personal Trademark
+              </Badge>
+            </div>
+            
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center relative z-10">
+              <h2 className="shrink-0 text-[clamp(1.5rem,3vw,2.25rem)] font-black leading-tight tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 drop-shadow-sm">
+                Made by
+              </h2>
+              <div className="relative h-[clamp(5rem,14vw,7.5rem)] w-full max-w-[min(100%,30rem)] transition-transform duration-500 group-hover:scale-[1.02] group-hover:-translate-y-1">
+                {/* Signature Glow */}
+                <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                <Image
+                  src="/signature-black-cropped.png"
+                  alt="Abhishek signature trademark"
+                  fill
+                  sizes="(min-width: 1024px) 30rem, 100vw"
+                  className="object-contain object-left drop-shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:hidden relative z-10"
+                  priority
+                />
+                <Image
+                  src="/signature-white-cropped.png"
+                  alt="Abhishek signature trademark"
+                  fill
+                  sizes="(min-width: 1024px) 30rem, 100vw"
+                  className="hidden object-contain object-left drop-shadow-[0_4px_12px_rgba(255,255,255,0.1)] dark:block relative z-10"
+                  priority
+                />
+              </div>
+            </div>
+            
+            <p className="max-w-2xl text-[clamp(0.85rem,1.5vw,1rem)] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[#0176d3]" />
+              Built, tuned, and signed for fast CRM support workflows.
+            </p>
+          </div>
+
+          <div className="relative hidden overflow-hidden rounded-2xl border border-white/50 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 p-px shadow-lg shadow-slate-200/50 dark:border-slate-700/50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950 dark:shadow-black/50 lg:block transition-transform duration-500 hover:scale-105 group-hover:shadow-xl group-hover:shadow-blue-500/10">
+            <div className="absolute inset-0 translate-x-[-100%] animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/10" />
+            <div className="relative flex h-full w-full flex-col items-end justify-center rounded-2xl bg-white/40 px-6 py-5 backdrop-blur-sm dark:bg-black/20">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                Meghdoot Playground
+              </div>
+              <div className="mt-1 flex items-center gap-1.5 text-base font-black tracking-tight text-slate-900 dark:text-white">
+                Signature Edition
+                <div className="h-1.5 w-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.section>
 
       {/* 2. INTERACTIVE NAVIGATION TABS */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar px-1">

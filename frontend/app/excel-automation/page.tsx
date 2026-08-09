@@ -120,9 +120,9 @@ export default function ExcelAutomationPage() {
         <div className="absolute -bottom-32 right-10 h-64 w-64 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/30 dark:mix-blend-screen" />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-12 lg:gap-8">
         {/* Left Column: Upload & Operations */}
-        <div className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4">
+        <div className="flex flex-col gap-6 xl:col-span-4 min-w-0">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
             <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-shadow hover:shadow-xl">
               <CardHeader className="border-b bg-muted/40 pb-4">
@@ -225,7 +225,7 @@ export default function ExcelAutomationPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-4 sm:p-5">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-1">
                   {OPERATIONS.map((op, idx) => {
                     const isSelected = selectedOps.has(op.id);
                     const Icon = op.icon;
@@ -287,9 +287,9 @@ export default function ExcelAutomationPage() {
           initial={{ opacity: 0, x: 20 }} 
           animate={{ opacity: 1, x: 0 }} 
           transition={{ delay: 0.3 }}
-          className="lg:col-span-7 xl:col-span-8 flex flex-col"
+          className="xl:col-span-8 flex flex-col min-w-0"
         >
-          <Card className="flex flex-1 flex-col overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-shadow hover:shadow-xl min-h-[600px]">
+          <Card className="flex flex-1 flex-col overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-shadow hover:shadow-xl min-h-[400px] xl:min-h-[600px]">
             <CardHeader className="border-b bg-gradient-to-b from-muted/50 to-muted/10 px-6 py-5">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-4">
@@ -302,31 +302,31 @@ export default function ExcelAutomationPage() {
                   </div>
                 </div>
                 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full sm:w-auto">
                   <Button 
                     variant="outline" 
                     disabled={!file || processing || selectedOps.size === 0} 
                     onClick={handleProcess}
                     className={cn(
-                      "h-11 min-w-[130px] gap-2 rounded-xl border-2 transition-all duration-300 font-semibold",
+                      "h-11 flex-1 sm:flex-none sm:min-w-[130px] gap-2 rounded-xl border-2 transition-all duration-300 font-semibold",
                       file && selectedOps.size > 0 
                         ? "border-blue-200 bg-white text-blue-700 hover:border-blue-400 hover:bg-blue-50 dark:border-blue-800 dark:bg-transparent dark:text-blue-300 dark:hover:border-blue-600 dark:hover:bg-blue-900/30" 
                         : "opacity-50"
                     )}
                   >
                     {processing ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Processing...</>
+                      <><Loader2 className="h-4 w-4 animate-spin shrink-0" /> Processing...</>
                     ) : (
-                      <><Sparkles className="h-4 w-4" /> Process Data</>
+                      <><Sparkles className="h-4 w-4 shrink-0" /> Process Data</>
                     )}
                   </Button>
                   {/* FIX: Changed variant to "primary" to match available Button component variants */}
                   <Button 
                     variant="primary" 
                     disabled={!file || processing}
-                    className="h-11 rounded-xl gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/30 font-semibold px-6 border-0"
+                    className="h-11 flex-1 sm:flex-none rounded-xl gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 transition-all hover:shadow-lg hover:shadow-blue-500/30 font-semibold px-6 border-0"
                   >
-                    <Download className="h-4 w-4" /> Export
+                    <Download className="h-4 w-4 shrink-0" /> Export
                   </Button>
                 </div>
               </div>

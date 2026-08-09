@@ -647,126 +647,123 @@ export default function QueryLibraryPage() {
       {/* ─── 2. DEDICATED KPI SUMMARY ROW: 4 EQUAL CARDS ─────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { title: "Total Templates", val: stats.total, sub: "Stored in repository", icon: Code2, color: "text-[#0176d3]", bg: "bg-[#0176d3]/10", border: "border-l-[#0176d3]", grad: "from-[#0176d3]/10 to-transparent" },
-          { title: "Favourites", val: stats.favourites, sub: "Starred quick access", icon: Star, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-l-amber-500", grad: "from-amber-500/10 to-transparent" },
-          { title: "SFDC Objects", val: stats.categories, sub: "Distinct object types", icon: Layers, color: "text-purple-500", bg: "bg-purple-500/10", border: "border-l-purple-500", grad: "from-purple-500/10 to-transparent" },
-          { title: "Executions", val: stats.uses, sub: "Lifetime query runs", icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-l-emerald-500", grad: "from-emerald-500/10 to-transparent" },
+          { title: "Total Templates", val: stats.total, sub: "Stored in repository", icon: Code2, color: "text-[#0176d3] dark:text-blue-400", bg: "bg-[#0176d3]/10 dark:bg-blue-500/10", border: "border-t-[#0176d3] dark:border-t-blue-500", grad: "from-[#0176d3]/5 dark:from-blue-500/10 to-transparent" },
+          { title: "Favourites", val: stats.favourites, sub: "Starred quick access", icon: Star, color: "text-amber-500 dark:text-amber-400", bg: "bg-amber-500/10 dark:bg-amber-500/10", border: "border-t-amber-500 dark:border-t-amber-400", grad: "from-amber-500/5 dark:from-amber-500/10 to-transparent" },
+          { title: "SFDC Objects", val: stats.categories, sub: "Distinct object types", icon: Layers, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-500/10", border: "border-t-purple-500 dark:border-t-purple-400", grad: "from-purple-500/5 dark:from-purple-500/10 to-transparent" },
+          { title: "Executions", val: stats.uses, sub: "Lifetime query runs", icon: TrendingUp, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/10", border: "border-t-emerald-500 dark:border-t-emerald-400", grad: "from-emerald-500/5 dark:from-emerald-500/10 to-transparent" },
         ].map((kpi, i) => (
           <motion.div key={kpi.title} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-            <Card className={cn("relative overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-card transition-all hover:shadow-xl hover:-translate-y-1 rounded-2xl border-l-4", kpi.border)}>
-              <div className={cn("absolute inset-0 bg-gradient-to-r opacity-50", kpi.grad)} />
-              <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
+            <div className={cn("relative overflow-hidden shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl transition-all hover:shadow-xl hover:-translate-y-1 rounded-2xl border-t-4", kpi.border)}>
+              <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", kpi.grad)} />
+              <div className="p-6 flex flex-col justify-between h-full relative z-10">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{kpi.title}</span>
-                  <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-sm", kpi.bg, kpi.color)}>
-                    <kpi.icon className={cn("h-6 w-6", kpi.title === "Favourites" ? "fill-current" : "")} />
+                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{kpi.title}</span>
+                  <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm border border-black/5 dark:border-white/5 transition-transform hover:scale-105", kpi.bg, kpi.color)}>
+                    <kpi.icon className={cn("h-5 w-5", kpi.title === "Favourites" ? "fill-current" : "")} />
                   </div>
                 </div>
-                <div className="mt-4">
-                  <h3 className="text-4xl font-black text-foreground tabular-nums tracking-tight drop-shadow-sm">{kpi.val}</h3>
-                  <p className="mt-1.5 text-sm font-semibold text-muted-foreground">{kpi.sub}</p>
+                <div className="mt-5">
+                  <h3 className="text-4xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight drop-shadow-sm">{kpi.val}</h3>
+                  <p className="mt-1 text-[13px] font-semibold text-slate-500 dark:text-slate-400">{kpi.sub}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* ─── 3. INTERACTIVE SEARCH & FILTER TOOLBAR WITH PROPER PADDING ─────── */}
-      <Card className="border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-card rounded-2xl overflow-hidden relative" suppressHydrationWarning>
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-indigo-500/5 pointer-events-none" />
-        <CardContent className="p-5 relative z-10" suppressHydrationWarning>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between" suppressHydrationWarning data-protonpass-ignore="true">
-            {/* Search Input Box */}
-            <div className="relative flex-1 min-w-[280px] group" suppressHydrationWarning data-protonpass-ignore="true">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl blur opacity-20 group-focus-within:opacity-40 transition-opacity" />
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors z-10" />
-              <Input
-                placeholder="Search queries by label, Salesforce object, description, or SOQL syntax..."
-                className="relative z-10 h-12 pl-11 pr-10 text-sm rounded-xl border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl focus-visible:ring-2 focus-visible:ring-blue-500/30 focus-visible:border-blue-500 shadow-inner w-full transition-all"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                autoComplete="off"
-                data-lpignore="true"
-                data-protonpass-ignore="true"
-                data-form-type="other"
-                suppressHydrationWarning
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch("")}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-10"
-                  title="Clear search"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
+      {/* ─── 3. INTERACTIVE SEARCH & FILTER TOOLBAR ─────── */}
+      <div className="flex flex-col lg:flex-row items-center gap-3 p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 w-full relative z-10">
+        
+        {/* Search Input */}
+        <div className="relative flex-1 w-full min-w-[280px] group" suppressHydrationWarning data-protonpass-ignore="true">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0176d3] transition-colors z-10" />
+          <Input
+            placeholder="Search templates by label, SFDC object, description..."
+            className="relative z-10 h-12 w-full pl-11 pr-10 text-sm font-medium rounded-xl border-none bg-transparent hover:bg-slate-100/50 dark:hover:bg-slate-800/50 focus-visible:bg-slate-100/80 dark:focus-visible:bg-slate-800/80 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all placeholder:text-slate-400"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            autoComplete="off"
+            data-lpignore="true"
+            data-protonpass-ignore="true"
+            data-form-type="other"
+            suppressHydrationWarning
+          />
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors z-10"
+              title="Clear search"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
 
-            {/* Right Controls: Category, Sort, and View Mode */}
-            <div className="flex flex-wrap items-center gap-3 shrink-0 relative z-10">
-              <div className="relative group">
-                <select
-                  className="h-12 appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl pl-4 pr-10 py-2 text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 shadow-sm cursor-pointer transition-all"
-                  value={categoryFilter}
-                  onChange={(event) => setCategoryFilter(event.target.value)}
-                >
-                  {categories.map((category) => (
-                    <option key={category} value={category} className="bg-background">
-                      {category === "all" ? "⚡ All SFDC Categories" : `📁 ${category}`}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                  <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                </div>
-              </div>
+        <div className="hidden lg:block w-px h-8 bg-slate-200 dark:bg-slate-700 shrink-0" />
 
-              <div className="relative group">
-                <select
-                  className="h-12 appearance-none rounded-xl border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl pl-4 pr-10 py-2 text-sm font-semibold text-foreground outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 shadow-sm cursor-pointer transition-all"
-                  value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value as SortOption)}
-                >
-                  <option value="updated-desc" className="bg-background">🕒 Recently Updated</option>
-                  <option value="favourites-first" className="bg-background">⭐ Favourites First</option>
-                  <option value="usage-desc" className="bg-background">🔥 Most Executed</option>
-                  <option value="label-asc" className="bg-background">🔤 Label (A-Z)</option>
-                  <option value="category-asc" className="bg-background">🗂️ Category (A-Z)</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
-                  <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                </div>
-              </div>
-
-              <div className="flex items-center rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-800/50 backdrop-blur-md p-1 h-12">
-                <button
-                  onClick={() => setViewMode("grid")}
-                  className={cn(
-                    "flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold transition-all",
-                    viewMode === "grid" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5"
-                  )}
-                  title="Grid View"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                  <span>Grid</span>
-                </button>
-                <button
-                  onClick={() => setViewMode("table")}
-                  className={cn(
-                    "flex h-10 items-center gap-2 rounded-lg px-4 text-sm font-bold transition-all",
-                    viewMode === "table" ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5"
-                  )}
-                  title="Table View"
-                >
-                  <TableIcon className="h-4 w-4" />
-                  <span>Table</span>
-                </button>
-              </div>
+        {/* Filters and View Toggles */}
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
+          <div className="relative group flex-1 sm:flex-none">
+            <select
+              className="h-10 w-full sm:w-auto appearance-none rounded-lg border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 pl-3 pr-8 text-[13px] font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-[#0176d3]/50 focus:border-[#0176d3] shadow-sm cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-700/80"
+              value={categoryFilter}
+              onChange={(event) => setCategoryFilter(event.target.value)}
+            >
+              {categories.map((category) => (
+                <option key={category} value={category} className="bg-background">
+                  {category === "all" ? "⚡ All SFDC Categories" : `📁 ${category}`}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+              <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
             </div>
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="relative group flex-1 sm:flex-none">
+            <select
+              className="h-10 w-full sm:w-auto appearance-none rounded-lg border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 pl-3 pr-8 text-[13px] font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-[#0176d3]/50 focus:border-[#0176d3] shadow-sm cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-700/80"
+              value={sortBy}
+              onChange={(event) => setSortBy(event.target.value as SortOption)}
+            >
+              <option value="updated-desc" className="bg-background">🕒 Recently Updated</option>
+              <option value="favourites-first" className="bg-background">⭐ Favourites First</option>
+              <option value="usage-desc" className="bg-background">🔥 Most Executed</option>
+              <option value="label-asc" className="bg-background">🔤 Label (A-Z)</option>
+              <option value="category-asc" className="bg-background">🗂️ Category (A-Z)</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
+              <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+            </div>
+          </div>
+
+          <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-900 p-1 shrink-0 h-10 shadow-inner">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "flex h-8 w-16 justify-center items-center gap-1.5 rounded-md text-[13px] font-black transition-all",
+                viewMode === "grid" ? "bg-white dark:bg-slate-700 text-[#0176d3] dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              )}
+              title="Grid View"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+              <span>Grid</span>
+            </button>
+            <button
+              onClick={() => setViewMode("table")}
+              className={cn(
+                "flex h-8 w-16 justify-center items-center gap-1.5 rounded-md text-[13px] font-black transition-all",
+                viewMode === "table" ? "bg-white dark:bg-slate-700 text-[#0176d3] dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+              )}
+              title="Table View"
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              <span>Table</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* ─── Create / Edit Query Modal Slide-Down ────────────────────────── */}
       <AnimatePresence initial={false}>

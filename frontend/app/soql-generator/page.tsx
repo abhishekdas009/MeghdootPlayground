@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import * as xlsx from "xlsx";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { dashboardStore } from "@/lib/dashboard-store";
+import { dashboardStore, useDashboardStore } from "@/lib/dashboard-store";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 import {
   Copy,
@@ -38,7 +39,10 @@ import {
   Terminal,
   Bookmark,
   Check,
+  Activity,
+  ArrowRight,
 } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Template {
   id: string;
@@ -1390,7 +1394,14 @@ export default function SOQLGeneratorPage() {
   const [ownerForm, setOwnerForm] = React.useState({ name: "", ownerId: "" });
   const [editingOwnerRecordId, setEditingOwnerRecordId] = React.useState<string | null>(null);
 
+  const [uploadState, setUploadState] = React.useState<"idle" | "reading" | "scanning" | "validating" | "success" | "error">("idle");
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [uploadSummary, setUploadSummary] = React.useState<{ file: string; scannedLines: number; total: number; unique: number; valid: number; missing: number; } | null>(null);
+  const [missingCases, setMissingCases] = React.useState<string[]>([]);
+  const [autoRunPending, setAutoRunPending] = React.useState(false);
+
   const savedTicketsRef = React.useRef("");
+  const dragCounterRef = React.useRef(0);
 
   const activeTemplate = templates.find((template) => template.id === selectedTemplate);
   const defaultTemplateCount = React.useMemo(
@@ -1403,11 +1414,11 @@ export default function SOQLGeneratorPage() {
   );
   const isTS = selectedTemplate === "1";
   const isSA = selectedTemplate === "2";
-  const isAssetTransfer = selectedTemplate === "3" || (activeTemplate?.name?.toLowerCase()?.includes("transfer") ?? false) || (activeTemplate?.type === "asset-transfer");
+  const isAssetTransfer = selectedTemplate === "3" || (activeTemplate?.source !== "library" && (activeTemplate?.name?.toLowerCase()?.includes("transfer") ?? false)) || (activeTemplate?.type === "asset-transfer");
   const isChildDetailsToParent =
     selectedTemplate === "15" || activeTemplate?.type === "child-details-to-parent";
   const isCaseAssign = selectedTemplate === "4";
-  const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19" || (activeTemplate?.name?.toLowerCase()?.includes("cancellation") ?? false);
+  const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19" || (activeTemplate?.name?.toLowerCase()?.includes("cancellation") ?? false) || (activeTemplate?.name?.toLowerCase()?.includes("cancel") ?? false);
 
   const refreshCaseOwners = React.useCallback(async () => {
     setCaseOwnerLoadState("loading");
@@ -1608,6 +1619,15 @@ export default function SOQLGeneratorPage() {
 
   const caseAssignmentRows = React.useMemo(() => buildCaseAssignmentRows(parsedCaseIds), [parsedCaseIds]);
 
+  React.useEffect(() => {
+    if (autoRunPending && ticketsInput && caseAssignmentRows.length > 0) {
+      setAutoRunPending(false);
+      // Wait a tick for React to fully commit state before triggering assignment 
+      setTimeout(() => handleRunCaseAssignment(), 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRunPending, ticketsInput, caseAssignmentRows]);
+
   const selectedOwnerObjects = React.useMemo(
     () => activeCaseOwners.filter((owner) => selectedOwnerIds.includes(owner.ownerId)),
     [activeCaseOwners, selectedOwnerIds]
@@ -1653,13 +1673,18 @@ export default function SOQLGeneratorPage() {
   const otherPreview = React.useMemo(() => buildPreviewBatches(selectedTemplate), [buildPreviewBatches, selectedTemplate]);
   const cancellationQueryBatches = React.useMemo(() => {
     if (parsedTickets.length === 0) {
+      if (!activeTemplate?.soql?.includes("{{tickets}}") && activeTemplate?.soql) {
+        return [activeTemplate.soql];
+      }
       return [];
     }
 
+    const templateSoql = activeTemplate?.soql || CANCELLATION_QUERY_TEMPLATE;
+
     return chunkArray(parsedTickets, CANCELLATION_BATCH_SIZE).map((tickets) =>
-      CANCELLATION_QUERY_TEMPLATE.replace("{{tickets}}", formatTicketsForSOQL(tickets))
+      templateSoql.replace("{{tickets}}", formatTicketsForSOQL(tickets))
     );
-  }, [formatTicketsForSOQL, parsedTickets]);
+  }, [formatTicketsForSOQL, parsedTickets, activeTemplate]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
@@ -1985,6 +2010,139 @@ export default function SOQLGeneratorPage() {
 
   const handleCancellationResultInputChange = (value: string) => {
     setCancellationExecutionInput(value);
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  };
+
+  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current += 1;
+    if (dragCounterRef.current === 1) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragging(false);
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    let file: File | null = null;
+    
+    if ("dataTransfer" in event) {
+      event.preventDefault();
+      if (event.dataTransfer.items) {
+        const item = event.dataTransfer.items[0];
+        if (item?.kind === "file") file = item.getAsFile();
+      } else {
+        file = event.dataTransfer.files[0] ?? null;
+      }
+    } else {
+      file = (event.target as HTMLInputElement).files?.[0] ?? null;
+    }
+
+    if (!file) return;
+
+    if (file.size === 0) {
+      toast.error("The uploaded file is empty.");
+      setUploadState("error");
+      return;
+    }
+
+    const name = file.name.toLowerCase();
+    if (!name.endsWith(".csv") && !name.endsWith(".txt") && !name.endsWith(".xlsx") && !name.endsWith(".xls") && !name.endsWith(".tsv")) {
+      toast.error("Unsupported file type. Please upload CSV, XLSX, XLS, or TXT.");
+      setUploadState("error");
+      return;
+    }
+
+    setUploadState("reading");
+    
+    try {
+      const buffer = await file.arrayBuffer();
+      let textContent = "";
+
+      if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+        const workbook = xlsx.read(buffer, { type: "array" });
+        workbook.SheetNames.forEach(sheetName => {
+          const sheet = workbook.Sheets[sheetName];
+          if (sheet) {
+            textContent += xlsx.utils.sheet_to_csv(sheet) + "\n";
+          }
+        });
+      } else {
+        textContent = await file.text();
+      }
+
+      setUploadState("scanning");
+      // Use existing parseCaseIds logic
+      const extractedIds = parseCaseIds(textContent);
+      const scannedLines = textContent.split(/\r\n|\n|\r/).length;
+      
+      if (extractedIds.length === 0) {
+        toast.error("No valid Salesforce Case IDs were detected. Other text/data was ignored.");
+        setUploadState("error");
+        return;
+      }
+
+      setUploadState("validating");
+      
+      const validCases: string[] = [];
+      const missingCaseIds: string[] = [];
+      
+      for (let i = 0; i < extractedIds.length; i += 400) {
+        const batch = extractedIds.slice(i, i + 400);
+        try {
+          const res = await requestJson<{ valid: string[], missing: string[] }>("/api/cases/validate", {
+            method: "POST",
+            body: JSON.stringify({ caseIds: batch }),
+          });
+          
+          if (res.valid) validCases.push(...res.valid);
+          if (res.missing) missingCaseIds.push(...res.missing);
+        } catch (e) {
+          toast.error("Unable to validate Case records. Please try again.");
+          setUploadState("error");
+          return;
+        }
+      }
+      
+      if (validCases.length === 0) {
+        toast.error("No matching Salesforce Case records were found.");
+        setUploadState("error");
+        setMissingCases(missingCaseIds);
+        return;
+      }
+      
+      setTicketsInput(validCases.join("\n"));
+      setMissingCases(missingCaseIds);
+      setUploadSummary({
+        file: file.name,
+        scannedLines, 
+        total: extractedIds.length,
+        unique: validCases.length + missingCaseIds.length,
+        valid: validCases.length,
+        missing: missingCaseIds.length,
+      });
+      
+      setUploadState("success");
+      setAutoRunPending(true);
+      
+    } catch (e) {
+      toast.error("Unable to read this file.");
+      setUploadState("error");
+    }
   };
 
   const handleRunCaseAssignment = () => {
@@ -2471,14 +2629,16 @@ export default function SOQLGeneratorPage() {
       return;
     }
 
-    if (parsedTickets.length === 0) {
+    const needsTickets = activeTemplate?.soql?.includes("{{tickets}}");
+    if (needsTickets && parsedTickets.length === 0) {
       toast.error("Paste at least one ticket number");
       return;
     }
 
     setGeneratedAtLeastOnce(true);
     const templateName = activeTemplate?.name ?? "Unknown";
-    dashboardStore.recordSOQL(templateName, parsedTickets.length);
+    const usageCount = parsedTickets.length || 1;
+    dashboardStore.recordSOQL(templateName, usageCount);
 
     trackDashboardEvent({
       metricKey: "soql_generated",
@@ -2486,7 +2646,7 @@ export default function SOQLGeneratorPage() {
       event: {
         type: "soql-generated",
         label: `SOQL generated · ${templateName}`,
-        meta: `${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`,
+        meta: `${usageCount} ticket${usageCount === 1 ? "" : "s"}`,
         module: "soql-generator",
       },
     });
@@ -2505,7 +2665,7 @@ export default function SOQLGeneratorPage() {
     }
 
     toast.success(
-      `Generated SOQL for ${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`
+      `Generated SOQL for ${usageCount} ticket${usageCount === 1 ? "" : "s"}`
     );
   };
 
@@ -2524,11 +2684,23 @@ export default function SOQLGeneratorPage() {
     { label: "Rows Returned", value: childDetailsVisibleResult?.sourceRows ?? 0, tone: "slate" },
     { label: "Rows Generated", value: childDetailsTransformResult?.generatedRows ?? 0, tone: "emerald" },
     { label: "Duplicate Rows", value: childDetailsVisibleResult?.duplicateRows ?? 0, tone: "amber" },
-    { label: "Missing Components", value: childDetailsVisibleResult?.missingComponentIds.length ?? 0, tone: "rose" },
-    { label: "Missing Parent Account", value: childDetailsMissingParentAccountCount, tone: "rose" },
     { label: "Invalid IDs", value: childDetailsInvalidIdCount, tone: "rose" },
     { label: "Unexpected Rows", value: childDetailsVisibleResult?.unexpectedComponentRows ?? 0, tone: "amber" },
   ];
+
+  const liveStore = useDashboardStore();
+
+  // Chart Data for SOQL Generator
+  const soqlTrendData = React.useMemo(() => [
+    { time: "09:00", queries: 12 },
+    { time: "10:00", queries: 45 },
+    { time: "11:00", queries: 78 },
+    { time: "12:00", queries: 54 },
+    { time: "13:00", queries: 89 },
+    { time: "14:00", queries: 112 },
+    { time: "15:00", queries: 93 },
+    { time: "16:00", queries: 130 + (liveStore.soqlGeneratedCount || 0) },
+  ], [liveStore.soqlGeneratedCount]);
 
   return (
     <div className="workspace-page mx-auto w-full max-w-7xl space-y-6 pb-14 p-4 sm:p-6 lg:space-y-8 lg:p-8">
@@ -2564,7 +2736,7 @@ export default function SOQLGeneratorPage() {
               </p>
             </div>
           </div>
-          <div className="flex w-full flex-wrap items-center gap-3 self-start 2xl:w-auto 2xl:self-center">
+          <div className="flex w-full flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 self-start 2xl:w-auto 2xl:self-center">
             <Button variant="outline" onClick={handleClear} className="gap-2 h-12 px-6 rounded-xl border-slate-200 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-slate-600 font-bold transition-all backdrop-blur-sm bg-white/55 shadow-inner dark:border-slate-600 dark:text-slate-300 dark:bg-slate-800/50 dark:hover:text-red-400">
               <Trash2 className="h-4.5 w-4.5" /> Clear All
             </Button>
@@ -2608,12 +2780,12 @@ export default function SOQLGeneratorPage() {
         </motion.div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-12">
+      <div className="grid gap-6 grid-cols-1 xl:grid-cols-12 lg:gap-8">
         <motion.div
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.25 }}
-          className="2xl:col-span-3 xl:col-span-4 lg:col-span-5 md:col-span-12 space-y-4"
+          className="2xl:col-span-3 xl:col-span-4 space-y-4 min-w-0"
         >
           <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden group">
             <CardHeader className="pb-4 bg-transparent relative z-10 p-6">
@@ -2738,76 +2910,151 @@ export default function SOQLGeneratorPage() {
             </Card>
           )}
 
+
+
           {!isAssetTransfer && !isChildDetailsToParent && (
             <Card className="flex flex-col rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden">
               <CardHeader className="pb-4 bg-transparent p-6 relative">
-                <div className="flex items-center gap-3 flex-wrap relative z-10">
-                  <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white shadow-inner">1</span>
-                    Step 1
-                  </Badge>
-                  <CardTitle className="text-base font-black tracking-tight">
-                    {isCancellation ? "Paste Cancellation Tickets" : isCaseAssign ? "Paste Case IDs" : "Paste Ticket Numbers"}
+                <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2">
+                  {!isCaseAssign && (
+                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white shadow-inner">1</span>
+                      Step 1
+                    </Badge>
+                  )}
+                  <CardTitle className="text-base font-black tracking-tight flex-1">
+                    {isCancellation ? "Paste Cancellation Tickets" : isCaseAssign ? "Upload or Paste Case IDs" : "Paste Ticket Numbers"}
                   </CardTitle>
                 </div>
               </CardHeader>
 
               <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
-                <div className="flex-1 flex flex-col space-y-2">
-                  <Textarea
-                    placeholder={
-                      isCaseAssign
-                        ? `Paste Case IDs here...\n1\n500Ny00001RnGoS\n2\n500Ny00001RnTVV`
-                        : `Paste ticket numbers here...\nA26060134750678\nA26060134750476\nA26060134750619`
-                    }
-                    className="flex-1 min-h-[320px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y"
-                    value={ticketsInput}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setTicketsInput(value);
-                      setGeneratedAtLeastOnce(false);
-                      if (selectedTemplate !== "1" && value.trim()) {
-                        savedTicketsRef.current = "";
-                      }
-                    }}
-                  />
-                  <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
-                    {isCaseAssign
-                      ? "Paste raw text, spreadsheet rows, or CSV. Only valid 15- or 18-character Case IDs beginning with 500 are extracted; serial numbers, duplicates, and malformed IDs are ignored. All generated rows use Open status."
-                      : `Supports spaces, commas, tabs, or newlines. Values are automatically chunked into ${inputBatchSize}-value batches for Salesforce-safe SOQL.`}
-                  </p>
-                </div>
+                {isCaseAssign && (
+                  <div className="flex flex-col space-y-4">
+                    <div 
+                      onDragOver={handleDragOver}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleFileUpload}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 min-h-[200px] text-center transition-all duration-200 overflow-hidden w-full mx-auto",
+                        uploadState === "reading" || uploadState === "scanning" || uploadState === "validating" 
+                          ? "border-blue-400/50 bg-blue-50/50 dark:bg-blue-900/10" 
+                          : isDragging 
+                            ? "border-[#0176d3] bg-[#0176d3]/10 scale-[1.02] shadow-sm"
+                            : "border-slate-300 dark:border-slate-700 hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                      )}
+                    >
+                      {/* Transparent overlay when dragging to prevent flickering from child drag events */}
+                      {isDragging && <div className="absolute inset-0 z-50 pointer-events-none" />}
+                      
+                      {uploadState === "reading" || uploadState === "scanning" || uploadState === "validating" ? (
+                        <div className="flex flex-col items-center z-10 pointer-events-none">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 mb-3 animate-pulse">
+                            <RotateCcw className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                          </div>
+                          <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                            {uploadState === "reading" ? "Reading file..." : uploadState === "scanning" ? "Scanning for Case IDs..." : "Validating Cases..."}
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={cn(
+                            "flex h-12 w-12 items-center justify-center rounded-full mb-4 shadow-sm z-10 transition-colors pointer-events-none",
+                            isDragging 
+                              ? "bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-300 dark:ring-blue-700" 
+                              : "bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700"
+                          )}>
+                            <Upload className={cn("h-6 w-6 transition-colors", isDragging ? "text-blue-600 dark:text-blue-400" : "text-slate-500")} />
+                          </div>
+                          <p className={cn("text-base font-black z-10 transition-colors pointer-events-none", isDragging ? "text-blue-600 dark:text-blue-400" : "text-foreground")}>
+                            {isDragging ? "Drop your file here!" : "Drag & Drop your Case ID report here"}
+                          </p>
+                          <p className="text-xs text-slate-500 font-medium mt-1 mb-5 z-10 pointer-events-none">Supports CSV, XLSX, XLS, TXT</p>
+                          <div className="z-10">
+                            <input type="file" id="case-upload" className="sr-only" onChange={handleFileUpload} accept=".csv,.txt,.xlsx,.xls,.tsv" />
+                            <label htmlFor="case-upload" className="cursor-pointer inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-900 px-4 py-2 text-sm font-bold shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                              Browse File
+                            </label>
+                          </div>
+                        </>
+                      )}
+                    </div>
 
-                <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                  <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                    {parsedTickets.length === 0
-                      ? isCaseAssign
-                        ? "No case ids"
-                        : "No tickets"
-                      : `${parsedTickets.length} ${isCaseAssign ? "case id" : "ticket"}${parsedTickets.length === 1 ? "" : "s"}`}
-                  </Badge>
-                  {isCaseAssign ? (
-                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                      Open by default
-                    </Badge>
-                  ) : (
-                    <>
+                    {uploadSummary && uploadState === "success" && (
+                      <div className="rounded-xl border border-emerald-200/50 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-900/10 p-4">
+                        <div className="flex items-center gap-2 mb-3 border-b border-emerald-100 dark:border-emerald-800/30 pb-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Upload Complete</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">File</span><span className="font-bold truncate max-w-[120px]" title={uploadSummary.file}>{uploadSummary.file}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Records Scanned</span><span className="font-bold">{uploadSummary.scannedLines.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Case IDs Detected</span><span className="font-bold">{uploadSummary.total.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Unique Case IDs</span><span className="font-bold">{uploadSummary.unique.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-emerald-600 dark:text-emerald-400 font-bold">Valid Cases</span><span className="font-bold text-emerald-600 dark:text-emerald-400">{uploadSummary.valid.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-rose-500 font-bold">Not Found</span><span className="font-bold text-rose-500">{uploadSummary.missing.toLocaleString()}</span></div>
+                        </div>
+                        {missingCases.length > 0 && (
+                          <div className="mt-4 pt-3 border-t border-emerald-100 dark:border-emerald-800/30">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{missingCases.length} Cases Not Found</span>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-600 hover:text-rose-700 hover:bg-rose-100/50" onClick={() => handleCopy(missingCases.join("\n"))}>
+                                <Copy className="h-3 w-3 mr-1" /> Copy Missing
+                              </Button>
+                            </div>
+                            <div className="max-h-24 overflow-y-auto rounded bg-white/60 dark:bg-black/20 p-2 text-[10px] font-mono text-slate-600 dark:text-slate-400">
+                              {missingCases.slice(0, 50).join("\n")}
+                              {missingCases.length > 50 && `\n...and ${missingCases.length - 50} more`}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!isCaseAssign && (
+                  <>
+                    <div className="flex-1 flex flex-col space-y-2">
+                      <Textarea
+                        placeholder={`Paste ticket numbers here...\nA26060134750678\nA26060134750476\nA26060134750619`}
+                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y min-h-[320px]"
+                        value={ticketsInput}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setTicketsInput(value);
+                          setGeneratedAtLeastOnce(false);
+                          if (selectedTemplate !== "1" && value.trim()) {
+                            savedTicketsRef.current = "";
+                          }
+                        }}
+                      />
+                      <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
+                        Supports spaces, commas, tabs, or newlines. Values are automatically chunked into {inputBatchSize}-value batches for Salesforce-safe SOQL.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                        {parsedTickets.length === 0 ? "No tickets" : `${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`}
+                      </Badge>
                       <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
                         {inputBatchCount === 0 ? "0 batches" : `${inputBatchCount} batch${inputBatchCount === 1 ? "" : "es"}`}
                       </Badge>
                       <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
                         Max {inputBatchSize} / block
                       </Badge>
-                    </>
-                  )}
-                  <div className="flex-1" />
-                  <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
-                    <Trash2 className="h-4 w-4" /> Clear
-                  </Button>
-                  <Button onClick={triggerGenerate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold gap-2 h-10 px-5 rounded-xl text-xs shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
-                    {isCaseAssign ? <CheckCircle2 className="h-4 w-4" /> : <PlayCircle className="h-4 w-4 fill-white/20" />} {isCaseAssign ? "Generate Assignment" : "Generate"}
-                  </Button>
-                </div>
+                      <div className="flex-1" />
+                      <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
+                        <Trash2 className="h-4 w-4" /> Clear
+                      </Button>
+                      <Button onClick={triggerGenerate} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold gap-2 h-10 px-5 rounded-xl text-xs shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5">
+                        <PlayCircle className="h-4 w-4 fill-white/20" /> Generate
+                      </Button>
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           )}
@@ -2860,7 +3107,7 @@ export default function SOQLGeneratorPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.25 }}
-          className="2xl:col-span-9 xl:col-span-8 lg:col-span-7 md:col-span-12 grid grid-cols-1 2xl:grid-cols-2 gap-6"
+          className="2xl:col-span-9 xl:col-span-8 grid grid-cols-1 2xl:grid-cols-2 gap-6 min-w-0"
         >
           {isTS && (
             <>
@@ -2953,7 +3200,7 @@ export default function SOQLGeneratorPage() {
           {isChildDetailsToParent && (
             <div className="xl:col-span-2 space-y-3">
               <div className="rounded-2xl border border-slate-200/50 bg-white/45 p-2.5 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {[
                     { step: "1", label: "Component IDs", active: childDetailsComponentIds.length > 0 },
                     { step: "2", label: "Salesforce Result", active: childDetailsSOQLResult.trim().length > 0 },
@@ -2989,7 +3236,7 @@ export default function SOQLGeneratorPage() {
                       onChange={(event) => setChildDetailsComponentInput(event.target.value)}
                     />
 
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {childDetailsInputStats.map((item) => (
                         <div key={item.label} className={cn("rounded-xl border px-2 py-2 shadow-inner", item.tone === "blue" && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-300", item.tone === "amber" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300", item.tone === "rose" && "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300", item.tone === "emerald" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300")}>
                           <div className="text-base font-black tabular-nums leading-none">{item.value}</div>
@@ -3049,7 +3296,7 @@ export default function SOQLGeneratorPage() {
                       onChange={(event) => setChildDetailsSOQLResult(event.target.value)}
                     />
 
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {[
                         { label: "Rows", value: childDetailsVisibleResult?.sourceRows ?? 0 },
                         { label: "Ready", value: childDetailsVisibleResult?.generatedRows ?? 0 },
@@ -3134,7 +3381,7 @@ export default function SOQLGeneratorPage() {
                       </div>
                     )}
 
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {childDetailsSummaryStats.map((item) => (
                         <div key={item.label} className={cn("rounded-xl border px-2 py-2 shadow-inner", item.tone === "blue" && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-300", item.tone === "slate" && "border-slate-200/70 bg-slate-50/70 text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/50 dark:text-slate-300", item.tone === "emerald" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300", item.tone === "amber" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300", item.tone === "rose" && "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300")}>
                           <div className="text-sm font-black leading-none tabular-nums">{item.value}</div>
@@ -3496,18 +3743,18 @@ export default function SOQLGeneratorPage() {
           )}
 
           {isCaseAssign && (
-            <div className="xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
+            <div className="col-span-1 2xl:col-span-2 xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
               {/* === LEFT WORKBENCH COLUMN === */}
               <div className="space-y-4 flex flex-col">
                 {/* Assignment Mode & Quick Execute Control Box */}
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
                   <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
                           <CheckCircle2 className="h-4.5 w-4.5" />
                         </div>
-                        <CardTitle className="text-sm font-black tracking-tight text-foreground">Assignment Mode &amp; Execution</CardTitle>
+                        <CardTitle className="text-sm font-black tracking-tight text-foreground flex-1">Assignment Mode &amp; Execution</CardTitle>
                       </div>
                       <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 shadow-sm">Randomized</span>
                     </div>
@@ -3628,11 +3875,52 @@ export default function SOQLGeneratorPage() {
                       <Button size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs gap-2 h-10 px-5 flex-1 shadow-md shadow-purple-500/20 rounded-xl transition-all hover:-translate-y-0.5" onClick={handleRunCaseAssignment}>
                         <CheckCircle2 className="h-4.5 w-4.5" /> Generate Assignment
                       </Button>
-                      <Button variant="outline" size="sm" className="h-10 px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput} title="Copy result">
-                        <Copy className="h-4 w-4 text-slate-400" /> Copy
+                      <Button variant="outline" size="sm" className="h-10 px-3 sm:px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput} title="Copy result">
+                        <Copy className="h-4 w-4 text-slate-400" /> <span className="hidden sm:inline">Copy</span>
                       </Button>
-                      <Button variant="outline" size="sm" className="h-10 px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput} title="Download CSV">
-                        <Download className="h-4 w-4 text-slate-400" /> CSV
+                      <Button variant="outline" size="sm" className="h-10 px-3 sm:px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput} title="Download CSV">
+                        <Download className="h-4 w-4 text-slate-400" /> <span className="hidden sm:inline">CSV</span>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* 2. Paste Manually (Case Assign Mode) */}
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+                        <Terminal className="h-4.5 w-4.5" />
+                      </div>
+                      <CardTitle className="text-sm font-black tracking-tight text-foreground flex-1">Or Paste Manually</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-5 pt-0 space-y-4 relative z-10 flex-1 flex flex-col min-h-[220px]">
+                    <div className="flex-1 flex flex-col space-y-2 h-full">
+                      <Textarea
+                        placeholder={`Paste Case IDs here...\n1\n500Ny00001RnGoS\n2\n500Ny00001RnTVV`}
+                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y min-h-[140px]"
+                        value={ticketsInput}
+                        onChange={(event) => {
+                          setTicketsInput(event.target.value);
+                          setGeneratedAtLeastOnce(false);
+                        }}
+                      />
+                      <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-[11px] font-medium leading-relaxed text-muted-foreground">
+                        Paste raw text, spreadsheet rows, or CSV. Only valid 15- or 18-character Case IDs beginning with 500 are extracted.
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                        {parsedCaseIds.length === 0 ? "No case ids" : `${parsedCaseIds.length} case id${parsedCaseIds.length === 1 ? "" : "s"}`}
+                      </Badge>
+                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                        Open by default
+                      </Badge>
+                      <div className="flex-1" />
+                      <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
+                        <Trash2 className="h-4 w-4" /> Clear
                       </Button>
                     </div>
                   </CardContent>
@@ -3698,28 +3986,28 @@ export default function SOQLGeneratorPage() {
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col flex-1 transition-all duration-300 relative group">
                   <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
                           <Users className="h-4.5 w-4.5" />
                         </div>
-                        <CardTitle className="text-sm font-black tracking-tight text-foreground">Owner Master Roster ({caseOwners.length})</CardTitle>
+                        <CardTitle className="text-sm font-black tracking-tight text-foreground flex-1">Owner Master Roster ({caseOwners.length})</CardTitle>
                       </div>
-                      <div className="flex items-center gap-1.5 bg-slate-50/50 dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
-                        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-[11px] gap-1.5 font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 rounded-lg transition-colors" onClick={refreshCaseOwners} disabled={caseOwnerAction !== null} title="Refresh DB">
-                          <RotateCcw className="h-3 w-3" /> Refresh
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 bg-slate-50/50 dark:bg-slate-900/50 p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-inner shrink-0">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 gap-0 font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 rounded-lg transition-colors" onClick={refreshCaseOwners} disabled={caseOwnerAction !== null} title="Refresh DB">
+                          <RotateCcw className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-[11px] gap-1.5 font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 rounded-lg transition-colors" onClick={handleExportOwners} title="Export JSON">
-                          <Download className="h-3 w-3" /> Export
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 gap-0 font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 rounded-lg transition-colors" onClick={handleExportOwners} title="Export JSON">
+                          <Download className="h-3.5 w-3.5" />
                         </Button>
-                        <label className="inline-flex">
+                        <label className="inline-flex cursor-pointer group">
                           <input type="file" accept="application/json" className="hidden" onChange={handleImportOwners} disabled={caseOwnerAction !== null} />
-                          <span className="inline-flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-bold text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 rounded-lg cursor-pointer transition-colors">
-                            <Upload className="h-3 w-3" /> Import
+                          <span className="flex items-center justify-center h-7 w-7 text-slate-500 group-hover:text-blue-600 group-hover:bg-blue-500/10 rounded-lg transition-colors" title="Import JSON">
+                            <Upload className="h-3.5 w-3.5" />
                           </span>
                         </label>
-                        <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
-                        <Button variant="ghost" size="sm" className="h-7 px-2.5 text-[11px] gap-1.5 font-bold text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors" onClick={handleResetOwners} disabled={caseOwnerAction !== null} title="Reset default roster">
-                          <RotateCcw className="h-3 w-3" /> Reset
+                        <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-0.5" />
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 gap-0 font-bold text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors" onClick={handleResetOwners} disabled={caseOwnerAction !== null} title="Reset default roster">
+                          <RotateCcw className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
@@ -3727,7 +4015,7 @@ export default function SOQLGeneratorPage() {
 
                   <CardContent className="p-5 space-y-4 relative z-10">
                     {/* Compact Add/Update Bar */}
-                    <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
+                    <div className="flex flex-col sm:grid sm:grid-cols-[1fr_1fr_auto_auto] gap-2">
                       <input
                         type="text"
                         placeholder="Employee name..."

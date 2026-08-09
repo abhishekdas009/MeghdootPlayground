@@ -167,12 +167,22 @@ export function Sidebar() {
         )}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <Avatar className="h-8 w-8 shrink-0 ring-2 ring-[#0176d3]/30">
-            <AvatarImage src="" alt="Salesforce Team" />
-            <AvatarFallback className="bg-gradient-to-br from-[#0176d3] to-blue-600 text-white text-[11px] font-extrabold border-0">
-              ST
-            </AvatarFallback>
-          </Avatar>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-[#0176d3]/30 overflow-hidden">
+            <Image
+              src="/logo%20white.png"
+              alt="Meghdoot Logo"
+              width={32}
+              height={32}
+              className="h-full w-full object-contain dark:hidden"
+            />
+            <Image
+              src="/logo1.png"
+              alt="Meghdoot Logo"
+              width={32}
+              height={32}
+              className="hidden h-full w-full object-contain dark:block"
+            />
+          </div>
           {(!sidebarCollapsed || isMobile) && (
             <div className="min-w-0 flex-1 leading-tight">
               <div className="text-xs font-extrabold text-foreground truncate">Salesforce Team</div>

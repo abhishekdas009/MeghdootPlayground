@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -475,45 +476,77 @@ export default function DashboardPage() {
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-sky-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
 
         <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-700 backdrop-blur-md dark:bg-blue-500/15 dark:text-sky-200">
-              <Sparkles className="h-4 w-4" />
-              <span>Welcome back, Commander</span>
+          <div className="space-y-6 lg:w-2/3">
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-700 backdrop-blur-md dark:bg-blue-500/15 dark:text-sky-200">
+                <Sparkles className="h-4 w-4" />
+                <span>Welcome back, Commander</span>
+              </div>
+              <h1 className="text-4xl font-black tracking-tight text-slate-950 dark:text-white lg:text-5xl">
+                Command <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">Center</span>
+              </h1>
+              <p className="max-w-xl text-lg font-medium text-slate-600 dark:text-slate-300">
+                Your centralized hub for automation metrics, system health, and quick actions.
+              </p>
             </div>
-            <h1 className="text-4xl font-black tracking-tight text-slate-950 dark:text-white lg:text-5xl">
-              Command <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">Center</span>
-            </h1>
-            <p className="max-w-xl text-lg font-medium text-slate-600 dark:text-slate-300">
-              Your centralized hub for automation metrics, system health, and quick actions.
-            </p>
+            
+            <div className="flex flex-wrap items-center gap-3">
+              <LiveIndicator isLive={isLive} />
+              <span
+                className="hidden rounded-full border border-blue-300/30 bg-white/55 px-3 py-1.5 text-sm font-medium text-slate-600 backdrop-blur-sm dark:border-blue-300/15 dark:bg-slate-900/50 dark:text-slate-300 sm:inline"
+                title={mounted ? formatExactTime(lastRefreshed.toISOString()) : undefined}
+                suppressHydrationWarning
+              >
+                Updated: {mounted ? formatRelativeTime(lastRefreshed.toISOString()) : "just now"}
+              </span>
+              <Button
+                variant="outline"
+                className="h-10 gap-2 rounded-xl border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 transition-all font-bold"
+                onClick={handleReset}
+                disabled={isResetting}
+              >
+                <RotateCcw className={cn("h-4 w-4", isResetting && "animate-spin")} />
+                Reset
+              </Button>
+              <Button
+                variant="primary"
+                className="h-10 gap-2 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500 font-bold"
+                onClick={handleRefresh}
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                Refresh
+              </Button>
+            </div>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3">
-            <LiveIndicator isLive={isLive} />
-            <span
-              className="hidden rounded-full border border-blue-300/30 bg-white/55 px-3 py-1.5 text-sm font-medium text-slate-600 backdrop-blur-sm dark:border-blue-300/15 dark:bg-slate-900/50 dark:text-slate-300 sm:inline"
-              title={mounted ? formatExactTime(lastRefreshed.toISOString()) : undefined}
-              suppressHydrationWarning
-            >
-              Updated: {mounted ? formatRelativeTime(lastRefreshed.toISOString()) : "just now"}
-            </span>
-            <Button
-              variant="outline"
-              className="h-10 gap-2 rounded-xl border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 transition-all font-bold"
-              onClick={handleReset}
-              disabled={isResetting}
-            >
-              <RotateCcw className={cn("h-4 w-4", isResetting && "animate-spin")} />
-              Reset
-            </Button>
-            <Button
-              variant="primary"
-              className="h-10 gap-2 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500 font-bold"
-              onClick={handleRefresh}
-            >
-              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-              Refresh
-            </Button>
+          <div className="hidden lg:flex relative lg:w-1/3 h-full min-h-[220px] pointer-events-auto items-center justify-end pr-10 group cursor-pointer">
+            <div className="relative w-[320px] h-[200px]">
+              {/* Card 1 (Bottom, Portrait) */}
+              <a href="https://drive.google.com/file/d/1h5JcEitXxFsXPWN5_kDkbhsKNhKyFBHB/view" target="_blank" rel="noopener noreferrer" 
+                 className="absolute left-6 top-0 z-10 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-bottom-left group-hover:-rotate-12 group-hover:-translate-x-12 group-hover:scale-105 hover:!z-30 shadow-[0_10px_30px_rgba(0,10,40,0.2)] dark:shadow-black/60 hover:shadow-[0_20px_50px_rgba(1,118,211,0.4)] rounded-xl">
+                <div className="relative rounded-xl overflow-hidden w-[170px] h-[230px] group/item bg-white/5 dark:bg-black/20">
+                  <Image src="/soql-sheet-portrait.jpg" alt="SOQL Queries Sheet" fill sizes="170px" className="object-cover" />
+                  <div className="absolute inset-0 bg-blue-900/0 group-hover/item:bg-blue-900/10 dark:group-hover/item:bg-black/20 backdrop-blur-[0px] group-hover/item:backdrop-blur-[2px] transition-all duration-300 flex items-center justify-center">
+                    <span className="opacity-0 group-hover/item:opacity-100 text-white font-black tracking-widest text-[11px] bg-blue-600/90 px-4 py-2 rounded-full shadow-lg transform translate-y-4 group-hover/item:translate-y-0 transition-all duration-300">VIEW</span>
+                  </div>
+                </div>
+              </a>
+              
+              {/* Card 2 (Top, Landscape) */}
+              <a href="https://drive.google.com/file/d/1mvatxSx3Y29qkzJVmflv5PvPzb2eOuai/view" target="_blank" rel="noopener noreferrer" 
+                 className="absolute right-0 top-10 z-20 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] origin-bottom-right group-hover:rotate-6 group-hover:translate-x-8 group-hover:scale-105 hover:!z-30 shadow-[0_15px_40px_rgba(0,10,40,0.25)] dark:shadow-black/80 hover:shadow-[0_20px_50px_rgba(1,118,211,0.4)] rounded-xl">
+                <div className="relative rounded-xl overflow-hidden w-[260px] h-[155px] group/item bg-white/5 dark:bg-black/20">
+                  <Image src="/soql-sheet-landscape.jpg" alt="Salesforce Inspector" fill sizes="260px" className="object-cover" />
+                  <div className="absolute inset-0 bg-blue-900/0 group-hover/item:bg-blue-900/10 dark:group-hover/item:bg-black/20 backdrop-blur-[0px] group-hover/item:backdrop-blur-[2px] transition-all duration-300 flex items-center justify-center">
+                    <span className="opacity-0 group-hover/item:opacity-100 text-white font-black tracking-widest text-[11px] bg-blue-600/90 px-4 py-2 rounded-full shadow-lg transform translate-y-4 group-hover/item:translate-y-0 transition-all duration-300">VIEW</span>
+                  </div>
+                </div>
+              </a>
+            </div>
+            
+            <div className="absolute bottom-[-10px] right-24 opacity-0 group-hover:opacity-100 transition-all duration-500 delay-100 transform translate-y-2 group-hover:translate-y-0">
+               <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Cheat Sheets</span>
+            </div>
           </div>
         </div>
       </motion.div>

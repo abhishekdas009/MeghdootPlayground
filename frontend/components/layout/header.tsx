@@ -3,7 +3,8 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, Command, Menu } from "lucide-react";
+import { Search, Command, Menu, Sun, Moon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
@@ -79,45 +80,72 @@ export function Header() {
 
           {/* Logo + Brand */}
           <div
-            className="flex items-center gap-2.5 cursor-pointer transition-opacity hover:opacity-80"
+            className="group relative flex items-center h-12 cursor-pointer"
             onClick={() => router.push("/")}
             role="button"
             tabIndex={0}
           >
-            <Image
-              src="/logo%20white.png"
-              alt="Meghdoot Logo"
-              width={42}
-              height={42}
-              className="shrink-0 rounded-xl shadow-sm dark:hidden"
-              priority
-            />
-            <Image
-              src="/logo1.png"
-              alt="Meghdoot Logo"
-              width={42}
-              height={42}
-              className="hidden shrink-0 rounded-xl shadow-sm dark:block"
-              priority
-            />
-            <div className="flex flex-col leading-none">
-              <span className="text-lg font-extrabold tracking-tight text-foreground">
-                Meghdoot
+            {/* Default State */}
+            <div className="flex items-center gap-2.5 transition-all duration-300 group-hover:opacity-0 group-hover:-translate-y-2 group-hover:pointer-events-none">
+              <Image
+                src="/logo%20white.png"
+                alt="Meghdoot Logo"
+                width={42}
+                height={42}
+                className="shrink-0 rounded-xl shadow-sm dark:hidden"
+                priority
+              />
+              <Image
+                src="/logo1.png"
+                alt="Meghdoot Logo"
+                width={42}
+                height={42}
+                className="hidden shrink-0 rounded-xl shadow-sm dark:block"
+                priority
+              />
+              <div className="flex flex-col leading-none pr-4">
+                <span className="text-lg font-extrabold tracking-tight text-foreground">
+                  Meghdoot
+                </span>
+                <span className="hidden sm:inline text-[11px] font-extrabold tracking-[0.15em] text-muted-foreground/90 uppercase">
+                  Playground
+                </span>
+              </div>
+            </div>
+
+            {/* Hover State */}
+            <div className="absolute inset-y-0 left-0 flex items-center gap-2.5 opacity-0 translate-y-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 pointer-events-none">
+              <span className="text-sm font-extrabold tracking-tight text-muted-foreground italic whitespace-nowrap">
+                Made by
               </span>
-              <span className="hidden sm:inline text-[11px] font-extrabold tracking-[0.15em] text-muted-foreground/90 uppercase">
-                Playground
-              </span>
+              <div className="h-10 w-28 lg:w-36">
+                <Image
+                  src="/signature-black-cropped.png"
+                  alt="Abhishek signature"
+                  width={144}
+                  height={60}
+                  className="h-full w-full object-contain object-left opacity-90 dark:hidden"
+                  priority
+                />
+                <Image
+                  src="/signature-white-cropped.png"
+                  alt="Abhishek signature"
+                  width={144}
+                  height={60}
+                  className="hidden h-full w-full object-contain object-left opacity-100 dark:block"
+                  priority
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Center / Right Section: Global Search Bar and Theme Toggle */}
-        <div className="flex flex-1 items-center justify-end gap-2 md:mx-auto md:max-w-2xl md:justify-center">
-          {/* Desktop Search Bar */}
+        {/* Center Section: Global Search Bar */}
+        <div className="hidden md:flex flex-1 items-center justify-center max-w-2xl px-4">
           <div
             onClick={() => setSearchOpen(true)}
             className={cn(
-              "hidden md:flex relative w-full items-center rounded-xl border transition-all duration-200 cursor-pointer",
+              "relative w-full items-center rounded-xl border transition-all duration-200 cursor-pointer flex",
               searchFocused || searchOpen
                 ? "border-[#0176d3] ring-2 ring-[#0176d3]/15 bg-card shadow-sm"
                 : "border-border/80 bg-muted/30 hover:border-border hover:bg-muted/50"
@@ -148,7 +176,10 @@ export function Header() {
               </kbd>
             </div>
           </div>
+        </div>
 
+        {/* Right Section: Mobile Search, Theme Toggle, Blue Star Logo */}
+        <div className="flex flex-1 md:flex-none items-center justify-end gap-2 shrink-0">
           {/* Mobile Search Trigger Button (Sleek pill so mobile has instant search too!) */}
           <button
             onClick={() => setSearchOpen(true)}
@@ -161,44 +192,53 @@ export function Header() {
           <button
             type="button"
             onClick={toggleTheme}
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-2xs transition-all hover:border-[#0176d3]/40 hover:bg-muted/60 hover:text-[#0176d3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/50"
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-2xs transition-all hover:border-[#0176d3]/40 hover:bg-muted/60 hover:text-[#0176d3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/50 overflow-hidden"
             aria-label={theme === "dark" ? "Enable light theme" : "Enable dark theme"}
             title={theme === "dark" ? "Enable light theme" : "Enable dark theme"}
           >
-            {theme === "dark" ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.773-4.227-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0Z"
-                />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-                className="h-5 w-5"
-                aria-hidden="true"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z"
-                />
-              </svg>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {theme === "dark" ? (
+                <motion.div
+                  key="dark"
+                  initial={{ y: -20, opacity: 0, rotate: -90 }}
+                  animate={{ y: 0, opacity: 1, rotate: 0 }}
+                  exit={{ y: 20, opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <Sun className="h-4.5 w-4.5" />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="light"
+                  initial={{ y: -20, opacity: 0, rotate: -90 }}
+                  animate={{ y: 0, opacity: 1, rotate: 0 }}
+                  exit={{ y: 20, opacity: 0, rotate: 90 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <Moon className="h-4.5 w-4.5" />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </button>
+
+          {/* Blue Star Logo */}
+          <a 
+            href="https://www.bluestarindia.com/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="h-8 md:h-10 w-24 md:w-32 border-l border-border/60 pl-2 md:pl-3 ml-1 md:ml-2 flex items-center shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
+          >
+            <Image
+              src="/Blue%20Star%20Logo%20PNG.png"
+              alt="Blue Star Logo"
+              width={128}
+              height={40}
+              className="h-full w-full object-contain object-right"
+              priority
+            />
+          </a>
         </div>
       </div>
 
