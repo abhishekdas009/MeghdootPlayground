@@ -41,6 +41,9 @@ import {
   Check,
   Activity,
   ArrowRight,
+  RefreshCw,
+  History,
+  BarChart3,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -102,6 +105,11 @@ interface CaseAssignmentResult {
   unassignedCaseIds: string[];
   ownerCount: number;
   casesPerOwner: number;
+  remainder?: number;
+  extraOwners?: CaseOwner[];
+  startOwner?: CaseOwner;
+  nextStartOwner?: CaseOwner;
+  nextPointer?: number;
 }
 
 interface CaseOwner {
@@ -111,6 +119,21 @@ interface CaseOwner {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+interface RoundRobinHistoryEntry {
+  batchId: number;
+  totalCases: number;
+  baseCases: number;
+  extraCases: number;
+  extraOwners: CaseOwner[];
+  startOwner: CaseOwner | null;
+  nextStartOwner: CaseOwner | null;
+  timestamp: string;
+}
+
+interface CumulativeLoadMap {
+  [ownerId: string]: { total: number; extra: number };
 }
 
 interface QuantityOwnerConfig {
@@ -912,25 +935,78 @@ function shuffleItems<T>(items: T[]): T[] {
   return shuffled;
 }
 
-function buildBalancedAssignments(rows: CaseAssignmentRow[], owners: CaseOwner[]): CaseAssignmentResult {
+function buildBalancedAssignments(
+  rows: CaseAssignmentRow[],
+  owners: CaseOwner[],
+  roundRobinPointer?: number
+): CaseAssignmentResult {
+  const isRoundRobin = roundRobinPointer !== undefined;
   const shuffledRows = shuffleItems(rows);
-  const shuffledOwners = shuffleItems(owners);
-  const casesPerOwner = owners.length > 0 ? Math.floor(rows.length / owners.length) : 0;
-  const assignedCount = casesPerOwner * owners.length;
-  const assignments: Array<{ row: CaseAssignmentRow; owner: Pick<CaseOwner, "ownerId"> }> = [];
+  const shuffledOwners = isRoundRobin ? owners : shuffleItems(owners);
 
-  for (let index = 0; index < assignedCount; index += 1) {
-    const row = shuffledRows[index];
-    const owner = shuffledOwners[index % shuffledOwners.length];
-    if (row && owner) assignments.push({ row, owner });
+  if (owners.length === 0) {
+    return {
+      output: buildCaseAssignmentOutput([]),
+      assignedCount: 0,
+      unassignedCaseIds: rows.map(r => r.id),
+      ownerCount: 0,
+      casesPerOwner: 0,
+    };
+  }
+
+  const casesPerOwner = Math.floor(rows.length / owners.length);
+  const remainder = isRoundRobin ? (rows.length % owners.length) : 0;
+  
+  const assignments: Array<{ row: CaseAssignmentRow; owner: Pick<CaseOwner, "ownerId"> }> = [];
+  let rowIndex = 0;
+
+  shuffledOwners.forEach((owner) => {
+    for (let i = 0; i < casesPerOwner; i++) {
+      if (rowIndex < shuffledRows.length) {
+        assignments.push({ row: shuffledRows[rowIndex]!, owner });
+        rowIndex++;
+      }
+    }
+  });
+
+  const extraOwners: CaseOwner[] = [];
+  let nextPointer = roundRobinPointer ?? 0;
+  let startOwner: CaseOwner | undefined;
+  let nextStartOwner: CaseOwner | undefined;
+
+  if (isRoundRobin) {
+    const startIndex = roundRobinPointer % owners.length;
+    startOwner = owners[startIndex];
+    
+    for (let i = 0; i < remainder; i++) {
+      const extraOwnerIndex = (startIndex + i) % owners.length;
+      const owner = owners[extraOwnerIndex]!;
+      extraOwners.push(owner);
+      
+      if (rowIndex < shuffledRows.length) {
+         assignments.push({ row: shuffledRows[rowIndex]!, owner });
+         rowIndex++;
+      }
+    }
+    
+    nextPointer = (startIndex + remainder) % owners.length;
+    nextStartOwner = owners[nextPointer];
+  } else {
+    // If not round robin (e.g. owner-wise mode), we only assigned casesPerOwner * owners.length cases
+    // and rowIndex is already correctly set to that amount.
   }
 
   return {
     output: buildCaseAssignmentOutput(assignments),
-    assignedCount,
-    unassignedCaseIds: shuffledRows.slice(assignedCount).map((row) => row.id),
+    assignedCount: assignments.length,
+    unassignedCaseIds: shuffledRows.slice(rowIndex).map((row) => row.id),
     ownerCount: owners.length,
     casesPerOwner,
+    remainder,
+    extraOwners,
+    startOwner,
+    nextStartOwner,
+    nextPointer,
   };
 }
 
@@ -1380,12 +1456,16 @@ export default function SOQLGeneratorPage() {
   const [childDetailsBatchIndex, setChildDetailsBatchIndex] = React.useState(0);
 
   const [cancellationExecutionInput, setCancellationExecutionInput] = React.useState("");
+  const [cancellationFailedInput, setCancellationFailedInput] = React.useState("");
   const [cancellationStoredRows, setCancellationStoredRows] = React.useState<CancellationExecutionRow[]>([]);
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
 
   const [caseAssignOutput, setCaseAssignOutput] = React.useState("");
   const [caseAssignmentResult, setCaseAssignmentResult] = React.useState<CaseAssignmentResult | null>(null);
   const [caseAssignMode, setCaseAssignMode] = React.useState<CaseAssignMode>("equal");
+  const [roundRobinPointer, setRoundRobinPointer] = React.useState<number>(0);
+  const [roundRobinHistory, setRoundRobinHistory] = React.useState<RoundRobinHistoryEntry[]>([]);
+  const [cumulativeLoad, setCumulativeLoad] = React.useState<CumulativeLoadMap>({});
   const [caseOwners, setCaseOwners] = React.useState<CaseOwner[]>([]);
   const [caseOwnerLoadState, setCaseOwnerLoadState] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [caseOwnerAction, setCaseOwnerAction] = React.useState<string | null>(null);
@@ -1437,6 +1517,23 @@ export default function SOQLGeneratorPage() {
   React.useEffect(() => {
     refreshCaseOwners();
   }, [refreshCaseOwners]);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const storedPointer = localStorage.getItem("caseAssignmentRoundRobin");
+        if (storedPointer) setRoundRobinPointer(parseInt(storedPointer, 10) || 0);
+
+        const storedHistory = localStorage.getItem("caseAssignmentHistory");
+        if (storedHistory) setRoundRobinHistory(JSON.parse(storedHistory));
+
+        const storedLoad = localStorage.getItem("caseAssignmentCumulativeLoad");
+        if (storedLoad) setCumulativeLoad(JSON.parse(storedLoad));
+      } catch (e) {
+        console.error("Failed to parse round robin localStorage state", e);
+      }
+    }
+  }, []);
 
   const refreshSOQLLibrary = React.useCallback(async () => {
     setLibraryLoadState("loading");
@@ -2164,7 +2261,40 @@ export default function SOQLGeneratorPage() {
     let result: CaseAssignmentResult;
 
     if (caseAssignMode === "equal") {
-      result = buildBalancedAssignments(caseAssignmentRows, activeCaseOwners);
+      result = buildBalancedAssignments(caseAssignmentRows, activeCaseOwners, roundRobinPointer);
+      
+      if (result.nextPointer !== undefined && result.startOwner && result.nextStartOwner && result.extraOwners) {
+        setRoundRobinPointer(result.nextPointer);
+        localStorage.setItem("caseAssignmentRoundRobin", result.nextPointer.toString());
+
+        const newHistoryEntry: RoundRobinHistoryEntry = {
+          batchId: roundRobinHistory.length > 0 ? roundRobinHistory[0]!.batchId + 1 : 1,
+          totalCases: caseAssignmentRows.length,
+          baseCases: result.casesPerOwner,
+          extraCases: result.remainder ?? 0,
+          extraOwners: result.extraOwners,
+          startOwner: result.startOwner,
+          nextStartOwner: result.nextStartOwner,
+          timestamp: new Date().toISOString(),
+        };
+        const updatedHistory = [newHistoryEntry, ...roundRobinHistory].slice(0, 10);
+        setRoundRobinHistory(updatedHistory);
+        localStorage.setItem("caseAssignmentHistory", JSON.stringify(updatedHistory));
+
+        const updatedLoad = { ...cumulativeLoad };
+        activeCaseOwners.forEach((owner) => {
+          if (!updatedLoad[owner.ownerId]) {
+            updatedLoad[owner.ownerId] = { total: 0, extra: 0 };
+          }
+          updatedLoad[owner.ownerId]!.total += result.casesPerOwner;
+        });
+        result.extraOwners.forEach((owner) => {
+          updatedLoad[owner.ownerId]!.total += 1;
+          updatedLoad[owner.ownerId]!.extra += 1;
+        });
+        setCumulativeLoad(updatedLoad);
+        localStorage.setItem("caseAssignmentCumulativeLoad", JSON.stringify(updatedLoad));
+      }
     } else if (caseAssignMode === "owner-wise") {
       if (!selectedOwnerObjects.length) {
         toast.error("Select at least one owner");
@@ -2511,6 +2641,7 @@ export default function SOQLGeneratorPage() {
     setChildDetailsTransformResult(null);
     setChildDetailsBatchIndex(0);
     setCancellationExecutionInput("");
+    setCancellationFailedInput("");
     setCancellationStoredRows([]);
     setCaseAssignOutput("");
     setCaseAssignmentResult(null);
@@ -3672,7 +3803,7 @@ export default function SOQLGeneratorPage() {
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col 2xl:col-span-2 transition-all duration-300 group relative">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col 2xl:col-span-1 transition-all duration-300 group relative">
                 <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-center gap-4">
@@ -3682,10 +3813,10 @@ export default function SOQLGeneratorPage() {
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Final</Badge>
-                          <CardTitle className="text-base font-black tracking-tight text-foreground">All Records With Canceled Status</CardTitle>
+                          <CardTitle className="text-base font-black tracking-tight text-foreground">All Records</CardTitle>
                         </div>
                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                          Copy one complete table after all result batches are pasted
+                          Copy table when done
                         </p>
                       </div>
                     </div>
@@ -3701,12 +3832,12 @@ export default function SOQLGeneratorPage() {
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
                   <div className="flex flex-wrap gap-2.5">
-                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Total pasted tickets: {parsedTickets.length}</Badge>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Final rows: {uniqueExecutableCancellationRows.length}</Badge>
+                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Pasted: {parsedTickets.length}</Badge>
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Rows: {uniqueExecutableCancellationRows.length}</Badge>
                     <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Status: Canceled</Badge>
                   </div>
                   <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[260px] max-h-[520px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
                       {uniqueExecutableCancellationRows.length > 0
                         ? cancellationCanceledOutput
                         : "\"_\"\t\"Id\"\t\"Ticket_Number_Read_Only__c\"\t\"Status\"\n\"[WorkOrder]\"\t\"0WONy000008eHgfOAE\"\t\"B25031925463529\"\t\"Canceled\""}
@@ -3714,6 +3845,105 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardContent>
               </Card>
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col 2xl:col-span-1 transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
+                      <AlertTriangle className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Step 4 (Optional)</Badge>
+                        <CardTitle className="text-base font-black tracking-tight text-foreground">Paste Failed Results</CardTitle>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                        Paste failed tickets to generate stats
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
+                  <Textarea
+                    placeholder={`Paste Salesforce SOQL result of FAILED tickets here...\n"_"\t"Id"\t"Ticket_Number_Read_Only__c"\t"Status"\n"[WorkOrder]"\t"0WONy000008eHgfOAE"\t"B25031925463529"\t"Cancellation Requested"`}
+                    className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-amber-500/40 focus-visible:border-amber-500 shadow-none p-4 resize-y"
+                    value={cancellationFailedInput}
+                    onChange={(event) => setCancellationFailedInput(event.target.value)}
+                  />
+                </CardContent>
+              </Card>
+
+              {(() => {
+                const cancellationTotalTickets = parsedTickets.length;
+                const hasFailedInput = cancellationFailedInput.trim().length > 0;
+                
+                // Extract tickets using regex: first a letter, then numbers
+                const cancellationFailedTickets = Array.from(new Set(cancellationFailedInput.match(/[a-zA-Z]\d{5,20}/g) || []));
+                
+                const cancellationFailedCount = hasFailedInput ? cancellationFailedTickets.length : "(Pending)";
+                const cancellationSuccessCount = hasFailedInput ? Math.max(0, cancellationTotalTickets - cancellationFailedTickets.length) : "(Pending)";
+
+                const mailTemplateText = `Dear,\nCancellation has been done successfully.\n\n` +
+                  (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
+                  `Total Tickets: ${cancellationTotalTickets}\n` +
+                  `Cancelled Tickets: ${cancellationSuccessCount}\n` +
+                  `Failed Tickets: ${cancellationFailedCount}`;
+
+                const postTemplateText = `@taguser \nCancellation has been done successfully.\n\n` +
+                  (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
+                  `Total Tickets: ${cancellationTotalTickets}\n` +
+                  `Cancelled Tickets: ${cancellationSuccessCount}\n` +
+                  `Failed Tickets: ${cancellationFailedCount}`;
+
+                return (
+                  <>
+                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                      <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+                              <Mail className="h-5 w-5" />
+                            </div>
+                            <CardTitle className="text-base font-black tracking-tight text-foreground">Email Template Output</CardTitle>
+                          </div>
+                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(mailTemplateText)}>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                        <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
+                          <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
+                            {mailTemplateText}
+                          </pre>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                      <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shadow-inner">
+                              <MessageSquare className="h-5 w-5" />
+                            </div>
+                            <CardTitle className="text-base font-black tracking-tight text-foreground">Post Template Output</CardTitle>
+                          </div>
+                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText)}>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </Button>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                        <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
+                          <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
+                            {postTemplateText}
+                          </pre>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
 
               {cancellationUpdateDebug && (
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
@@ -3743,8 +3973,9 @@ export default function SOQLGeneratorPage() {
           )}
 
           {isCaseAssign && (
-            <div className="col-span-1 2xl:col-span-2 xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-              {/* === LEFT WORKBENCH COLUMN === */}
+            <div className="space-y-6 w-full">
+              <div className="col-span-1 2xl:col-span-2 xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+                {/* === LEFT WORKBENCH COLUMN === */}
               <div className="space-y-4 flex flex-col">
                 {/* Assignment Mode & Quick Execute Control Box */}
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
@@ -4078,6 +4309,157 @@ export default function SOQLGeneratorPage() {
                 </Card>
               </div>
             </div>
+
+            {/* Round Robin UI Cards (Only shown after generation) */}
+            {caseAssignmentResult && caseAssignMode === "equal" && (
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6 items-start">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
+                        <RefreshCw className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-black tracking-tight text-foreground">Round Robin Status</CardTitle>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Current Batch</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4 relative z-10 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-lg">
+                        <span className="text-[10px] uppercase font-bold text-slate-500">Active Owners</span>
+                        <div className="font-black text-sm">{activeCaseOwners.length}</div>
+                      </div>
+                      <div className="bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-lg">
+                        <span className="text-[10px] uppercase font-bold text-slate-500">Base Cases / Owner</span>
+                        <div className="font-black text-sm">{caseAssignmentResult.casesPerOwner}</div>
+                      </div>
+                      <div className="bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-lg">
+                        <span className="text-[10px] uppercase font-bold text-slate-500">Extra Cases</span>
+                        <div className="font-black text-sm">{caseAssignmentResult.remainder}</div>
+                      </div>
+                      <div className="bg-slate-100/50 dark:bg-slate-900/50 p-2 rounded-lg">
+                        <span className="text-[10px] uppercase font-bold text-slate-500">Total Assigned</span>
+                        <div className="font-black text-sm">{caseAssignmentResult.assignedCount}</div>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-1">
+                        <span>Starting Owner</span>
+                        <span className="text-foreground font-black">{caseAssignmentResult.startOwner?.name}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] font-bold uppercase text-slate-500 border-b border-slate-200 dark:border-slate-700 pb-1">
+                        <span>Next Start</span>
+                        <span className="text-foreground font-black">{caseAssignmentResult.nextStartOwner?.name}</span>
+                      </div>
+                      {caseAssignmentResult.extraOwners && caseAssignmentResult.extraOwners.length > 0 && (
+                        <div className="pt-2">
+                          <span className="text-[10px] font-bold uppercase text-slate-500">Extra Case Owners:</span>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {caseAssignmentResult.extraOwners.map(o => (
+                              <Badge key={o.id} className="bg-purple-500/10 text-purple-600 border border-purple-500/20 text-[9px] px-1.5 py-0">{o.name}</Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
+                        <History className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-black tracking-tight text-foreground">Round Robin History</CardTitle>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Recent Batches</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0 relative z-10 text-xs">
+                    <div className="max-h-[220px] overflow-y-auto no-scrollbar space-y-3 px-5 pb-5">
+                      {roundRobinHistory.length === 0 && <div className="text-slate-400 text-center py-4 text-[10px] font-bold uppercase tracking-widest">No history yet</div>}
+                      {roundRobinHistory.map((entry, idx) => (
+                        <div key={idx} className="border-b border-slate-100 dark:border-slate-800 pb-3 last:border-0 last:pb-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="font-black text-foreground">Batch #{entry.batchId}</span>
+                            <span className="text-[10px] font-bold text-slate-400">{entry.totalCases} cases</span>
+                          </div>
+                          <div className="text-[10px] space-y-1">
+                            <div className="flex gap-2">
+                              <span className="font-bold text-slate-500 uppercase w-10">Extra:</span>
+                              <span className="text-slate-700 dark:text-slate-300 truncate flex-1">{entry.extraOwners.map(o => o.name).join(", ") || "None"}</span>
+                            </div>
+                            <div className="flex gap-2">
+                              <span className="font-bold text-slate-500 uppercase w-10">Next:</span>
+                              <span className="text-slate-700 dark:text-slate-300 font-medium">{entry.nextStartOwner?.name || "N/A"}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 relative group">
+                  <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
+                        <BarChart3 className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-sm font-black tracking-tight text-foreground">Cumulative Load</CardTitle>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Fairness Tracker</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0 relative z-10 text-xs">
+                    <div className="px-5 pb-2 grid grid-cols-2 gap-2 border-b border-slate-100 dark:border-slate-800 mb-2">
+                      {(() => {
+                        const loads = activeCaseOwners.map(o => (cumulativeLoad[o.ownerId] || { total: 0 }).total);
+                        const max = loads.length ? Math.max(...loads) : 0;
+                        const min = loads.length ? Math.min(...loads) : 0;
+                        const diff = max - min;
+                        return (
+                          <>
+                            <div className="text-[10px] uppercase font-bold text-slate-500 text-center bg-slate-50/50 dark:bg-slate-900/50 rounded-lg p-1.5"><span className="block text-slate-400 text-[8px]">Spread</span>{diff} cases</div>
+                            <div className="text-[10px] uppercase font-bold text-slate-500 text-center bg-slate-50/50 dark:bg-slate-900/50 rounded-lg p-1.5"><span className="block text-slate-400 text-[8px]">Max Load</span>{max} cases</div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <div className="max-h-[170px] overflow-y-auto no-scrollbar px-5 pb-5">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="text-[9px] font-black uppercase text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                            <th className="pb-1.5">Owner</th>
+                            <th className="pb-1.5 text-right">Total</th>
+                            <th className="pb-1.5 text-right">Extra</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {activeCaseOwners.map(owner => {
+                            const load = cumulativeLoad[owner.ownerId] || { total: 0, extra: 0 };
+                            return (
+                              <tr key={owner.id} className="text-[11px] group">
+                                <td className="py-1.5 font-medium truncate max-w-[100px] text-slate-700 dark:text-slate-300 group-hover:text-foreground">{owner.name}</td>
+                                <td className="py-1.5 text-right font-black tabular-nums">{load.total}</td>
+                                <td className="py-1.5 text-right font-mono text-[10px] text-slate-500">{load.extra}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            
+          </div>
           )}
 
 
