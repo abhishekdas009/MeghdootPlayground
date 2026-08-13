@@ -54,16 +54,15 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   ]);
 
   return {
-    // Explicitly defining the type for 'm' to resolve the implicit 'any' error
-    metrics: metrics.map((m: { key: string; value: number; label: string; category: string; updatedAt: Date }) => ({
+    metrics: metrics.map((m: any) => ({
       key: m.key,
       value: m.key === "templates_created" ? templateCount : m.value,
+      weeklyValue: m.key === "templates_created" ? templateCount : m.weeklyValue,
       label: m.key === "templates_created" ? "Query Library Templates" : m.label,
       category: m.category,
       updatedAt: m.updatedAt.toISOString(),
     })),
-    // Explicitly defining the type for 'e' to resolve the implicit 'any' error
-    events: events.map((e: { id: string; type: string; label: string; meta: string | null; module: string; createdAt: Date }) => ({
+    events: events.map((e: any) => ({
       id: e.id,
       type: e.type,
       label: e.label,
@@ -74,15 +73,34 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   };
 }
 
+function getMonday(d: Date) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  date.setDate(diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 export async function incrementMetric(input: RecordMetricInput) {
   const change = input.change ?? 1;
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  
+  const existing = await prisma.dashboardMetric.findUnique({
+    where: { key: input.key },
+  });
+
+  const now = new Date();
+  const thisMonday = getMonday(now);
+  const shouldReset = !existing || existing.lastResetAt < thisMonday;
 
   await prisma.$transaction([
     prisma.dashboardMetric.upsert({
       where: { key: input.key },
       update: {
         value: { increment: change },
+        weeklyValue: shouldReset ? change : { increment: change },
+        lastResetAt: shouldReset ? now : undefined,
         label: input.label,
         category: input.category ?? "general",
       },
@@ -90,6 +108,8 @@ export async function incrementMetric(input: RecordMetricInput) {
         key: input.key,
         label: input.label,
         value: change,
+        weeklyValue: change,
+        lastResetAt: now,
         category: input.category ?? "general",
       },
     }),
@@ -134,10 +154,20 @@ export async function setMetricValue(input: {
   value: number;
   category?: string;
 }) {
+  const existing = await prisma.dashboardMetric.findUnique({
+    where: { key: input.key },
+  });
+
+  const now = new Date();
+  const thisMonday = getMonday(now);
+  const shouldReset = !existing || existing.lastResetAt < thisMonday;
+
   await prisma.dashboardMetric.upsert({
     where: { key: input.key },
     update: {
       value: input.value,
+      weeklyValue: shouldReset ? input.value : input.value, // It's a set value, not increment, so just set it.
+      lastResetAt: shouldReset ? now : undefined,
       label: input.label,
       category: input.category ?? "general",
     },
@@ -145,6 +175,8 @@ export async function setMetricValue(input: {
       key: input.key,
       label: input.label,
       value: input.value,
+      weeklyValue: input.value,
+      lastResetAt: now,
       category: input.category ?? "general",
     },
   });

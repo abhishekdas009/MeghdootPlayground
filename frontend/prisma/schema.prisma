@@ -20,22 +20,41 @@ model SOQLLibrary {
   id          String   @id @default(cuid())
   label       String
   category    String
+  tags        String[] @default([])
   description String   @default("")
   soql        String
   favourite   Boolean  @default(false)
   usageCount  Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  history     SOQLHistory[]
 
   @@index([label])
   @@index([category])
   @@map("soql_library")
 }
 
+model SOQLHistory {
+  id          String   @id @default(cuid())
+  queryId     String
+  soql        String
+  label       String
+  category    String
+  tags        String[] @default([])
+  description String
+  createdAt   DateTime @default(now())
+
+  query       SOQLLibrary @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  @@index([queryId])
+}
+
 model DashboardMetric {
   id        String   @id @default(cuid())
   key       String   @unique
   value     Int      @default(0)
+  weeklyValue Int    @default(0)
+  lastResetAt DateTime @default(now())
   label     String
   category  String
   createdAt DateTime @default(now())

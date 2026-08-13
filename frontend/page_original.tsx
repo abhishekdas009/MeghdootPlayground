@@ -1,43 +1,14 @@
 "use client";
 
 import * as React from "react";
-import {
-  SALESFORCE_ID_REGEX,
-  CASE_ID_REGEX,
-  SALESFORCE_TICKET_REGEX,
-  parseCaseIds,
-  parseAssetTransferPairs,
-  parseCSVLine,
-  parseSOQLResultWithHeaders,
-  parseSOQLResult,
-  parseComponentIds,
-  parseAssetResult,
-  parseAccountResult,
-  buildTSVRow,
-  buildCSVRow,
-  getSalesforceRecordKey,
-  parseProductRecordResults,
-} from "../../lib/parsers";
-import { transformChildDetailsToParent } from "../../lib/soql-generator-utils";
-
 import * as xlsx from "xlsx";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-
-
-
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { JsonViewer } from "@/components/ui/json-viewer";
-import { MagneticButton } from "@/components/ui/magnetic-button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { toast } from "sonner";
-import { showDataFeedbackToast } from "@/lib/custom-toasts";
-import { debouncedToast, promiseToast } from "../../lib/toast-utils";
 import { cn } from "@/lib/utils";
 import { dashboardStore, useDashboardStore } from "@/lib/dashboard-store";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
@@ -46,7 +17,6 @@ import {
   Trash2,
   Star,
   ChevronDown,
-  ChevronUp,
   Mail,
   MessageSquare,
   ChevronLeft,
@@ -74,16 +44,8 @@ import {
   RefreshCw,
   History,
   BarChart3,
-  ClipboardPaste,
-  UploadCloud,
-  Sparkles,
-  Box,
-  FileText,
-  Ban,
-  Briefcase,
-  Calendar,
 } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 interface Template {
   id: string;
@@ -91,7 +53,7 @@ interface Template {
   category: string;
   soql: string;
   favourite: boolean;
-  type?: "normal" | "asset-transfer" | "child-details-to-parent" | "product-record-update";
+  type?: "normal" | "asset-transfer" | "child-details-to-parent";
   source?: "default" | "library";
   usageCount?: number;
 }
@@ -185,7 +147,7 @@ interface QuantityOwnerConfig {
 type CaseAssignMode = "equal" | "owner-wise" | "quantity-wise";
 
 const CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID = "012Ny0000003SvrIAE";
-
+const SALESFORCE_ID_REGEX = /^[A-Za-z0-9]{15}(?:[A-Za-z0-9]{3})?$/;
 const CHILD_DETAILS_COMPONENT_ID_HEADERS = [
   "component_id__c",
   "componentid__c",
@@ -231,7 +193,7 @@ const defaultTemplates: Template[] = [
   },
   {
     id: "13",
-    name: "Cancellation Tickets",
+    name: "CANCELLATION TICKETS",
     category: "WorkOrder",
     soql: CANCELLATION_QUERY_TEMPLATE,
     favourite: false,
@@ -349,14 +311,6 @@ const defaultTemplates: Template[] = [
     soql: `SELECT Id, Status\nFROM ServiceAppointment\nWHERE Ticket_Numbers__c IN (\n{{tickets}}\n)`,
     favourite: false,
   },
-  {
-    id: "20",
-    name: "Product Record Type update",
-    category: "Product",
-    soql: `SELECT Id,ProductCode, Product2.Name,Product2.RecordType.Name,Product2.Product_Family__r.Name,Product2.Product_Sub_Family__r.Name FROM Product2 WHERE ProductCode IN ({{tickets}})`,
-    favourite: false,
-    type: "product-record-update",
-  },
 ];
 
 const CATEGORY_MAP: Record<string, { label: string; color: string }> = {
@@ -373,8 +327,8 @@ const EMAIL_TEMPLATE = `Hello,\nYour service ticket status has been updated to A
 
 const POST_TEMPLATE = `@tag_user Your service ticket status has been updated to Accepted. Kindly check and revert.`;
 
-
-
+const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?)(?![\p{L}\p{N}])/gu;
+const SALESFORCE_TICKET_REGEX = /(?:^|[^A-Za-z0-9])([BISXCAD]\d{14,})(?![A-Za-z0-9])/gi;
 const SOQL_BATCH_SIZE = 400;
 
 interface TicketStats {
@@ -475,18 +429,192 @@ function getTicketStats(tickets: string[]): TicketStats {
   return stats;
 }
 
+function parseAssetTransferPairs(input: string): AssetTransferPair[] {
+  if (!input.trim()) return [];
+  const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
+  const pairs: AssetTransferPair[] = [];
+  const cidRegex = /CID-?\d+/i;
 
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const lower = trimmed.toLowerCase();
 
+    if (lower.includes("component") && (lower.includes("new cid") || lower.includes("cid"))) continue;
 
+    const parts = trimmed.split(/[\s,\t]+/).filter(Boolean);
 
+    if (parts.length >= 2) {
+      const componentId = parts[0]?.trim() ?? "";
+      const newCid = parts[1]?.trim() ?? "";
+      if (componentId && newCid && /^CID/i.test(newCid)) {
+        pairs.push({ componentId, newCid });
+      }
+    } else {
+      const cidMatch = trimmed.match(cidRegex);
+      if (cidMatch && cidMatch.index !== undefined) {
+        const componentId = trimmed.slice(0, cidMatch.index).trim();
+        const newCid = cidMatch[0];
+        if (componentId) {
+          pairs.push({ componentId, newCid });
+        }
+      }
+    }
+  }
+
+  return pairs;
+}
+
+function parseCaseIds(input: string): string[] {
+  if (!input.trim()) return [];
+
+  const seen = new Set<string>();
+  const caseIds: string[] = [];
+
+  for (const match of input.matchAll(CASE_ID_REGEX)) {
+    const caseId = match[1];
+    const recordKey = caseId?.slice(0, 15);
+    if (!caseId || !recordKey || seen.has(recordKey)) continue;
+    seen.add(recordKey);
+    caseIds.push(caseId);
+  }
+
+  return caseIds;
+}
+
+function parseCSVLine(line: string): string[] {
+  const values: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  let i = 0;
+
+  while (i < line.length) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        current += '"';
+        i += 2;
+      } else {
+        inQuotes = !inQuotes;
+        i += 1;
+      }
+    } else if ((char === "," || char === "\t") && !inQuotes) {
+      values.push(current);
+      current = "";
+      i += 1;
+    } else {
+      current += char;
+      i += 1;
+    }
+  }
+
+  values.push(current);
+  return values;
+}
+
+function cleanHeader(value: string): string {
+  return value.replace(/["\[\]]/g, "").trim().toLowerCase().replace(/[^a-z0-9_.]/g, "");
+}
+
+function cleanValue(value: string): string {
+  return value.replace(/["\[\]]/g, "").trim();
+}
 
 interface ParsedSOQLResult {
   headers: string[];
   rows: Array<Record<string, string>>;
 }
 
+function parseSOQLResultWithHeaders(input: string): ParsedSOQLResult {
+  if (!input.trim()) return { headers: [], rows: [] };
 
+  const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
+  const rows: Array<Record<string, string>> = [];
+  let headers: string[] = [];
+  const detectedHeaders = new Set<string>();
 
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    const values = parseCSVLine(trimmed);
+    if (values.length === 0) continue;
+
+    const firstVal = cleanValue(values[0] ?? "");
+
+    if (
+      firstVal === "_" ||
+      firstVal === "" ||
+      firstVal.toLowerCase() === "component" ||
+      firstVal.toLowerCase() === "id"
+    ) {
+      headers = values.map(cleanHeader);
+      headers.forEach((header) => {
+        if (header) detectedHeaders.add(header);
+      });
+      continue;
+    }
+
+    if (headers.length === 0) continue;
+
+    const row: Record<string, string> = {};
+    for (let index = 0; index < values.length; index += 1) {
+      const rawValue = values[index];
+      const header = headers[index];
+      if (!rawValue || !header) continue;
+      row[header] = cleanValue(rawValue);
+    }
+
+    rows.push(row);
+  }
+
+  return { headers: [...detectedHeaders], rows };
+}
+
+function parseSOQLResult(input: string): Array<Record<string, string>> {
+  return parseSOQLResultWithHeaders(input).rows;
+}
+
+function parseComponentIds(input: string): ComponentIdParseResult {
+  if (!input.trim()) {
+    return { totalCount: 0, componentIds: [], duplicateCount: 0, ignoredCount: 0 };
+  }
+
+  const seen = new Set<string>();
+  const componentIds: string[] = [];
+  let totalCount = 0;
+  let duplicateCount = 0;
+  let ignoredCount = 0;
+  const values = input
+    .replace(/^\uFEFF/, "")
+    .split(/[\r\n,\t;]+/)
+    .flatMap((part) => part.trim().split(/\s+/));
+
+  for (const rawValue of values) {
+    const componentId = cleanValue(rawValue).replace(/^'+|'+$/g, "").trim();
+    const normalizedHeader = cleanHeader(componentId);
+
+    if (!componentId || COMPONENT_INPUT_HEADERS.has(normalizedHeader)) continue;
+    totalCount += 1;
+
+    if (!/^[A-Za-z0-9][A-Za-z0-9_-]{2,39}$/.test(componentId)) {
+      ignoredCount += 1;
+      continue;
+    }
+
+    const componentKey = componentId.toLowerCase();
+    if (seen.has(componentKey)) {
+      duplicateCount += 1;
+      continue;
+    }
+
+    seen.add(componentKey);
+    componentIds.push(componentId);
+  }
+
+  return { totalCount, componentIds, duplicateCount, ignoredCount };
+}
 
 function escapeSOQLString(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
@@ -512,14 +640,213 @@ function buildChildDetailsParentSOQL(componentIds: string[]): string {
   ].join("\n");
 }
 
+function getRowValue(row: Record<string, string>, headers: readonly string[]): string {
+  for (const header of headers) {
+    const value = row[header]?.trim();
+    if (value) return value;
+  }
 
+  return "";
+}
 
+function hasAnyHeader(headers: string[], candidates: readonly string[]): boolean {
+  return candidates.some((candidate) => headers.includes(candidate));
+}
 
+function quoteCSVCell(value: string): string {
+  return '"' + value.replace(/"/g, '""') + '"';
+}
 
+function buildCSVRow(values: string[]): string {
+  return values.map(quoteCSVCell).join(",");
+}
 
+function buildTSVRow(values: string[]): string {
+  return values.map(quoteCSVCell).join("\t");
+}
 
+function getSalesforceRecordKey(value: string): string {
+  return value.slice(0, 15).toLowerCase();
+}
 
+function transformChildDetailsToParent(
+  componentIds: string[],
+  sourceResult: string
+): ChildDetailsParentTransformResult {
+  const parsed = parseSOQLResultWithHeaders(sourceResult);
+  const requiredColumns = [
+    { label: "Id", headers: ["id"] },
+    { label: "Component_Id__c", headers: CHILD_DETAILS_COMPONENT_ID_HEADERS },
+    { label: "Parent.AccountId", headers: CHILD_DETAILS_PARENT_ACCOUNT_ID_HEADERS },
+  ];
+  const result: ChildDetailsParentTransformResult = {
+    output: "",
+    sourceRows: parsed.rows.length,
+    returnedComponentCount: 0,
+    generatedRows: 0,
+    skippedRows: 0,
+    duplicateRows: 0,
+    unexpectedComponentRows: 0,
+    missingComponentIdRows: 0,
+    missingAssetIdRows: 0,
+    missingParentAccountIdRows: 0,
+    invalidAssetIdRows: 0,
+    invalidParentAccountIdRows: 0,
+    conflictingAssetIds: [],
+    missingComponentIds: [],
+    missingHeaders: requiredColumns
+      .filter((column) => !hasAnyHeader(parsed.headers, column.headers))
+      .map((column) => column.label),
+  };
 
+  if (result.missingHeaders.length > 0) return result;
+
+  const requestedComponents = new Map<string, string>();
+  for (const componentId of componentIds) {
+    const componentKey = componentId.toLowerCase();
+    if (!requestedComponents.has(componentKey)) {
+      requestedComponents.set(componentKey, componentId);
+    }
+  }
+
+  type Candidate = {
+    assetId: string;
+    assetKey: string;
+    parentAccountId: string;
+    accountKey: string;
+  };
+
+  const returnedComponentKeys = new Set<string>();
+  const candidatesByComponent = new Map<string, Candidate[]>();
+  const candidateByAsset = new Map<string, Candidate>();
+  const conflictingAssetKeys = new Set<string>();
+
+  for (const sourceRow of parsed.rows) {
+    const componentId = getRowValue(sourceRow, CHILD_DETAILS_COMPONENT_ID_HEADERS);
+    if (!componentId) {
+      result.missingComponentIdRows += 1;
+      continue;
+    }
+
+    const componentKey = componentId.toLowerCase();
+    if (!requestedComponents.has(componentKey)) {
+      result.unexpectedComponentRows += 1;
+      continue;
+    }
+
+    returnedComponentKeys.add(componentKey);
+
+    const assetId = getRowValue(sourceRow, ["id"]);
+    if (!assetId) {
+      result.missingAssetIdRows += 1;
+      continue;
+    }
+    if (!SALESFORCE_ID_REGEX.test(assetId)) {
+      result.invalidAssetIdRows += 1;
+      continue;
+    }
+
+    const parentAccountId = getRowValue(sourceRow, CHILD_DETAILS_PARENT_ACCOUNT_ID_HEADERS);
+    if (!parentAccountId) {
+      result.missingParentAccountIdRows += 1;
+      continue;
+    }
+    if (!SALESFORCE_ID_REGEX.test(parentAccountId)) {
+      result.invalidParentAccountIdRows += 1;
+      continue;
+    }
+
+    const assetKey = getSalesforceRecordKey(assetId);
+    const accountKey = getSalesforceRecordKey(parentAccountId);
+    const existingCandidate = candidateByAsset.get(assetKey);
+    if (existingCandidate) {
+      if (existingCandidate.accountKey === accountKey) {
+        result.duplicateRows += 1;
+      } else {
+        conflictingAssetKeys.add(assetKey);
+      }
+      continue;
+    }
+
+    const candidate: Candidate = {
+      assetId,
+      assetKey,
+      parentAccountId,
+      accountKey,
+    };
+    candidateByAsset.set(assetKey, candidate);
+    const componentCandidates = candidatesByComponent.get(componentKey) ?? [];
+    componentCandidates.push(candidate);
+    candidatesByComponent.set(componentKey, componentCandidates);
+  }
+
+  const processedComponentKeys = new Set<string>();
+  const outputRows = [
+    buildCSVRow(["_", "Id", "RecordTypeId", "ParentId", "AccountId"]),
+  ];
+
+  for (const componentId of componentIds) {
+    const componentKey = componentId.toLowerCase();
+    if (processedComponentKeys.has(componentKey)) continue;
+    processedComponentKeys.add(componentKey);
+
+    for (const candidate of candidatesByComponent.get(componentKey) ?? []) {
+      if (conflictingAssetKeys.has(candidate.assetKey)) continue;
+      outputRows.push(
+        buildCSVRow([
+          "[Asset]",
+          candidate.assetId,
+          CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID,
+          "",
+          candidate.parentAccountId,
+        ])
+      );
+      result.generatedRows += 1;
+    }
+  }
+
+  for (const [componentKey, componentId] of requestedComponents) {
+    if (!returnedComponentKeys.has(componentKey)) {
+      result.missingComponentIds.push(componentId);
+    }
+  }
+
+  for (const assetKey of conflictingAssetKeys) {
+    const candidate = candidateByAsset.get(assetKey);
+    if (candidate) result.conflictingAssetIds.push(candidate.assetId);
+  }
+
+  result.returnedComponentCount = returnedComponentKeys.size;
+  result.skippedRows = Math.max(0, result.sourceRows - result.generatedRows);
+  result.output = outputRows.join("\n");
+
+  return result;
+}
+
+function parseAssetResult(input: string): Record<string, Record<string, string>> {
+  const rows = parseSOQLResult(input);
+  const result: Record<string, Record<string, string>> = {};
+
+  for (const row of rows) {
+    const componentId = row.component_id__c || row.componentid__c || row.component_id;
+    if (componentId) result[componentId] = row;
+  }
+
+  return result;
+}
+
+function parseAccountResult(input: string): Record<string, string> {
+  const rows = parseSOQLResult(input);
+  const result: Record<string, string> = {};
+
+  for (const row of rows) {
+    const cid = row.customer_id__c || row.customerid__c || row.customer_id;
+    const id = row.id;
+    if (cid && id) result[cid] = id;
+  }
+
+  return result;
+}
 
 function parseCancellationExecutionRows(input: string): CancellationExecutionRow[] {
   const rows = parseSOQLResult(input);
@@ -535,13 +862,10 @@ function parseCancellationExecutionRows(input: string): CancellationExecutionRow
 }
 
 function buildCancellationCanceledOutput(rows: CancellationExecutionRow[]): string {
-  const quote = (val: string) => `"${val}"`;
-  const outputRows = [
-    ["_", "Id", "Ticket_Number_Read_Only__c", "Status"].map(quote).join("\t")
-  ];
+  const outputRows = [buildTSVRow(["_", "Id", "Ticket_Number_Read_Only__c", "Status"])];
 
   for (const row of rows) {
-    outputRows.push([`[WorkOrder]`, row.id, row.ticket, "Canceled"].map(quote).join("\t"));
+    outputRows.push(buildTSVRow(["[WorkOrder]", row.id, row.ticket, "Canceled"]));
   }
 
   return outputRows.join("\n");
@@ -780,13 +1104,14 @@ function QueryPreviewCard({
             <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
               {batches.length} batch{batches.length === 1 ? "" : "es"}
             </Badge>
-            <MagneticButton 
-              className="h-8 px-3 gap-2 text-xs font-bold bg-indigo-500/10 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 border border-indigo-500/20 hover:border-indigo-500/40 rounded-lg shadow-sm" 
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 gap-2 text-xs font-bold hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" 
               onClick={() => onCopy(batches.join("\n\n"))}
-              glowColor="rgba(99, 102, 241, 0.15)"
             >
               <Copy className="h-3.5 w-3.5" /> Copy All
-            </MagneticButton>
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -837,10 +1162,9 @@ function QueryPreviewCard({
                 </Button>
               </div>
             </div>
-            <JsonViewer 
-              data={currentBatch} 
-              className="p-5 min-h-[180px] max-h-[320px] bg-transparent dark:bg-transparent border-0 shadow-none rounded-none" 
-            />
+            <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-0 max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
+              {currentBatch}
+            </pre>
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 p-8 text-center shadow-inner">
@@ -865,323 +1189,251 @@ function TemplatePicker({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [highlightedId, setHighlightedId] = React.useState(value);
+  const [menuPosition, setMenuPosition] = React.useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+    maxHeight: number;
+  } | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const listboxId = React.useId();
   const selectedTemplate = templates.find((template) => template.id === value);
   const builtInTemplates = templates.filter((template) => template.source !== "library");
   const savedTemplates = templates.filter((template) => template.source === "library");
 
-  const getTemplateIcon = (category: string, name: string) => {
-    const c = category?.toLowerCase() || "";
-    const n = name?.toLowerCase() || "";
-    
-    if (n.includes("cancel")) return <Ban className="h-4 w-4" />;
-    if (c.includes("asset")) return <Box className="h-4 w-4" />;
-    if (c.includes("case")) return <Briefcase className="h-4 w-4" />;
-    if (c.includes("serviceappointment") || c.includes("appointment")) return <Calendar className="h-4 w-4" />;
-    if (c.includes("workorder")) return <FileText className="h-4 w-4" />;
-    if (c.includes("product")) return <Box className="h-4 w-4" />;
-    return <FileSpreadsheet className="h-4 w-4" />;
+  const updateMenuPosition = React.useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 12;
+    const gap = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const opensBelow = spaceBelow >= 260 || spaceBelow >= spaceAbove;
+    const availableHeight = Math.max(180, Math.min(460, (opensBelow ? spaceBelow : spaceAbove) - gap));
+
+    setMenuPosition({
+      left: Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - rect.width - viewportPadding)),
+      width: Math.min(rect.width, window.innerWidth - viewportPadding * 2),
+      ...(opensBelow ? { top: rect.bottom + gap } : { bottom: window.innerHeight - rect.top + gap }),
+      maxHeight: availableHeight,
+    });
+  }, []);
+
+  const closeMenu = React.useCallback((restoreFocus = false) => {
+    setIsOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  }, []);
+
+  const openMenu = React.useCallback(() => {
+    setHighlightedId(value);
+    updateMenuPosition();
+    setIsOpen(true);
+  }, [updateMenuPosition, value]);
+
+  const selectTemplate = React.useCallback(
+    (templateId: string) => {
+      onChange(templateId);
+      setHighlightedId(templateId);
+      closeMenu(true);
+    },
+    [closeMenu, onChange]
+  );
+
+  React.useEffect(() => {
+    if (!templates.some((template) => template.id === highlightedId)) {
+      setHighlightedId(value);
+    }
+  }, [highlightedId, templates, value]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
+        closeMenu();
+      }
+    };
+    const handleViewportChange = () => updateMenuPosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [closeMenu, isOpen, updateMenuPosition]);
+
+  const moveHighlight = (direction: 1 | -1) => {
+    const currentIndex = Math.max(0, templates.findIndex((template) => template.id === highlightedId));
+    const nextIndex = (currentIndex + direction + templates.length) % templates.length;
+    setHighlightedId(templates[nextIndex]?.id ?? value);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!isOpen) openMenu();
+      moveHighlight(event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      if (!isOpen) openMenu();
+      setHighlightedId(event.key === "Home" ? templates[0]?.id ?? value : templates.at(-1)?.id ?? value);
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (isOpen) selectTemplate(highlightedId);
+      else openMenu();
+      return;
+    }
+
+    if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      closeMenu();
+    }
+  };
+
+  const renderTemplate = (template: Template) => {
+    const isSelected = template.id === value;
+    const isHighlighted = template.id === highlightedId;
+    const isLibraryTemplate = template.source === "library";
+
+    return (
+      <button
+        key={template.id}
+        id={`${listboxId}-${template.id}`}
+        type="button"
+        role="option"
+        aria-selected={isSelected}
+        onClick={() => selectTemplate(template.id)}
+        onMouseEnter={() => setHighlightedId(template.id)}
+        className={cn(
+          "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
+          isSelected
+            ? "bg-blue-500/10 text-blue-950 shadow-[inset_0_0_0_1px_rgba(1,118,211,0.32)] dark:bg-blue-500/20 dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(96,182,255,0.38)]"
+            : isHighlighted
+              ? "bg-sky-500/10 text-blue-950 dark:bg-sky-400/10 dark:text-sky-50"
+              : "text-slate-700 hover:bg-sky-500/10 hover:text-blue-950 dark:text-slate-300 dark:hover:bg-sky-400/10 dark:hover:text-sky-50"
+        )}
+      >
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+            isSelected
+              ? "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:border-blue-300/30 dark:bg-blue-400/15 dark:text-sky-200"
+              : "border-slate-200 bg-white/70 text-slate-500 group-hover:border-sky-500/30 group-hover:text-blue-600 dark:border-slate-700/80 dark:bg-slate-800/75 dark:text-slate-400 dark:group-hover:border-sky-400/20 dark:group-hover:text-sky-300"
+          )}
+        >
+          {isLibraryTemplate ? <Bookmark className="h-3.5 w-3.5" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
+          <span className={cn("mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em]", isSelected ? "text-blue-600 dark:text-sky-200/80" : "text-slate-500 group-hover:text-blue-500 dark:group-hover:text-sky-200/70")}>
+            {template.category}
+          </span>
+        </span>
+        {isSelected && (
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-[0_0_12px_rgba(96,182,255,0.3)] dark:bg-blue-400 dark:text-slate-950">
+            <Check className="h-3.5 w-3.5 stroke-[3]" />
+          </span>
+        )}
+      </button>
+    );
   };
 
   return (
     <div className="relative">
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="group flex h-auto w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-200 border-slate-200/80 bg-white/75 text-slate-900 hover:border-sky-400/45 hover:bg-white dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-900 data-[state=open]:border-blue-400/60 data-[state=open]:bg-white/90 data-[state=open]:text-slate-950 data-[state=open]:ring-2 data-[state=open]:ring-blue-400/20 data-[state=open]:dark:bg-slate-900 data-[state=open]:dark:text-white [&>svg]:hidden">
-          <div className="flex flex-1 items-center gap-3 min-w-0">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-blue-400/20 dark:text-blue-300">
-              {selectedTemplate?.source === "library" ? <Bookmark className="h-4 w-4" /> : getTemplateIcon(selectedTemplate?.category || "", selectedTemplate?.name || "")}
-            </span>
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block truncate text-sm font-bold leading-tight">{selectedTemplate?.name ?? "Select a template"}</span>
-              <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                {selectedTemplate?.source === "library" ? "Saved template" : selectedTemplate?.category ?? "Choose a query type"}
-              </span>
-            </span>
-          </div>
-          <ChevronDown className="h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-blue-600 dark:group-hover:text-sky-300 group-data-[state=open]:rotate-180 group-data-[state=open]:text-blue-600 group-data-[state=open]:dark:text-sky-300" />
-        </SelectTrigger>
-
-        <SelectContent className="max-h-[350px] z-[100] rounded-2xl border-slate-200/90 bg-white/[0.98] p-1.5 backdrop-blur-2xl dark:border-slate-600/80 dark:bg-[#071426]/[0.98]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700/70 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Choose a query template</span>
-            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{templates.length}</span>
-          </div>
-          
-          <SelectGroup>
-            {builtInTemplates.length > 0 && (
-              <SelectLabel className="px-2 pb-1 pt-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Built-in templates</SelectLabel>
-            )}
-            {builtInTemplates.map((template) => (
-              <SelectItem
-                key={template.id}
-                value={template.id}
-                className="group relative flex w-full items-center gap-3 rounded-xl pl-9 pr-3 py-2.5 text-left transition-all duration-150 data-[state=checked]:bg-blue-500/10 data-[state=checked]:text-blue-950 focus:bg-sky-500/10 focus:text-blue-950 dark:data-[state=checked]:bg-blue-500/20 dark:data-[state=checked]:text-white dark:focus:bg-sky-400/10 dark:focus:text-sky-50 cursor-pointer"
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/70 text-slate-500 group-focus:border-sky-500/30 group-focus:text-blue-600 group-data-[state=checked]:border-blue-500/25 group-data-[state=checked]:bg-blue-500/10 group-data-[state=checked]:text-blue-700 dark:border-slate-700/80 dark:bg-slate-800/75 dark:text-slate-400 dark:group-focus:border-sky-400/20 dark:group-focus:text-sky-300 dark:group-data-[state=checked]:border-blue-300/30 dark:group-data-[state=checked]:bg-blue-400/15 dark:group-data-[state=checked]:text-sky-200 transition-colors">
-                    {getTemplateIcon(template.category, template.name)}
-                  </span>
-                  <span className="min-w-0 flex-1 pl-1">
-                    <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
-                    <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 group-focus:text-blue-500 group-data-[state=checked]:text-blue-600 dark:group-focus:text-sky-200/70 dark:group-data-[state=checked]:text-sky-200/80">
-                      {template.category}
-                    </span>
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectGroup>
-
-          {savedTemplates.length > 0 && (
-            <SelectGroup>
-              <div className="my-1.5 border-t border-slate-200/80 dark:border-slate-700/70" />
-              <SelectLabel className="flex items-center gap-2 px-2 pb-1 pt-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300/80">
-                <Bookmark className="h-3 w-3" /> Saved templates
-              </SelectLabel>
-              {savedTemplates.map((template) => (
-                <SelectItem
-                  key={template.id}
-                  value={template.id}
-                  className="group relative flex w-full items-center gap-3 rounded-xl pl-9 pr-3 py-2.5 text-left transition-all duration-150 data-[state=checked]:bg-blue-500/10 data-[state=checked]:text-blue-950 focus:bg-sky-500/10 focus:text-blue-950 dark:data-[state=checked]:bg-blue-500/20 dark:data-[state=checked]:text-white dark:focus:bg-sky-400/10 dark:focus:text-sky-50 cursor-pointer"
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/70 text-slate-500 group-focus:border-sky-500/30 group-focus:text-blue-600 group-data-[state=checked]:border-blue-500/25 group-data-[state=checked]:bg-blue-500/10 group-data-[state=checked]:text-blue-700 dark:border-slate-700/80 dark:bg-slate-800/75 dark:text-slate-400 dark:group-focus:border-sky-400/20 dark:group-focus:text-sky-300 dark:group-data-[state=checked]:border-blue-300/30 dark:group-data-[state=checked]:bg-blue-400/15 dark:group-data-[state=checked]:text-sky-200 transition-colors">
-                      <Bookmark className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="min-w-0 flex-1 pl-1">
-                      <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
-                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 group-focus:text-blue-500 group-data-[state=checked]:text-blue-600 dark:group-focus:text-sky-200/70 dark:group-data-[state=checked]:text-sky-200/80">
-                        {template.category}
-                      </span>
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          )}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
-function AnimatedEmptyState({ label, isDragDrop = false }: { label: string, isDragDrop?: boolean }) {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 opacity-70">
-      <motion.div 
-        className="relative mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 shadow-inner"
-        animate={{ 
-          y: [0, -6, 0],
-          scale: [1, 1.02, 1]
-        }}
-        transition={{ 
-          duration: 3, 
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
-        {isDragDrop ? (
-          <UploadCloud className="h-8 w-8 text-slate-500 dark:text-slate-400" strokeWidth={1.5} />
-        ) : (
-          <ClipboardPaste className="h-8 w-8 text-slate-500 dark:text-slate-400" strokeWidth={1.5} />
-        )}
-        
-        <motion.div
-          className="absolute inset-0 rounded-2xl border-2 border-slate-400/20 dark:border-slate-500/20"
-          animate={{ opacity: [0, 0.5, 0], scale: [0.9, 1.15, 0.9] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </motion.div>
-      <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 max-w-[200px] text-center leading-relaxed">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-const DataGridTSV = ({ content }: { content: string }) => {
-  if (!content) return null;
-  const lines = content.split('\n').filter(line => line.trim().length > 0);
-  if (lines.length === 0) return null;
-  
-  const headers = lines[0].split('\t').map(h => h.replace(/^"|"$/g, ''));
-  const rows = lines.slice(1).map(line => line.split('\t'));
-
-  return (
-    <div className="overflow-auto max-h-[320px] min-h-[180px] w-full bg-slate-50/50 dark:bg-black/20 rounded-xl no-scrollbar relative flex-1">
-      <table className="w-full text-left border-collapse text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-slate-900/95 backdrop-blur-md shadow-sm">
-          <tr>
-            <th className="px-3 py-2.5 font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 w-12 text-center text-[10px]">#</th>
-            {headers.map((h, i) => (
-              <th key={i} className="px-3 py-2.5 font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 text-[10px] whitespace-nowrap">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="font-mono">
-          {rows.map((row, i) => (
-            <tr key={i} className="hover:bg-blue-50/80 dark:hover:bg-blue-900/20 transition-colors border-b border-slate-100 dark:border-slate-800/50 last:border-0 group">
-              <td className="px-3 py-2 text-slate-300 dark:text-slate-600 text-center border-r border-slate-100 dark:border-slate-800/50 group-hover:text-blue-400 transition-colors">
-                {i + 1}
-              </td>
-              {row.map((cell, j) => {
-                const val = cell.replace(/^"|"$/g, '');
-                let colorClass = "text-slate-600 dark:text-slate-300";
-                let bgClass = "";
-                if (val.startsWith('012') && (val.length === 15 || val.length === 18)) {
-                  colorClass = "text-amber-600 dark:text-amber-400 font-bold";
-                  bgClass = "bg-amber-500/10 rounded px-1.5 py-0.5";
-                } else if (/^[a-zA-Z0-9]{15,18}$/.test(val) && (val.startsWith('0') || val.startsWith('a') || val.startsWith('B') || val.startsWith('5'))) {
-                  colorClass = "text-blue-600 dark:text-blue-400 font-bold";
-                  bgClass = "bg-blue-500/10 rounded px-1.5 py-0.5";
-                } else if (val === 'Canceled' || val === 'Completed') {
-                  colorClass = "text-emerald-600 dark:text-emerald-400 font-bold";
-                } else if (val.startsWith('[')) {
-                  colorClass = "text-purple-600 dark:text-purple-400 font-bold";
-                }
-                
-                return (
-                  <td key={j} className="px-3 py-2 whitespace-nowrap">
-                    <span className={cn(colorClass, bgClass)}>{val}</span>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-const SmartPasteTextarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<typeof Textarea>>(({ className, onPaste, ...props }, ref) => {
-  const [pasteAnim, setPasteAnim] = React.useState<{ active: boolean; count: number }>({ active: false, count: 0 });
-  const [isDragging, setIsDragging] = React.useState(false);
-  const dragCounter = React.useRef(0);
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    if (onPaste) onPaste(e);
-    const pastedText = e.clipboardData.getData("text");
-    if (!pastedText) return;
-    
-    const rows = pastedText.split(/[\n\r]+/).filter(t => t.trim().length > 0).length;
-    
-    if (rows > 5) {
-      setPasteAnim({ active: true, count: rows });
-      setTimeout(() => {
-        setPasteAnim({ active: false, count: rows });
-      }, 1500);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    dragCounter.current += 1;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0 && e.dataTransfer.items[0].kind === 'file') {
-        setIsDragging(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    dragCounter.current -= 1;
-    if (dragCounter.current === 0) {
-      setIsDragging(false);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    dragCounter.current = 0;
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      const text = await file.text();
-      
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-      const textarea = e.currentTarget;
-      if (nativeInputValueSetter && textarea) {
-        nativeInputValueSetter.call(textarea, text);
-        const event = new Event('input', { bubbles: true });
-        textarea.dispatchEvent(event);
-      }
-
-      const rows = text.split(/[\n\r]+/).filter(t => t.trim().length > 0).length;
-      if (rows > 0) {
-        setPasteAnim({ active: true, count: rows });
-        setTimeout(() => setPasteAnim({ active: false, count: rows }), 1500);
-      }
-    } else {
-      if (props.onDrop) props.onDrop(e);
-    }
-  };
-
-  return (
-    <div className="relative w-full flex-1 flex flex-col min-h-0 group">
-      <Textarea
-        ref={ref}
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? listboxId : undefined}
+        onClick={() => (isOpen ? closeMenu() : openMenu())}
+        onKeyDown={handleKeyDown}
         className={cn(
-          "transition-all duration-500 relative z-10",
-          pasteAnim.active ? "ring-2 ring-emerald-500/60 shadow-[inset_0_0_30px_rgba(16,185,129,0.15)] border-emerald-500/60 bg-emerald-500/5 dark:bg-emerald-500/5" : "",
-          isDragging ? "ring-4 ring-blue-500/40 border-2 border-dashed border-blue-500/80 bg-blue-500/10 backdrop-blur-xl shadow-[inset_0_0_50px_rgba(59,130,246,0.15)] scale-[1.01]" : "",
-          className
+          "group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-200",
+          isOpen
+            ? "border-blue-400/60 bg-white/90 text-slate-950 ring-2 ring-blue-400/20 dark:bg-slate-900 dark:text-white"
+            : "border-slate-200/80 bg-white/75 text-slate-900 hover:border-sky-400/45 hover:bg-white dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-900"
         )}
-        onPaste={handlePaste}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        {...props}
-      />
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-blue-400/20 dark:text-blue-300">
+          {selectedTemplate?.source === "library" ? <Bookmark className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold leading-tight">{selectedTemplate?.name ?? "Select a template"}</span>
+          <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            {selectedTemplate?.source === "library" ? "Saved template" : selectedTemplate?.category ?? "Choose a query type"}
+          </span>
+        </span>
+        <ChevronDown className={cn("h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-blue-600 dark:group-hover:text-sky-300", isOpen && "rotate-180 text-blue-600 dark:text-sky-300")} />
+      </button>
 
-      {/* Floating Drag overlay */}
-      <AnimatePresence>
-        {isDragging && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none rounded-xl"
+      {isOpen && menuPosition && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[100] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/[0.98] p-1.5 text-slate-900 shadow-[0_20px_60px_rgba(15,23,42,0.16),0_0_0_1px_rgba(1,118,211,0.08)] backdrop-blur-2xl dark:border-slate-600/80 dark:bg-[#071426]/[0.98] dark:text-slate-100 dark:shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(96,182,255,0.08)]"
+            style={{
+              left: menuPosition.left,
+              width: menuPosition.width,
+              top: menuPosition.top,
+              bottom: menuPosition.bottom,
+              maxHeight: menuPosition.maxHeight,
+            }}
           >
-            <div className="bg-blue-600/90 text-white px-6 py-3 rounded-full font-black text-sm shadow-[0_10px_40px_rgba(37,99,235,0.4)] backdrop-blur-md flex items-center gap-3 animate-bounce">
-              <UploadCloud className="h-5 w-5" />
-              Drop CSV/TXT file here to parse
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700/70">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Choose a query template</span>
+              <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{templates.length}</span>
             </div>
-          </motion.div>
+            <div
+              id={listboxId}
+              role="listbox"
+              aria-label="Query templates"
+              className="space-y-1 overflow-y-auto p-1.5"
+              style={{ maxHeight: Math.max(120, menuPosition.maxHeight - 58) }}
+            >
+              {builtInTemplates.length > 0 && (
+                <div className="pb-1 pt-1.5">
+                  <span className="px-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Built-in templates</span>
+                </div>
+              )}
+              {builtInTemplates.map(renderTemplate)}
+              {savedTemplates.length > 0 && (
+                <>
+                  <div className="my-1.5 border-t border-slate-200/80 dark:border-slate-700/70" />
+                  <div className="flex items-center gap-2 px-2 pb-1 pt-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300/80">
+                    <Bookmark className="h-3 w-3" /> Saved templates
+                  </div>
+                  {savedTemplates.map(renderTemplate)}
+                </>
+              )}
+            </div>
+          </div>,
+          document.body
         )}
-      </AnimatePresence>
-      
-      {/* Floating Badge overlay */}
-      <AnimatePresence>
-        {pasteAnim.active && !isDragging && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9, y: -5 }}
-            className="absolute top-4 right-6 pointer-events-none z-30"
-          >
-            <Badge className="bg-emerald-500 text-white border-none shadow-[0_0_15px_rgba(16,185,129,0.4)] px-3 py-1 font-bold text-xs flex items-center gap-1.5 backdrop-blur-md">
-              <Sparkles className="h-3.5 w-3.5" />
-              Parsed {pasteAnim.count} rows
-            </Badge>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
-});
-SmartPasteTextarea.displayName = "SmartPasteTextarea";
+}
 
 export default function SOQLGeneratorPage() {
   const [templates, setTemplates] = React.useState<Template[]>(defaultTemplates);
   const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
-  const [isTemplateLoading, setIsTemplateLoading] = React.useState(false);
   const [libraryLoadState, setLibraryLoadState] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [ticketsInput, setTicketsInput] = React.useState("");
   const [favourites, setFavourites] = React.useState<Set<string>>(new Set(["1"]));
@@ -1205,44 +1457,8 @@ export default function SOQLGeneratorPage() {
 
   const [cancellationExecutionInput, setCancellationExecutionInput] = React.useState("");
   const [cancellationFailedInput, setCancellationFailedInput] = React.useState("");
-  const [isCancellationFailedExpanded, setIsCancellationFailedExpanded] = React.useState(false);
   const [cancellationStoredRows, setCancellationStoredRows] = React.useState<CancellationExecutionRow[]>([]);
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
-  const [cancellationSkippedTickets, setCancellationSkippedTickets] = React.useState<string[]>([]);
-  
-  const [productRecordInput, setProductRecordInput] = React.useState("");
-  const [productRecordStoredIds, setProductRecordStoredIds] = React.useState<Set<string>>(new Set());
-  const [productRecordSkipped, setProductRecordSkipped] = React.useState(0);
-  const [productRecordBatchCount, setProductRecordBatchCount] = React.useState(0);
-  
-  const finalProductRecordOutput = React.useMemo(() => {
-    return `"Id"\t"RecordType.Id"\n` + Array.from(productRecordStoredIds).join('\n');
-  }, [productRecordStoredIds]);
-
-  const handleProductRecordResultPaste = React.useCallback(
-    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      e.preventDefault();
-      const text = e.clipboardData.getData("text");
-      setProductRecordInput(text);
-      
-      const { output, skippedCount } = parseProductRecordResults(text);
-      if (output) {
-        const lines = output.split('\n');
-        if (lines.length > 1) {
-          setProductRecordStoredIds((prev) => {
-             const newSet = new Set(prev);
-             lines.slice(1).forEach(line => newSet.add(line));
-             return newSet;
-          });
-          setProductRecordBatchCount((prev) => prev + 1);
-        }
-      }
-      if (skippedCount > 0) {
-        setProductRecordSkipped((prev) => prev + skippedCount);
-      }
-    },
-    []
-  );
 
   const [caseAssignOutput, setCaseAssignOutput] = React.useState("");
   const [caseAssignmentResult, setCaseAssignmentResult] = React.useState<CaseAssignmentResult | null>(null);
@@ -1283,9 +1499,6 @@ export default function SOQLGeneratorPage() {
     selectedTemplate === "15" || activeTemplate?.type === "child-details-to-parent";
   const isCaseAssign = selectedTemplate === "4";
   const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19" || (activeTemplate?.name?.toLowerCase()?.includes("cancellation") ?? false) || (activeTemplate?.name?.toLowerCase()?.includes("cancel") ?? false);
-  const isProductRecordUpdate = activeTemplate?.type === "product-record-update";
-
-
 
   const refreshCaseOwners = React.useCallback(async () => {
     setCaseOwnerLoadState("loading");
@@ -1393,13 +1606,8 @@ export default function SOQLGeneratorPage() {
     });
   }, [activeCaseOwners]);
 
-  const parseTickets = React.useCallback((input: string, mode: "default" | "product-record" = "default"): string[] => {
+  const parseTickets = React.useCallback((input: string): string[] => {
     if (!input.trim()) return [];
-    if (mode === "product-record") {
-      return input.split(/[\r\n,]+/)
-        .map(t => t.trim())
-        .filter(t => t.length > 0);
-    }
     const cleaned = input.replace(/'/g, "").replace(/,/g, " ").replace(/[\t\r\n]+/g, " ");
     return cleaned
       .split(/\s+/)
@@ -1413,8 +1621,8 @@ export default function SOQLGeneratorPage() {
 
   const parsedCaseIds = React.useMemo(() => parseCaseIds(ticketsInput), [ticketsInput]);
   const parsedTickets = React.useMemo(
-    () => (isCaseAssign ? parsedCaseIds : parseTickets(ticketsInput, isProductRecordUpdate ? "product-record" : "default")),
-    [isCaseAssign, parseTickets, parsedCaseIds, ticketsInput, isProductRecordUpdate]
+    () => (isCaseAssign ? parsedCaseIds : parseTickets(ticketsInput)),
+    [isCaseAssign, parseTickets, parsedCaseIds, ticketsInput]
   );
   const inputBatchSize = isCancellation ? CANCELLATION_BATCH_SIZE : SOQL_BATCH_SIZE;
   const inputBatchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / inputBatchSize) : 0;
@@ -1602,7 +1810,7 @@ export default function SOQLGeneratorPage() {
     childDetailsSOQLBatches[childDetailsBatchIndex] ?? childDetailsSOQLBatches[0] ?? "";
   const childDetailsValidationPreview = React.useMemo(() => {
     if (childDetailsComponentIds.length === 0 || !childDetailsSOQLResult.trim()) return null;
-    return transformChildDetailsToParent(childDetailsSOQLResult, childDetailsComponentIds);
+    return transformChildDetailsToParent(childDetailsComponentIds, childDetailsSOQLResult);
   }, [childDetailsComponentIds, childDetailsSOQLResult]);
   const childDetailsVisibleResult = childDetailsTransformResult ?? childDetailsValidationPreview;
   const childDetailsInvalidIdCount =
@@ -1758,7 +1966,7 @@ export default function SOQLGeneratorPage() {
       return;
     }
     downloadTextFile(`asset-transfer-${Date.now()}.csv`, transferOutput, "text/csv;charset=utf-8;");
-    showDataFeedbackToast("Transfer CSV downloaded", transferOutput, "download");
+    toast.success("Transfer CSV downloaded");
   };
 
   const handleProcessChildDetailsToParent = () => {
@@ -1772,7 +1980,10 @@ export default function SOQLGeneratorPage() {
       return;
     }
 
-    const transformResult = transformChildDetailsToParent(childDetailsSOQLResult, childDetailsComponentIds);
+    const transformResult = transformChildDetailsToParent(
+      childDetailsComponentIds,
+      childDetailsSOQLResult
+    );
     setChildDetailsTransformResult(transformResult);
 
     if (transformResult.missingHeaders.length > 0) {
@@ -1814,8 +2025,12 @@ export default function SOQLGeneratorPage() {
       return;
     }
 
-    downloadTextFile(`child-details-query-${Date.now()}.txt`, childDetailsSOQLBatches.join("\n\n"), "text/plain;charset=utf-8;");
-    showDataFeedbackToast("Child Details SOQL downloaded", childDetailsSOQLBatches.join("\n\n"), "download");
+    downloadTextFile(
+      "child-details-to-parent-query-" + Date.now() + ".soql",
+      childDetailsSOQLBatches.join("\n\n"),
+      "text/plain;charset=utf-8;"
+    );
+    toast.success("Child Details SOQL downloaded");
   };
 
   const handleDownloadChildDetailsToParent = () => {
@@ -1824,8 +2039,12 @@ export default function SOQLGeneratorPage() {
       return;
     }
 
-    downloadTextFile(`child-details-to-parent-${Date.now()}.csv`, childDetailsOutput, "text/csv;charset=utf-8;");
-    showDataFeedbackToast("Parent-ready Asset CSV downloaded", childDetailsOutput, "download");
+    downloadTextFile(
+      "child-details-to-parent-" + Date.now() + ".csv",
+      childDetailsOutput,
+      "text/csv;charset=utf-8;"
+    );
+    toast.success("Parent-ready Asset CSV downloaded");
   };
 
   const appendCancellationResultBatch = React.useCallback(
@@ -1913,7 +2132,7 @@ export default function SOQLGeneratorPage() {
     }
   };
 
-    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>) => {
     dragCounterRef.current = 0;
     setIsDragging(false);
     let file: File | null = null;
@@ -1945,136 +2164,92 @@ export default function SOQLGeneratorPage() {
       return;
     }
 
-    setUploadState("scanning");
+    setUploadState("reading");
     
     try {
       const buffer = await file.arrayBuffer();
-      
-      // Instantiate the Web Worker for file parsing
-      const worker = new Worker(new URL("../workers/fileParser.worker.ts", import.meta.url));
-      const mode = isCancellation ? "cancellation" : (isCaseAssign ? "case-assignment" : "tickets");
-      
-      worker.onmessage = async (e) => {
-        const { success, result, error } = e.data;
-        if (!success) {
-           debouncedToast(error || "Failed to process file", "error");
-           setUploadState("error");
-           worker.terminate();
-           return;
-        }
+      let textContent = "";
 
-        if (mode === "cancellation") {
-           const { validTickets, skipped, skippedTickets } = result;
-           setTicketsInput(validTickets.join("\n"));
-           setCancellationSkippedTickets(skippedTickets || []);
-           setUploadSummary({
-             file: file!.name,
-             scannedLines: validTickets.length + skipped,
-             total: validTickets.length,
-             unique: validTickets.length,
-             valid: validTickets.length,
-             missing: skipped
-           });
-           setUploadState("success");
-           setAutoRunPending(true);
-           worker.terminate();
-           return;
-        }
-        
-        // For case-assignment and standard tickets
-        const extractedIds = result;
-        const scannedLines = extractedIds.length;
-        
-        if (extractedIds.length === 0) {
-          debouncedToast("No valid tickets were detected. Other text/data was ignored.", "error");
+      if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+        const workbook = xlsx.read(buffer, { type: "array" });
+        workbook.SheetNames.forEach(sheetName => {
+          const sheet = workbook.Sheets[sheetName];
+          if (sheet) {
+            textContent += xlsx.utils.sheet_to_csv(sheet) + "\n";
+          }
+        });
+      } else {
+        textContent = await file.text();
+      }
+
+      setUploadState("scanning");
+      // Use existing parseCaseIds logic
+      const extractedIds = parseCaseIds(textContent);
+      const scannedLines = textContent.split(/\r\n|\n|\r/).length;
+      
+      if (extractedIds.length === 0) {
+        toast.error("No valid Salesforce Case IDs were detected. Other text/data was ignored.");
+        setUploadState("error");
+        return;
+      }
+
+      setUploadState("validating");
+      
+      const validCases: string[] = [];
+      const missingCaseIds: string[] = [];
+      
+      for (let i = 0; i < extractedIds.length; i += 400) {
+        const batch = extractedIds.slice(i, i + 400);
+        try {
+          const res = await requestJson<{ valid: string[], missing: string[] }>("/api/cases/validate", {
+            method: "POST",
+            body: JSON.stringify({ caseIds: batch }),
+          });
+          
+          if (res.valid) validCases.push(...res.valid);
+          if (res.missing) missingCaseIds.push(...res.missing);
+        } catch (e) {
+          toast.error("Unable to validate Case records. Please try again.");
           setUploadState("error");
-          worker.terminate();
           return;
         }
-        
-        if (isCaseAssign) {
-          setUploadState("validating");
-          const validCases: string[] = [];
-          const missingCaseIds: string[] = [];
-          
-          for (let i = 0; i < extractedIds.length; i += 400) {
-            const batch = extractedIds.slice(i, i + 400);
-            try {
-              const res = await requestJson<{ valid: string[], missing: string[] }>("/api/cases/validate", {
-                method: "POST",
-                body: JSON.stringify({ caseIds: batch }),
-              });
-              
-              if (res.valid) validCases.push(...res.valid);
-              if (res.missing) missingCaseIds.push(...res.missing);
-            } catch (e) {
-              debouncedToast("Unable to validate Case records. Please try again.", "error");
-              setUploadState("error");
-              worker.terminate();
-              return;
-            }
-          }
-          
-          if (validCases.length === 0) {
-            debouncedToast("No matching Salesforce Case records were found.", "error");
-            setUploadState("error");
-            setMissingCases(missingCaseIds);
-            worker.terminate();
-            return;
-          }
-          
-          setTicketsInput(validCases.join("\n"));
-          setMissingCases(missingCaseIds);
-          setUploadSummary({
-            file: file!.name,
-            scannedLines, 
-            total: extractedIds.length,
-            unique: validCases.length + missingCaseIds.length,
-            valid: validCases.length,
-            missing: missingCaseIds.length,
-          });
-        } else {
-          // Standard tickets
-          setTicketsInput(extractedIds.join("\n"));
-          setUploadSummary({
-            file: file!.name,
-            scannedLines,
-            total: extractedIds.length,
-            unique: extractedIds.length,
-            valid: extractedIds.length,
-            missing: 0,
-          });
-        }
-        
-        setUploadState("success");
-        setAutoRunPending(true);
-        worker.terminate();
-      };
+      }
       
-      worker.onerror = (err) => {
-        debouncedToast("Worker error occurred during file parsing.", "error");
+      if (validCases.length === 0) {
+        toast.error("No matching Salesforce Case records were found.");
         setUploadState("error");
-        worker.terminate();
-      };
-
-      // Send the buffer to the worker
-      worker.postMessage({ buffer, name: file.name, mode }, [buffer]);
+        setMissingCases(missingCaseIds);
+        return;
+      }
       
-    } catch (error) {
-      console.error(error);
-      debouncedToast("Failed to initiate file parsing.", "error");
+      setTicketsInput(validCases.join("\n"));
+      setMissingCases(missingCaseIds);
+      setUploadSummary({
+        file: file.name,
+        scannedLines, 
+        total: extractedIds.length,
+        unique: validCases.length + missingCaseIds.length,
+        valid: validCases.length,
+        missing: missingCaseIds.length,
+      });
+      
+      setUploadState("success");
+      setAutoRunPending(true);
+      
+    } catch (e) {
+      toast.error("Unable to read this file.");
       setUploadState("error");
     }
   };
 
   const handleRunCaseAssignment = () => {
     if (!ticketsInput.trim()) {
-      debouncedToast("Paste one or more Case IDs first", "error");
+      toast.error("Paste one or more Case IDs first");
       return;
     }
 
     if (caseAssignmentRows.length === 0) {
-      debouncedToast("No valid Case IDs found. Paste 15- or 18-character Salesforce Case IDs beginning with 500.", "error");
+      toast.error("No valid Case IDs found. Paste 15- or 18-character Salesforce Case IDs beginning with 500.");
       return;
     }
 
@@ -2165,7 +2340,7 @@ export default function SOQLGeneratorPage() {
     }
 
     downloadTextFile(`case-assignment-${Date.now()}.csv`, caseAssignOutput, "text/csv;charset=utf-8;");
-    showDataFeedbackToast("Case assignment CSV downloaded", caseAssignOutput, "download");
+    toast.success("Case assignment CSV downloaded");
   };
 
   const handleDownloadCancellationOutput = () => {
@@ -2186,7 +2361,7 @@ export default function SOQLGeneratorPage() {
       },
     });
 
-    showDataFeedbackToast("Cancellation output downloaded", cancellationCanceledOutput, "download");
+    toast.success("Cancellation output downloaded");
   };
 
   const resetCaseOwnerSelectionState = React.useCallback(() => {
@@ -2404,8 +2579,6 @@ export default function SOQLGeneratorPage() {
   }, [cancellationQueryBatches.length]);
 
   const handleTemplateChange = (value: string) => {
-    setIsTemplateLoading(true);
-
     if (selectedTemplate === "1" && ticketsInput.trim()) {
       savedTicketsRef.current = ticketsInput;
     }
@@ -2447,17 +2620,15 @@ export default function SOQLGeneratorPage() {
         })
         .catch(() => undefined);
     }
-    
-    setTimeout(() => setIsTemplateLoading(false), 200);
   };
 
   const handleCopy = async (value: string) => {
     if (!value.trim()) return;
     await navigator.clipboard.writeText(value);
-    showDataFeedbackToast("Copied to clipboard", value, "copy");
+    toast.success("Copied to clipboard");
   };
 
-  const handleClear = React.useCallback(() => {
+  const handleClear = () => {
     setTicketsInput("");
     setAssetTransferInput("");
     setAssetSOQLResult("");
@@ -2472,26 +2643,11 @@ export default function SOQLGeneratorPage() {
     setCancellationExecutionInput("");
     setCancellationFailedInput("");
     setCancellationStoredRows([]);
-    setCancellationSkippedTickets([]);
-    setCancellationExecutionBatchIndex(0);
     setCaseAssignOutput("");
     setCaseAssignmentResult(null);
     setCaseAssignMode("equal");
     resetCaseOwnerSelectionState();
-    setProductRecordInput("");
-    setProductRecordStoredIds(new Set());
-    setProductRecordSkipped(0);
-    setProductRecordBatchCount(0);
-    setUploadState("idle");
-    setUploadSummary(null);
-    setMissingCases([]);
-  }, [resetCaseOwnerSelectionState]);
-
-  React.useEffect(() => {
-    if (!ticketsInput.trim()) {
-      handleClear();
-    }
-  }, [ticketsInput, handleClear]);
+  };
 
   const toggleFav = (id: string) => {
     const template = templates.find((template) => template.id === id);
@@ -2678,7 +2834,6 @@ export default function SOQLGeneratorPage() {
   ], [liveStore.soqlGeneratedCount]);
 
   return (
-    <TooltipProvider delayDuration={200}>
     <div className="workspace-page mx-auto w-full max-w-7xl space-y-6 pb-14 p-4 sm:p-6 lg:space-y-8 lg:p-8">
       {/* ─── Header Section ──────────────────────────────────────────────────────── */}
       <motion.div
@@ -2726,7 +2881,7 @@ export default function SOQLGeneratorPage() {
         </div>
       </motion.div>
 
-      {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && !isProductRecordUpdate && (
+      {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2801,45 +2956,39 @@ export default function SOQLGeneratorPage() {
                     </span>
                   )}
                 </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => toggleFav(selectedTemplate)}
-                      className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700 text-xs font-bold"
-                      aria-label={`Toggle favourite for ${activeTemplate?.name ?? ""}`}
-                    >
-                      <Star
-                        className={`h-4.5 w-4.5 transition-transform hover:scale-110 ${
-                          activeTemplate?.source === "library"
-                            ? activeTemplate.favourite
-                              ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
-                              : "text-slate-400 dark:text-slate-500 group-hover:text-amber-500"
-                            : favourites.has(selectedTemplate)
-                              ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
-                              : "text-slate-400 dark:text-slate-500 group-hover:text-amber-500"
-                        }`}
-                      />
-                      <span className="text-[11px] font-black text-slate-500">
-                        {activeTemplate?.source === "library"
-                          ? activeTemplate.favourite
-                            ? "Saved"
-                            : "Favorite"
-                          : favourites.has(selectedTemplate)
-                          ? "Saved"
-                          : "Favorite"}
-                      </span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {activeTemplate?.favourite || favourites.has(selectedTemplate) ? "Remove from bookmarks" : "Save this template"}
-                  </TooltipContent>
-                </Tooltip>
+                <button
+                  type="button"
+                  onClick={() => toggleFav(selectedTemplate)}
+                  className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700 text-xs font-bold"
+                  aria-label={`Toggle favourite for ${activeTemplate?.name ?? ""}`}
+                  title={activeTemplate?.favourite || favourites.has(selectedTemplate) ? "Remove Bookmark" : "Bookmark Template"}
+                >
+                  <Star
+                    className={`h-4.5 w-4.5 transition-transform hover:scale-110 ${
+                      activeTemplate?.source === "library"
+                        ? activeTemplate.favourite
+                          ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
+                          : "text-slate-400 hover:text-amber-500"
+                        : favourites.has(selectedTemplate)
+                        ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
+                        : "text-slate-400 hover:text-amber-500"
+                    }`}
+                  />
+                  <span className="text-[11px] font-black text-slate-500">
+                    {activeTemplate?.source === "library"
+                      ? activeTemplate.favourite
+                        ? "Saved"
+                        : "Favorite"
+                      : favourites.has(selectedTemplate)
+                      ? "Saved"
+                      : "Favorite"}
+                  </span>
+                </button>
               </div>
             </CardContent>
           </Card>
 
-          {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && !isProductRecordUpdate && (
+          {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && (
             <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden group">
               <CardHeader className="pb-4 bg-transparent p-6">
                 <div className="flex items-center gap-3">
@@ -2895,24 +3044,73 @@ export default function SOQLGeneratorPage() {
 
 
           {!isAssetTransfer && !isChildDetailsToParent && (
-            <Card className="flex flex-col rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)] focus-within:border-blue-500/40">
+            <Card className="flex flex-col rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden">
               <CardHeader className="pb-4 bg-transparent p-6 relative">
                 <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2">
-                  {!(isCaseAssign || isCancellation) && (
+                  {!isCaseAssign && (
                     <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
                       <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] text-white shadow-inner">1</span>
                       Step 1
                     </Badge>
                   )}
                   <CardTitle className="text-base font-black tracking-tight flex-1">
-                    {isProductRecordUpdate ? "Paste Model Numbers" : isCancellation ? "Upload or Paste Cancellation Tickets" : isCaseAssign ? "Upload or Paste Case IDs" : "Paste Ticket Numbers"}
+                    {isCancellation ? "Paste Cancellation Tickets" : isCaseAssign ? "Upload or Paste Case IDs" : "Paste Ticket Numbers"}
                   </CardTitle>
                 </div>
               </CardHeader>
 
               <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
-                {!isProductRecordUpdate && (
+                {isCaseAssign && (
                   <div className="flex flex-col space-y-4">
+                    <div 
+                      onDragOver={handleDragOver}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleFileUpload}
+                      className={cn(
+                        "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 min-h-[200px] text-center transition-all duration-200 overflow-hidden w-full mx-auto",
+                        uploadState === "reading" || uploadState === "scanning" || uploadState === "validating" 
+                          ? "border-blue-400/50 bg-blue-50/50 dark:bg-blue-900/10" 
+                          : isDragging 
+                            ? "border-[#0176d3] bg-[#0176d3]/10 scale-[1.02] shadow-sm"
+                            : "border-slate-300 dark:border-slate-700 hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                      )}
+                    >
+                      {/* Transparent overlay when dragging to prevent flickering from child drag events */}
+                      {isDragging && <div className="absolute inset-0 z-50 pointer-events-none" />}
+                      
+                      {uploadState === "reading" || uploadState === "scanning" || uploadState === "validating" ? (
+                        <div className="flex flex-col items-center z-10 pointer-events-none">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 mb-3 animate-pulse">
+                            <RotateCcw className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                          </div>
+                          <p className="text-sm font-bold text-blue-600 dark:text-blue-400">
+                            {uploadState === "reading" ? "Reading file..." : uploadState === "scanning" ? "Scanning for Case IDs..." : "Validating Cases..."}
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={cn(
+                            "flex h-12 w-12 items-center justify-center rounded-full mb-4 shadow-sm z-10 transition-colors pointer-events-none",
+                            isDragging 
+                              ? "bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-300 dark:ring-blue-700" 
+                              : "bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700"
+                          )}>
+                            <Upload className={cn("h-6 w-6 transition-colors", isDragging ? "text-blue-600 dark:text-blue-400" : "text-slate-500")} />
+                          </div>
+                          <p className={cn("text-base font-black z-10 transition-colors pointer-events-none", isDragging ? "text-blue-600 dark:text-blue-400" : "text-foreground")}>
+                            {isDragging ? "Drop your file here!" : "Drag & Drop your Case ID report here"}
+                          </p>
+                          <p className="text-xs text-slate-500 font-medium mt-1 mb-5 z-10 pointer-events-none">Supports CSV, XLSX, XLS, TXT</p>
+                          <div className="z-10">
+                            <input type="file" id="case-upload" className="sr-only" onChange={handleFileUpload} accept=".csv,.txt,.xlsx,.xls,.tsv" />
+                            <label htmlFor="case-upload" className="cursor-pointer inline-flex items-center justify-center rounded-xl bg-white dark:bg-slate-900 px-4 py-2 text-sm font-bold shadow-sm ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                              Browse File
+                            </label>
+                          </div>
+                        </>
+                      )}
+                    </div>
 
                     {uploadSummary && uploadState === "success" && (
                       <div className="rounded-xl border border-emerald-200/50 bg-emerald-50/50 dark:border-emerald-900/30 dark:bg-emerald-900/10 p-4">
@@ -2921,17 +3119,17 @@ export default function SOQLGeneratorPage() {
                           <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Upload Complete</h4>
                         </div>
                         <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
-                          <div className="flex justify-between items-center gap-2 min-w-0"><span className="text-slate-500 font-medium shrink-0">File</span><span className="font-bold truncate" title={uploadSummary.file}>{uploadSummary.file}</span></div>
-                          <div className="flex justify-between items-center gap-2 min-w-0"><span className="text-slate-500 font-medium shrink-0">Records Scanned</span><span className="font-bold truncate">{uploadSummary.scannedLines.toLocaleString()}</span></div>
-                          <div className="flex justify-between items-center gap-2 min-w-0"><span className="text-slate-500 font-medium shrink-0">{isCaseAssign ? "Case IDs Detected" : "Tickets Detected"}</span><span className="font-bold truncate">{uploadSummary.total.toLocaleString()}</span></div>
-                          <div className="flex justify-between items-center gap-2 min-w-0"><span className="text-slate-500 font-medium shrink-0">{isCaseAssign ? "Unique Case IDs" : "Unique Tickets"}</span><span className="font-bold truncate">{uploadSummary.unique.toLocaleString()}</span></div>
-                          <div className="flex justify-between items-center gap-2 min-w-0"><span className="text-emerald-600 dark:text-emerald-400 font-bold shrink-0">{isCaseAssign ? "Valid Cases" : "Valid Tickets"}</span><span className="font-bold text-emerald-600 dark:text-emerald-400 truncate">{uploadSummary.valid.toLocaleString()}</span></div>
-                          <div className="flex justify-between items-center gap-2 min-w-0"><span className="text-rose-500 font-bold shrink-0">{isCancellation ? "Skipped" : "Not Found"}</span><span className="font-bold text-rose-500 truncate">{uploadSummary.missing.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">File</span><span className="font-bold truncate max-w-[120px]" title={uploadSummary.file}>{uploadSummary.file}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Records Scanned</span><span className="font-bold">{uploadSummary.scannedLines.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Case IDs Detected</span><span className="font-bold">{uploadSummary.total.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Unique Case IDs</span><span className="font-bold">{uploadSummary.unique.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-emerald-600 dark:text-emerald-400 font-bold">Valid Cases</span><span className="font-bold text-emerald-600 dark:text-emerald-400">{uploadSummary.valid.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-rose-500 font-bold">Not Found</span><span className="font-bold text-rose-500">{uploadSummary.missing.toLocaleString()}</span></div>
                         </div>
                         {missingCases.length > 0 && (
                           <div className="mt-4 pt-3 border-t border-emerald-100 dark:border-emerald-800/30">
                             <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{missingCases.length} {isCaseAssign ? "Cases" : "Tickets"} Not Found</span>
+                              <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{missingCases.length} Cases Not Found</span>
                               <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-600 hover:text-rose-700 hover:bg-rose-100/50" onClick={() => handleCopy(missingCases.join("\n"))}>
                                 <Copy className="h-3 w-3 mr-1" /> Copy Missing
                               </Button>
@@ -2949,41 +3147,10 @@ export default function SOQLGeneratorPage() {
                 
                 {!isCaseAssign && (
                   <>
-                    <div 
-                      className="flex-1 flex flex-col space-y-2 relative"
-                      onDragOver={!isProductRecordUpdate ? handleDragOver : undefined}
-                      onDragEnter={!isProductRecordUpdate ? handleDragEnter : undefined}
-                      onDragLeave={!isProductRecordUpdate ? handleDragLeave : undefined}
-                      onDrop={!isProductRecordUpdate ? handleFileUpload : undefined}
-                    >
-                      {(uploadState === "reading" || uploadState === "scanning" || uploadState === "validating") && (
-                        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-100/60 dark:bg-black/60 backdrop-blur-[2px] rounded-xl">
-                          <RotateCcw className="h-8 w-8 text-blue-600 dark:text-blue-400 animate-spin mb-3" />
-                          <p className="text-xs font-bold text-blue-600 dark:text-blue-400">Loading file...</p>
-                        </div>
-                      )}
-                      {isDragging && !isProductRecordUpdate && (
-                        <div className="absolute inset-0 z-30 bg-blue-500/10 border-2 border-dashed border-blue-500 rounded-xl pointer-events-none" />
-                      )}
-                      
-                      {!isProductRecordUpdate && (
-                        <div className="absolute bottom-3 right-4 z-30 flex items-center gap-2">
-                          <input type="file" id="ticket-upload-small" className="sr-only" onChange={handleFileUpload} accept=".csv,.txt,.xlsx,.xls,.tsv" />
-                          <label htmlFor="ticket-upload-small" className="cursor-pointer bg-slate-200/80 dark:bg-slate-800/80 hover:bg-slate-300 dark:hover:bg-slate-700 backdrop-blur-md text-slate-600 dark:text-slate-300 px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm transition-colors flex items-center gap-1.5">
-                            <UploadCloud className="h-3 w-3" /> Browse File
-                          </label>
-                        </div>
-                      )}
-
-                      {ticketsInput.trim() === "" && (
-                        <AnimatedEmptyState 
-                          label={isProductRecordUpdate ? "Paste model numbers here" : "Paste or drag & drop ticket numbers"} 
-                          isDragDrop={!isProductRecordUpdate} 
-                        />
-                      )}
-                      <SmartPasteTextarea
-                        placeholder=""
-                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y min-h-[320px] relative z-20 bg-transparent placeholder:text-transparent"
+                    <div className="flex-1 flex flex-col space-y-2">
+                      <Textarea
+                        placeholder={`Paste ticket numbers here...\nA26060134750678\nA26060134750476\nA26060134750619`}
+                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y min-h-[320px]"
                         value={ticketsInput}
                         onChange={(event) => {
                           const value = event.target.value;
@@ -3068,20 +3235,12 @@ export default function SOQLGeneratorPage() {
         </motion.div>
 
         <motion.div
-          key={selectedTemplate + (isTemplateLoading ? "-loading" : "-loaded")}
-          initial={{ opacity: 0, y: 5 }}
+          initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.15 }}
-          className="2xl:col-span-9 xl:col-span-8 min-w-0 relative"
+          transition={{ delay: 0.1, duration: 0.25 }}
+          className="2xl:col-span-9 xl:col-span-8 grid grid-cols-1 2xl:grid-cols-2 gap-6 min-w-0"
         >
-          {isTemplateLoading ? (
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 w-full">
-              <div className="h-[400px] rounded-3xl bg-slate-200/50 dark:bg-slate-800/50 animate-pulse backdrop-blur-xl border border-slate-300/50 dark:border-slate-700/50 shadow-inner" />
-              <div className="h-[400px] rounded-3xl bg-slate-200/50 dark:bg-slate-800/50 animate-pulse backdrop-blur-xl border border-slate-300/50 dark:border-slate-700/50 shadow-inner hidden 2xl:block" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 stagger-cards min-w-0">
-              {isTS && (
+          {isTS && (
             <>
               <QueryPreviewCard
                 title="TS (Ticket Status)"
@@ -3201,7 +3360,7 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-0 space-y-3 relative z-10">
-                    <SmartPasteTextarea
+                    <Textarea
                       placeholder={`2400895187\n2400895188\n2400895189`}
                       className="h-[118px] min-h-[118px] resize-none rounded-xl border border-transparent bg-slate-100/40 p-3 font-mono text-xs leading-relaxed shadow-none focus-visible:border-blue-500 focus-visible:ring-blue-500/40 dark:bg-black/20"
                       value={childDetailsComponentInput}
@@ -3446,7 +3605,7 @@ export default function SOQLGeneratorPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="flex flex-col">
                       <label className="text-[11px] font-black text-slate-500 mb-2 uppercase tracking-widest pl-1">Asset SOQL Result</label>
-                      <SmartPasteTextarea
+                      <Textarea
                         placeholder={`Paste Asset SOQL result here...\n"_"\t"Component_Id__c"\t"Id"\t"Account.Customer_ID__c"\t"Record_Type__c"\t"Parent.Id"`}
                         className="flex-1 min-h-[160px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-none p-4 resize-y"
                         value={assetSOQLResult}
@@ -3456,7 +3615,7 @@ export default function SOQLGeneratorPage() {
 
                     <div className="flex flex-col">
                       <label className="text-[11px] font-black text-slate-500 mb-2 uppercase tracking-widest pl-1">Account SOQL Result</label>
-                      <SmartPasteTextarea
+                      <Textarea
                         placeholder={`Paste Account SOQL result here...\n"_"\t"Customer_ID__c"\t"Id"`}
                         className="flex-1 min-h-[160px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-none p-4 resize-y"
                         value={accountSOQLResult}
@@ -3544,10 +3703,7 @@ export default function SOQLGeneratorPage() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white shadow-inner">2</span>
-                            Step 2
-                          </Badge>
+                          <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Step 2</Badge>
                           <CardTitle className="text-base font-black tracking-tight text-foreground">Cancellation SOQL Batches</CardTitle>
                         </div>
                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
@@ -3595,14 +3751,14 @@ export default function SOQLGeneratorPage() {
                   )}
 
                   <div className="flex flex-wrap gap-3">
-                    <MagneticButton className="h-10 px-4 rounded-xl text-xs font-bold border border-rose-500/20 bg-rose-500/10 text-rose-600 shadow-sm" onClick={() => handleCopy(cancellationQueryBatches.join("\n\n"))} disabled={cancellationQueryBatches.length === 0} glowColor="rgba(244, 63, 94, 0.15)">
+                    <Button variant="outline" size="sm" className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200 dark:border-slate-700 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all shadow-sm" onClick={() => handleCopy(cancellationQueryBatches.join("\n\n"))} disabled={cancellationQueryBatches.length === 0}>
                       <Copy className="h-4 w-4 mr-1.5" /> Copy All
-                    </MagneticButton>
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-500 group relative focus-within:shadow-[0_0_50px_-15px_rgba(16,185,129,0.3)] focus-within:border-emerald-500/40">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
                 <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex items-center gap-4">
@@ -3611,10 +3767,7 @@ export default function SOQLGeneratorPage() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] text-white shadow-inner">3</span>
-                            Step 3
-                          </Badge>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Step 3</Badge>
                           <CardTitle className="text-base font-black tracking-tight text-foreground">Paste SOQL Result Batch</CardTitle>
                         </div>
                         <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
@@ -3629,18 +3782,13 @@ export default function SOQLGeneratorPage() {
                 </CardHeader>
 
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
-                  <div className="flex-1 flex flex-col relative">
-                    {cancellationExecutionInput.trim() === "" && (
-                      <AnimatedEmptyState label="Paste Salesforce SOQL result" isDragDrop={false} />
-                    )}
-                    <SmartPasteTextarea
-                      placeholder=""
-                      className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y relative z-20 bg-transparent placeholder:text-transparent"
-                      value={cancellationExecutionInput}
-                      onPaste={handleCancellationResultPaste}
-                      onChange={(event) => handleCancellationResultInputChange(event.target.value)}
-                    />
-                  </div>
+                  <Textarea
+                    placeholder={`Paste Salesforce SOQL result here...\n"_"\t"Id"\t"Ticket_Number_Read_Only__c"\t"Status"\n"[WorkOrder]"\t"0WONy000008eHgfOAE"\t"B25031925463529"\t"Cancellation Requested"`}
+                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-y"
+                    value={cancellationExecutionInput}
+                    onPaste={handleCancellationResultPaste}
+                    onChange={(event) => handleCancellationResultInputChange(event.target.value)}
+                  />
 
                   <div className="flex flex-wrap gap-2.5 pt-2">
                     <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Pasted tickets: {parsedTickets.length}</Badge>
@@ -3672,6 +3820,14 @@ export default function SOQLGeneratorPage() {
                         </p>
                       </div>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" className="h-9 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationCanceledOutput)} disabled={uniqueExecutableCancellationRows.length === 0}>
+                        <Copy className="h-3.5 w-3.5" /> Copy All
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-9 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={handleDownloadCancellationOutput} disabled={uniqueExecutableCancellationRows.length === 0}>
+                        <Download className="h-3.5 w-3.5" /> TSV
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
@@ -3681,96 +3837,39 @@ export default function SOQLGeneratorPage() {
                     <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Status: Canceled</Badge>
                   </div>
                   <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
-                    <div className="flex-1 w-full flex flex-col min-h-[180px] max-h-[320px] rounded-xl overflow-hidden">
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
                       {uniqueExecutableCancellationRows.length > 0
-                        ? <DataGridTSV content={cancellationCanceledOutput} />
-                        : <DataGridTSV content={"\"_\"\t\"Id\"\t\"Ticket_Number_Read_Only__c\"\t\"Status\"\n\"[WorkOrder]\"\t\"0WONy000008eHgfOAE\"\t\"B25031925463529\"\t\"Canceled\""} />}
-                    </div>
-                  </div>
-                  
-                  {/* Floating Sticky Actions Pill */}
-                  <div className="sticky bottom-4 z-50 ml-auto flex w-max items-center gap-1 rounded-full border border-slate-200/60 bg-white/70 p-1.5 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/70 -mt-12 mr-4 mb-2">
-                    <MagneticButton className="h-8 px-3 gap-2 text-xs font-bold rounded-full text-blue-700 dark:text-blue-300 bg-blue-500/15 border border-blue-500/20" onClick={() => handleCopy(cancellationCanceledOutput)} disabled={uniqueExecutableCancellationRows.length === 0} glowColor="rgba(59, 130, 246, 0.2)">
-                      <Copy className="h-3.5 w-3.5" /> Copy All
-                    </MagneticButton>
-                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1"></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs font-bold rounded-full hover:bg-emerald-500/15 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all bg-white/50 dark:bg-slate-800/50" onClick={handleDownloadCancellationOutput} disabled={uniqueExecutableCancellationRows.length === 0}>
-                      <Download className="h-3.5 w-3.5" /> TSV
-                    </Button>
+                        ? cancellationCanceledOutput
+                        : "\"_\"\t\"Id\"\t\"Ticket_Number_Read_Only__c\"\t\"Status\"\n\"[WorkOrder]\"\t\"0WONy000008eHgfOAE\"\t\"B25031925463529\"\t\"Canceled\""}
+                    </pre>
                   </div>
                 </CardContent>
               </Card>
-              <Card 
-                className={cn(
-                  "overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-500 group relative focus-within:shadow-[0_0_50px_-15px_rgba(245,158,11,0.3)] focus-within:border-amber-500/40",
-                  isCancellationFailedExpanded ? "h-full 2xl:col-span-1" : "2xl:col-span-1 cursor-pointer hover:bg-white/60 dark:hover:bg-slate-950/60 self-start"
-                )}
-                onClick={() => !isCancellationFailedExpanded && setIsCancellationFailedExpanded(true)}
-              >
-                <CardHeader 
-                  className={cn(
-                    "bg-transparent relative z-10 transition-all duration-300",
-                    isCancellationFailedExpanded ? "pb-4 p-6" : "p-4"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner shrink-0">
-                        <AlertTriangle className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-[10px] text-white shadow-inner">4</span>
-                            Step 4 (Optional)
-                          </Badge>
-                          <CardTitle className="text-base font-black tracking-tight text-foreground">Paste Failed Results</CardTitle>
-                        </div>
-                        {isCancellationFailedExpanded && (
-                          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                            Paste failed tickets to generate stats
-                          </p>
-                        )}
-                      </div>
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col 2xl:col-span-1 transition-all duration-300 group relative">
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shadow-inner">
+                      <AlertTriangle className="h-5 w-5" />
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="h-8 w-8 p-0 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 shrink-0"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsCancellationFailedExpanded(!isCancellationFailedExpanded);
-                      }}
-                    >
-                      {isCancellationFailedExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Step 4 (Optional)</Badge>
+                        <CardTitle className="text-base font-black tracking-tight text-foreground">Paste Failed Results</CardTitle>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                        Paste failed tickets to generate stats
+                      </p>
+                    </div>
                   </div>
                 </CardHeader>
-                <AnimatePresence initial={false}>
-                  {isCancellationFailedExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden flex-1 flex flex-col"
-                    >
-                      <CardContent className="p-6 pt-1 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
-                        <div className="flex-1 flex flex-col relative">
-                          {cancellationFailedInput.trim() === "" && (
-                            <AnimatedEmptyState label="Paste failed SOQL result" isDragDrop={false} />
-                          )}
-                          <Textarea
-                            placeholder=""
-                            className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-amber-500/40 focus-visible:border-amber-500 shadow-none p-4 resize-y relative z-20 bg-transparent placeholder:text-transparent"
-                            value={cancellationFailedInput}
-                            onChange={(event) => setCancellationFailedInput(event.target.value)}
-                          />
-                        </div>
-                      </CardContent>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
+                  <Textarea
+                    placeholder={`Paste Salesforce SOQL result of FAILED tickets here...\n"_"\t"Id"\t"Ticket_Number_Read_Only__c"\t"Status"\n"[WorkOrder]"\t"0WONy000008eHgfOAE"\t"B25031925463529"\t"Cancellation Requested"`}
+                    className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-amber-500/40 focus-visible:border-amber-500 shadow-none p-4 resize-y"
+                    value={cancellationFailedInput}
+                    onChange={(event) => setCancellationFailedInput(event.target.value)}
+                  />
+                </CardContent>
               </Card>
 
               {(() => {
@@ -3785,19 +3884,15 @@ export default function SOQLGeneratorPage() {
 
                 const mailTemplateText = `Dear,\nCancellation has been done successfully.\n\n` +
                   (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
-                  (cancellationSkippedTickets.length > 0 ? `Skipped Tickets (No Remarks):\n${cancellationSkippedTickets.join("\n")}\n\n` : "") +
                   `Total Tickets: ${cancellationTotalTickets}\n` +
                   `Cancelled Tickets: ${cancellationSuccessCount}\n` +
-                  `Failed Tickets: ${cancellationFailedCount}\n` +
-                  `Skipped Tickets: ${cancellationSkippedTickets.length}`;
+                  `Failed Tickets: ${cancellationFailedCount}`;
 
                 const postTemplateText = `@taguser \nCancellation has been done successfully.\n\n` +
                   (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
-                  (cancellationSkippedTickets.length > 0 ? `Skipped Tickets (No Remarks):\n${cancellationSkippedTickets.join("\n")}\n\n` : "") +
                   `Total Tickets: ${cancellationTotalTickets}\n` +
                   `Cancelled Tickets: ${cancellationSuccessCount}\n` +
-                  `Failed Tickets: ${cancellationFailedCount}\n` +
-                  `Skipped Tickets: ${cancellationSkippedTickets.length}`;
+                  `Failed Tickets: ${cancellationFailedCount}`;
 
                 return (
                   <>
@@ -3904,30 +3999,15 @@ export default function SOQLGeneratorPage() {
                   </CardHeader>
                   <CardContent className="p-5 space-y-4 relative z-10">
                     <div className="grid grid-cols-3 gap-2 bg-slate-50/50 dark:bg-slate-900/50 p-1.5 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" variant={caseAssignMode === "equal" ? "primary" : "ghost"} onClick={() => setCaseAssignMode("equal")} className={cn("text-xs h-9 font-bold rounded-lg transition-all", caseAssignMode === "equal" ? "bg-purple-500 hover:bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-slate-500 hover:text-purple-600")}>
-                            Equally
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Distribute cases equally across all selected owners.</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" variant={caseAssignMode === "owner-wise" ? "primary" : "ghost"} onClick={() => setCaseAssignMode("owner-wise")} className={cn("text-xs h-9 font-bold rounded-lg transition-all", caseAssignMode === "owner-wise" ? "bg-purple-500 hover:bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-slate-500 hover:text-purple-600")}>
-                            Owner Wise
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Group cases by their current owner and divide.</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="sm" variant={caseAssignMode === "quantity-wise" ? "primary" : "ghost"} onClick={() => setCaseAssignMode("quantity-wise")} className={cn("text-xs h-9 font-bold rounded-lg transition-all", caseAssignMode === "quantity-wise" ? "bg-purple-500 hover:bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-slate-500 hover:text-purple-600")}>
-                            Qty Wise
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Assign specific case quantities to each owner.</TooltipContent>
-                      </Tooltip>
+                      <Button size="sm" variant={caseAssignMode === "equal" ? "primary" : "ghost"} onClick={() => setCaseAssignMode("equal")} className={cn("text-xs h-9 font-bold rounded-lg transition-all", caseAssignMode === "equal" ? "bg-purple-500 hover:bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-slate-500 hover:text-purple-600")}>
+                        Equally
+                      </Button>
+                      <Button size="sm" variant={caseAssignMode === "owner-wise" ? "primary" : "ghost"} onClick={() => setCaseAssignMode("owner-wise")} className={cn("text-xs h-9 font-bold rounded-lg transition-all", caseAssignMode === "owner-wise" ? "bg-purple-500 hover:bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-slate-500 hover:text-purple-600")}>
+                        Owner Wise
+                      </Button>
+                      <Button size="sm" variant={caseAssignMode === "quantity-wise" ? "primary" : "ghost"} onClick={() => setCaseAssignMode("quantity-wise")} className={cn("text-xs h-9 font-bold rounded-lg transition-all", caseAssignMode === "quantity-wise" ? "bg-purple-500 hover:bg-purple-600 text-white shadow-md shadow-purple-500/20" : "text-slate-500 hover:text-purple-600")}>
+                        Qty Wise
+                      </Button>
                     </div>
 
                     {/* Mode Specific Compact Configurations */}
@@ -4383,122 +4463,7 @@ export default function SOQLGeneratorPage() {
           )}
 
 
-          {isProductRecordUpdate && (
-            <>
-              <QueryPreviewCard
-                title={activeTemplate?.name ?? "Query Preview"}
-                subtitle={`${activeTemplate?.category ?? ""} query preview`}
-                batches={otherPreview}
-                batchIndex={otherBatchIndex}
-                setBatchIndex={setOtherBatchIndex}
-                onCopy={handleCopy}
-              />
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-500 group relative focus-within:shadow-[0_0_50px_-15px_rgba(249,115,22,0.3)] focus-within:border-orange-500/40">
-                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 shadow-inner">
-                        <FileSpreadsheet className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 shadow-sm flex items-center gap-1.5">
-                            <span className="flex h-4 w-4 items-center justify-center rounded-full bg-orange-500 text-[10px] text-white shadow-inner">2</span>
-                            Step 2
-                          </Badge>
-                          <CardTitle className="text-base font-black tracking-tight text-foreground">Paste SOQL Result Batch</CardTitle>
-                        </div>
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                          Each paste is stored and converted to Product
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm self-start">
-                      {productRecordBatchCount} stored batch{productRecordBatchCount === 1 ? "" : "es"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
-                  <div className="flex-1 flex flex-col relative">
-                    {productRecordInput.trim() === "" && (
-                      <AnimatedEmptyState label="Paste SOQL result batch" isDragDrop={false} />
-                    )}
-                    <SmartPasteTextarea
-                      placeholder=""
-                      className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 focus-visible:ring-orange-500/40 focus-visible:border-orange-500 shadow-none p-4 resize-y whitespace-pre flex-nowrap relative z-20 bg-transparent placeholder:text-transparent"
-                      value={productRecordInput}
-                      onPaste={handleProductRecordResultPaste}
-                      onChange={(event) => setProductRecordInput(event.target.value)}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-2.5 pt-2">
-                    <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Pasted model numbers: {parsedTickets.length}</Badge>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Stored valid records: {productRecordStoredIds.size}</Badge>
-                    {productRecordSkipped > 0 && (
-                      <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Skipped: {productRecordSkipped}</Badge>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 flex flex-col transition-all duration-300 group relative">
-                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-                        <CheckCircle2 className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-3 py-1 shadow-sm">Final</Badge>
-                          <CardTitle className="text-base font-black tracking-tight text-foreground">All Records</CardTitle>
-                        </div>
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                          Copy table when done
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
-                  <div className="flex flex-wrap gap-2.5">
-                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Rows: {productRecordStoredIds.size}</Badge>
-                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">Record Type: Product</Badge>
-                  </div>
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20">
-                    <div className="flex-1 w-full flex flex-col min-h-[180px] max-h-[320px] rounded-xl overflow-hidden">
-                      {productRecordStoredIds.size > 0
-                        ? <DataGridTSV content={finalProductRecordOutput} />
-                        : <DataGridTSV content={"\"Id\"\t\"RecordType.Id\"\n\"01tNy000009A7xVIAS\"\t\"012Ny0000003SwJIAU\""} />}
-                    </div>
-                  </div>
-                  
-                  {/* Floating Sticky Actions Pill */}
-                  <div className="sticky bottom-4 z-50 ml-auto flex w-max items-center gap-1 rounded-full border border-slate-200/60 bg-white/70 p-1.5 shadow-[0_8px_30px_-4px_rgba(0,0,0,0.15)] backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/70 -mt-12 mr-4 mb-2">
-                    <MagneticButton className="h-8 px-3 gap-2 text-xs font-bold rounded-full text-blue-700 dark:text-blue-300 bg-blue-500/15 border border-blue-500/20" onClick={() => handleCopy(finalProductRecordOutput)} disabled={productRecordStoredIds.size === 0} glowColor="rgba(59, 130, 246, 0.2)">
-                      <Copy className="h-3.5 w-3.5" /> Copy All
-                    </MagneticButton>
-                    <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1"></div>
-                    <Button variant="ghost" size="sm" className="h-8 gap-2 text-xs font-bold rounded-full hover:bg-emerald-500/15 hover:text-emerald-700 dark:hover:text-emerald-300 transition-all bg-white/50 dark:bg-slate-800/50" onClick={() => {
-                        const blob = new Blob([finalProductRecordOutput], { type: "text/csv;charset=utf-8;" });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement("a");
-                        link.href = url;
-                        link.setAttribute("download", `Product_Record_Update_${new Date().getTime()}.csv`);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        showDataFeedbackToast("Product Record CSV downloaded", finalProductRecordOutput, "download");
-                    }} disabled={productRecordStoredIds.size === 0}>
-                      <Download className="h-3.5 w-3.5" /> TSV
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {!isTS && !isSA && !isAssetTransfer && !isChildDetailsToParent && !isCancellation && !isCaseAssign && !isProductRecordUpdate && (
+          {!isTS && !isSA && !isAssetTransfer && !isChildDetailsToParent && !isCancellation && !isCaseAssign && (
             <QueryPreviewCard
               title={activeTemplate?.name ?? "Query Preview"}
               subtitle={`${activeTemplate?.category ?? ""} query preview`}
@@ -4508,11 +4473,8 @@ export default function SOQLGeneratorPage() {
               onCopy={handleCopy}
             />
           )}
-            </div>
-          )}
         </motion.div>
       </div>
     </div>
-    </TooltipProvider>
   );
 }

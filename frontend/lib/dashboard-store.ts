@@ -31,6 +31,7 @@ export interface ActivityEntry {
 export interface ServerMetric {
   key: string;
   value: number;
+  weeklyValue: number;
   label: string;
   category: string;
   updatedAt: string;
@@ -48,12 +49,19 @@ export interface ServerEvent {
 interface DashboardState {
   // ─── KPI counters ──────────────────────────────────────────────────
   soqlGeneratedCount: number;
+  soqlGeneratedCountTotal: number;
   excelOperationCount: number;
+  excelOperationCountTotal: number;
   ticketsProcessedCount: number;
+  ticketsProcessedCountTotal: number;
   ticketCancellationCount: number;
+  ticketCancellationCountTotal: number;
   assetTransferCount: number;
+  assetTransferCountTotal: number;
   caseAssignmentCount: number;
+  caseAssignmentCountTotal: number;
   templatesCreatedCount: number;
+  templatesCreatedCountTotal: number;
 
   // ─── Other state ───────────────────────────────────────────────────
   favourites: Set<string>;
@@ -123,12 +131,19 @@ const METRIC_KEY_TO_FIELD: Record<string, keyof DashboardState> = {
 
 export const useDashboardStore = create<DashboardState>((set) => ({
   soqlGeneratedCount: 0,
+  soqlGeneratedCountTotal: 0,
   excelOperationCount: 0,
+  excelOperationCountTotal: 0,
   ticketsProcessedCount: 0,
+  ticketsProcessedCountTotal: 0,
   ticketCancellationCount: 0,
+  ticketCancellationCountTotal: 0,
   assetTransferCount: 0,
+  assetTransferCountTotal: 0,
   caseAssignmentCount: 0,
+  caseAssignmentCountTotal: 0,
   templatesCreatedCount: 0,
+  templatesCreatedCountTotal: 0,
   favourites: new Set<string>(),
   activity: [],
   isHydrated: false,
@@ -139,7 +154,9 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   recordSOQL: (templateName, ticketCount) =>
     set((state) => ({
       soqlGeneratedCount: state.soqlGeneratedCount + 1,
+      soqlGeneratedCountTotal: state.soqlGeneratedCountTotal + 1,
       ticketsProcessedCount: state.ticketsProcessedCount + ticketCount,
+      ticketsProcessedCountTotal: state.ticketsProcessedCountTotal + ticketCount,
       activity: pushActivity(state.activity, {
         type: "soql-generated",
         label: `SOQL generated · ${templateName}`,
@@ -150,6 +167,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   recordExcelOperation: (operationName, rowCount) =>
     set((state) => ({
       excelOperationCount: state.excelOperationCount + 1,
+      excelOperationCountTotal: state.excelOperationCountTotal + 1,
       activity: pushActivity(state.activity, {
         type: "excel-operation",
         label: `Excel operation · ${operationName}`,
@@ -159,6 +177,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 
   recordTicketFormatted: (count) =>
     set((state) => ({
+      ticketsProcessedCount: state.ticketsProcessedCount + count,
+      ticketsProcessedCountTotal: state.ticketsProcessedCountTotal + count,
       activity: pushActivity(state.activity, {
         type: "ticket-formatted",
         label: "Tickets formatted",
@@ -168,13 +188,13 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 
   recordFavourite: (templateName) =>
     set((state) => {
-      const nextFavourites = new Set(state.favourites);
-      nextFavourites.add(templateName);
+      const next = new Set(state.favourites);
+      next.add(templateName);
       return {
-        favourites: nextFavourites,
+        favourites: next,
         activity: pushActivity(state.activity, {
           type: "favourite-added",
-          label: "Favourited template",
+          label: "Favourite added",
           meta: templateName,
         }),
       };
@@ -182,13 +202,13 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 
   removeFavourite: (templateName) =>
     set((state) => {
-      const nextFavourites = new Set(state.favourites);
-      nextFavourites.delete(templateName);
+      const next = new Set(state.favourites);
+      next.delete(templateName);
       return {
-        favourites: nextFavourites,
+        favourites: next,
         activity: pushActivity(state.activity, {
           type: "favourite-removed",
-          label: "Removed favourite",
+          label: "Favourite removed",
           meta: templateName,
         }),
       };
@@ -196,6 +216,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
 
   recordTemplateEvent: (type, templateName) =>
     set((state) => ({
+      templatesCreatedCount: state.templatesCreatedCount + (type === "template-created" ? 1 : type === "template-deleted" ? -1 : 0),
+      templatesCreatedCountTotal: state.templatesCreatedCountTotal + (type === "template-created" ? 1 : type === "template-deleted" ? -1 : 0),
       activity: pushActivity(state.activity, {
         type,
         label:
@@ -216,7 +238,10 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     set((state) => {
       const field = METRIC_KEY_TO_FIELD[key];
       if (!field) return {};
-      return { [field]: (state[field] as number) + amount } as Partial<DashboardState>;
+      return { 
+        [field]: (state[field] as number) + amount,
+        [`${field}Total`]: (state[`${field}Total` as keyof DashboardState] as number) + amount 
+      } as Partial<DashboardState>;
     }),
 
   pushServerActivity: (entry) =>
@@ -235,7 +260,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
       for (const m of metrics) {
         const field = METRIC_KEY_TO_FIELD[m.key];
         if (field) {
-          partial[field as string] = m.value;
+          partial[field as string] = m.weeklyValue;
+          partial[`${field}Total`] = m.value;
         }
       }
 

@@ -405,3 +405,22 @@
     padding-right: 1rem;
   }
 }
+
+/* Staggered Card Animations */
+.stagger-cards > * {
+  animation: slideUpFade 0.4s ease-out backwards;
+}
+.stagger-cards > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-cards > *:nth-child(2) { animation-delay: 0.15s; }
+.stagger-cards > *:nth-child(3) { animation-delay: 0.25s; }
+.stagger-cards > *:nth-child(4) { animation-delay: 0.35s; }
+.stagger-cards > *:nth-child(5) { animation-delay: 0.45s; }
+.stagger-cards > *:nth-child(6) { animation-delay: 0.55s; }
+.stagger-cards > *:nth-child(7) { animation-delay: 0.65s; }
+.stagger-cards > *:nth-child(8) { animation-delay: 0.75s; }
+.stagger-cards > *:nth-child(n+9) { animation-delay: 0.85s; }
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

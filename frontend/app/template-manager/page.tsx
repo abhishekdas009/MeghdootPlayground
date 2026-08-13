@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectSeparator } from "@/components/ui/select";
 import {
   Copy,
   Download,
   Edit2,
   ExternalLink,
   FolderOpen,
+  History,
   Plus,
   RefreshCw,
   Search,
@@ -30,16 +32,19 @@ import {
   Code2,
   Check,
   TrendingUp,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
+import Editor, { useMonaco } from "@monaco-editor/react";
 
 interface LibraryQuery {
   id: string;
   label: string;
   description: string;
   category: string;
+  tags: string[];
   soql: string;
   favourite: boolean;
   usageCount: number;
@@ -48,20 +53,22 @@ interface LibraryQuery {
 }
 
 type SortOption = "updated-desc" | "label-asc" | "category-asc" | "usage-desc" | "favourites-first";
-type FormState = Pick<LibraryQuery, "label" | "description" | "category" | "soql">;
+type FormState = Pick<LibraryQuery, "label" | "description" | "category" | "tags" | "soql">;
 type ViewMode = "grid" | "table";
 
 const defaultForm: FormState = {
   label: "",
   description: "",
   category: "WorkOrder",
+  tags: [],
   soql: "",
 };
 
-const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "description" | "soql" | "favourite">> = [
+const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "tags" | "description" | "soql" | "favourite">> = [
   {
     label: "TS (Ticket Status)",
     category: "WorkOrder",
+    tags: ["tracking", "status"],
     description: "Fetch current WorkOrder Status and ParentWorkOrderId for ticket tracking.",
     soql: "SELECT Id, Status, ParentWorkOrderId\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)",
     favourite: true,
@@ -69,6 +76,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Asset Transfer",
     category: "Asset",
+    tags: ["transfer", "hardware"],
     description: "Retrieve hardware asset details, account ownership, and installation status for transfer verification.",
     soql: "SELECT Id, Name, SerialNumber, AccountId, Status, InstallDate\nFROM Asset\nWHERE SerialNumber IN (\n{{tickets}}\n)",
     favourite: false,
@@ -76,6 +84,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "CANCELLATION TICKETS",
     category: "WorkOrder",
+    tags: ["cancellation", "open-tickets"],
     description: "Retrieve open, non-completed WorkOrders to prepare tickets for cancellation.",
     soql: "SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -83,6 +92,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Cancellation Requested",
     category: "WorkOrder",
+    tags: ["cancellation", "status"],
     description: "Filter WorkOrders where Status is currently marked as 'Cancellation Requested'.",
     soql: "SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nAND Status = 'Cancellation Requested'",
     favourite: false,
@@ -90,6 +100,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Case Cancellation",
     category: "WorkOrder",
+    tags: ["cancellation", "case"],
     description: "Query parent Case status and cancellation reason fields for open work orders.",
     soql: "SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -97,6 +108,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "SA (Service Appointment)",
     category: "ServiceAppointment",
+    tags: ["appointment", "scheduling"],
     description: "Get Service Appointment ID and scheduling status for given ticket numbers.",
     soql: "SELECT Id, Status\nFROM ServiceAppointment\nWHERE Ticket_Numbers__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -104,6 +116,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Case Assign",
     category: "Case",
+    tags: ["assignment", "routing"],
     description: "Retrieve Case Status and OwnerId to facilitate ticket reassignment workflows.",
     soql: "SELECT Id,Status,OwnerId\nFROM Case\nWHERE Id IN (\n{{tickets}}\n)",
     favourite: false,
@@ -111,6 +124,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "TC (Technician Check)",
     category: "ServiceAppointment",
+    tags: [],
     description: "Check assigned service resource (technician) details and parent work order relationships.",
     soql: "SELECT Id,\n       Work_Order__c,\n       FSSK__FSK_Assigned_Service_Resource__c,\n       FSSK__FSK_Assigned_Service_Resource__r.Name\nFROM ServiceAppointment\nWHERE Ticket_Numbers__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -118,6 +132,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "TSC (Ticket Status Count)",
     category: "WorkOrder",
+    tags: [],
     description: "Aggregate and count WorkOrders grouped by status, ordered by frequency.",
     soql: "SELECT Status,\n       COUNT(Id)\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nGROUP BY Status\nORDER BY COUNT(Id) DESC",
     favourite: false,
@@ -125,6 +140,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "PO (Payout / Product Information)",
     category: "WorkOrder",
+    tags: [],
     description: "Fetch payout status and product sub-family codes for parent work orders.",
     soql: "SELECT Id,\n       ParentWorkOrderId,\n       Status,\n       Payout__c,\n       Asset.Product_Sub_Family__r.Code__c\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -132,6 +148,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "TS (Open Tickets Only)",
     category: "WorkOrder",
+    tags: [],
     description: "Retrieve active tickets excluding Completed, Canceled, or Bundled statuses.",
     soql: "SELECT Id, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nAND Status NOT IN ('Completed','Canceled','Bundled')",
     favourite: false,
@@ -139,6 +156,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Account ID Fetch",
     category: "Account",
+    tags: [],
     description: "Lookup internal Account Id mapping using external Customer ID.",
     soql: "SELECT Customer_ID__c, Id\nFROM Account\nWHERE Customer_ID__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -146,6 +164,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Technician Assessment Link",
     category: "Contact",
+    tags: [],
     description: "Retrieve technician contact names and assessment questionnaire URLs.",
     soql: "SELECT Name, Assessment_Link__c\nFROM Contact\nWHERE Technician_Number__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -153,6 +172,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Asset by Department",
     category: "Asset",
+    tags: [],
     description: "Query assets belonging to specific service department queues and NON NAMO accounts.",
     soql: "SELECT Id, Component_Id__c, Account.Name, RecordType.Name, Account.Id, Account.Group__c, Account.Customer_ID__c, Account.SAP_Customer_Id__c\nFROM Asset\nWHERE Service_Department_L__c = 'a3cNy0000001IStIAM' AND Account_Group__c = 'NON NAMO'",
     favourite: false,
@@ -160,6 +180,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Asset ID Fetch",
     category: "Asset",
+    tags: [],
     description: "Lookup Component Id, record type, and parent account relationships for hardware assets.",
     soql: "SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -167,6 +188,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Child Details to Parent",
     category: "Asset",
+    tags: [],
     description: "Retrieve parent asset ID, model numbers, and product families from child components.",
     soql: "SELECT Parent.Id, Model_Number__c, Product_Family__c, Product_Sub_Family__c, Product2Id\nFROM Asset\nWHERE Parent.Component_Id__c IN (\n{{tickets}}\n)",
     favourite: false,
@@ -174,6 +196,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Deactivate Comment",
     category: "User",
+    tags: [],
     description: "Retrieve user deactivation comments for community user nicknames.",
     soql: "SELECT Deactivation_Comment__c\nFROM User\nWHERE CommunityNickname IN (\n{{tickets}}\n)",
     favourite: false,
@@ -181,6 +204,7 @@ const SAMPLE_QUERIES: Array<Pick<LibraryQuery, "label" | "category" | "descripti
   {
     label: "Due Date Fix",
     category: "ServiceAppointment",
+    tags: [],
     description: "Check appointment due dates, scheduled times, and bundle statuses for open work orders.",
     soql: "SELECT Id, Status, IsBundleMember, IsManuallyBundled, RelatedBundleId, Work_Order__r.Status, DueDate, SchedEndTime, SchedStartTime\nFROM ServiceAppointment\nWHERE Ticket_Numbers__c IN (\n{{tickets}}\n) AND Work_Order__r.Status != 'Completed'",
     favourite: false,
@@ -239,18 +263,106 @@ function sortQueries(queries: LibraryQuery[], sortBy: SortOption) {
   }
 }
 
+const tagColors = [
+  "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+  "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+  "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+  "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
+  "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400 border-fuchsia-500/20",
+];
+
+const getTagColor = (tag: string) => {
+  let hash = 0;
+  for (let i = 0; i < tag.length; i++) {
+    hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return tagColors[Math.abs(hash) % tagColors.length];
+};
+
 export default function QueryLibraryPage() {
   const [queries, setQueries] = React.useState<LibraryQuery[]>([]);
+  const [isCreatingNewCategory, setIsCreatingNewCategory] = React.useState(false);
+  const monaco = useMonaco();
+
+  React.useEffect(() => {
+    if (monaco) {
+      try {
+        if (!monaco.languages.getLanguages().some((l) => l.id === "soql")) {
+          monaco.languages.register({ id: "soql" });
+          monaco.languages.setMonarchTokensProvider("soql", {
+            ignoreCase: true,
+            keywords: [
+              "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "IN", "INCLUDES", "EXCLUDES", "LIKE", "ORDER", "BY", "LIMIT", "OFFSET", "ASC", "DESC", "NULLS", "FIRST", "LAST", "GROUP", "HAVING", "WITH", "DATA", "CATEGORY", "UPDATE", "TRACKING", "VIEWSTAT", "FOR", "REFERENCE", "NULL", "TRUE", "FALSE",
+            ],
+            operators: ["=", "!=", "<", ">", "<=", ">=", ":", "!"],
+            symbols: /[=><!~?:&|+\-*\/\^%]+/,
+            tokenizer: {
+              root: [
+                [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
+                [/'[^']*'/, "string"],
+                [/\d+/, "number"],
+                [/[{}()\[\]]/, "@brackets"],
+                [/@symbols/, { cases: { "@operators": "operator", "@default": "" } }],
+              ],
+            },
+          });
+
+          monaco.languages.registerCompletionItemProvider("soql", {
+            provideCompletionItems: (model, position) => {
+              const word = model.getWordUntilPosition(position);
+              const range = {
+                startLineNumber: position.lineNumber,
+                endLineNumber: position.lineNumber,
+                startColumn: word.startColumn,
+                endColumn: word.endColumn,
+              };
+
+              const suggestions = [
+                ...["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "AND", "OR", "IN"].map((k) => ({
+                  label: k,
+                  kind: monaco.languages.CompletionItemKind.Keyword,
+                  insertText: k,
+                  range,
+                })),
+                ...["WorkOrder", "Case", "Asset", "Account", "Contact", "ServiceAppointment", "Product2", "User"].map((obj) => ({
+                  label: obj,
+                  kind: monaco.languages.CompletionItemKind.Class,
+                  insertText: obj,
+                  range,
+                })),
+                ...["Id", "Name", "Status", "Ticket_Number_Read_Only__c", "CreatedDate", "Subject", "Description", "ParentId", "AccountId"].map((field) => ({
+                  label: field,
+                  kind: monaco.languages.CompletionItemKind.Field,
+                  insertText: field,
+                  range,
+                })),
+              ];
+
+              return { suggestions };
+            },
+          });
+        }
+      } catch (e) {
+        // Ignored
+      }
+    }
+  }, [monaco]);
   const [search, setSearch] = React.useState("");
   const [showForm, setShowForm] = React.useState(false);
   const [editing, setEditing] = React.useState<LibraryQuery | null>(null);
   const [form, setForm] = React.useState<FormState>(defaultForm);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = React.useState<SortOption>("updated-desc");
   const [categoryFilter, setCategoryFilter] = React.useState("all");
   const [viewMode, setViewMode] = React.useState<ViewMode>("grid");
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
+  const [historyModalOpen, setHistoryModalOpen] = React.useState(false);
+  const [historyQuery, setHistoryQuery] = React.useState<LibraryQuery | null>(null);
+  const [historyRecords, setHistoryRecords] = React.useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const loadQueries = React.useCallback(async () => {
@@ -291,7 +403,8 @@ export default function QueryLibraryPage() {
         query.label.toLowerCase().includes(queryText) ||
         query.category.toLowerCase().includes(queryText) ||
         query.description.toLowerCase().includes(queryText) ||
-        query.soql.toLowerCase().includes(queryText);
+        query.soql.toLowerCase().includes(queryText) ||
+        (query.tags && query.tags.some(tag => tag.toLowerCase().includes(queryText)));
 
       return matchesSearch && (categoryFilter === "all" || query.category === categoryFilter);
     });
@@ -299,9 +412,30 @@ export default function QueryLibraryPage() {
     return sortQueries(base, sortBy);
   }, [queries, search, categoryFilter, sortBy]);
 
+  const toggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  const toggleAllSelection = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(q => q.id)));
+    }
+  };
+
   const resetForm = () => {
     setEditing(null);
     setForm(defaultForm);
+    setIsCreatingNewCategory(false);
   };
 
   const openCreateForm = () => {
@@ -315,8 +449,10 @@ export default function QueryLibraryPage() {
       label: query.label,
       description: query.description,
       category: query.category,
+      tags: query.tags || [],
       soql: query.soql,
     });
+    setIsCreatingNewCategory(false);
     setShowForm(true);
   };
 
@@ -325,10 +461,177 @@ export default function QueryLibraryPage() {
     resetForm();
   };
 
+  const handleFormatSOQL = () => {
+    if (!form.soql) return;
+    
+    // Very basic SOQL formatter for readability
+    let formatted = form.soql
+      .replace(/\s+/g, ' ')
+      .replace(/\s*,\s*/g, ', ')
+      .trim();
+      
+    formatted = formatted
+      .replace(/\b(SELECT|FROM|WHERE|ORDER BY|LIMIT|GROUP BY|HAVING)\b/gi, (match) => `\n${match.toUpperCase()}`)
+      .replace(/\b(AND|OR)\b/gi, (match) => `\n  ${match.toUpperCase()}`)
+      .replace(/\(\s+/g, '(')
+      .replace(/\s+\)/g, ')')
+      .trim();
+      
+    // Fix IN (...) clauses if they contain our special {{tickets}} tag
+    formatted = formatted.replace(/IN \(\{\{tickets\}\}\)/gi, "IN (\n{{tickets}}\n)");
+    
+    // Remove leading newline if present
+    formatted = formatted.replace(/^\n/, "");
+      
+    setForm(current => ({ ...current, soql: formatted }));
+    toast.success("Query formatted!");
+  };
+
+  const handleTestSOQL = () => {
+    if (!form.soql) {
+      toast.error("Please enter a SOQL query to test.");
+      return;
+    }
+
+    const query = form.soql;
+    const upperQuery = query.toUpperCase();
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    // Basic structure checks
+    if (!/SELECT\s+/i.test(query)) errors.push("Missing 'SELECT' clause.");
+    if (!/FROM\s+/i.test(query)) errors.push("Missing 'FROM' clause.");
+    if (upperQuery.indexOf("FROM") !== -1 && upperQuery.indexOf("SELECT") !== -1 && upperQuery.indexOf("FROM") < upperQuery.indexOf("SELECT")) {
+      errors.push("'FROM' clause must appear after 'SELECT' clause.");
+    }
+
+    // Unallowed characters / SQL dialects
+    if (/[;]/.test(query)) errors.push("Remove semicolons (;). SOQL does not use them.");
+    if (/\bSELECT\s+\*\s+FROM\b/i.test(query)) errors.push("SOQL does not support 'SELECT *'. Specify fields explicitly.");
+    if (/\b(JOIN|INNER JOIN|LEFT JOIN|RIGHT JOIN|OUTER JOIN)\b/i.test(query)) {
+      errors.push("SOQL does not support 'JOIN'. Use relationship queries (e.g., Contact.Account.Name).");
+    }
+    if (/\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|GRANT|REVOKE)\b/i.test(query)) {
+      errors.push("DML/DDL statements are not allowed in SOQL queries.");
+    }
+    
+    // Formatting & Syntax Details
+    if (query.includes('"')) {
+      errors.push("Use single quotes (') for string literals, not double quotes (\").");
+    }
+
+    // Balanced Parentheses & Quotes
+    const openParens = (query.match(/\(/g) || []).length;
+    const closeParens = (query.match(/\)/g) || []).length;
+    if (openParens !== closeParens) {
+      errors.push(`Mismatched parentheses: ${openParens} open vs ${closeParens} close.`);
+    }
+
+    const singleQuotes = (query.match(/'/g) || []).length;
+    if (singleQuotes % 2 !== 0) {
+      errors.push("Unbalanced single quotes detected.");
+    }
+
+    // Commas and Clauses Checks
+    if (/,\s*FROM/i.test(query)) {
+      errors.push("Remove trailing comma before 'FROM'.");
+    }
+    if (/,\s*WHERE/i.test(query)) {
+      errors.push("Remove trailing comma before 'WHERE'.");
+    }
+
+    // LIMIT and OFFSET checks
+    const limitMatch = query.match(/LIMIT\s+([^\s]+)/i);
+    if (limitMatch && isNaN(Number(limitMatch[1]))) {
+      errors.push(`Invalid LIMIT value: '${limitMatch[1]}'. Must be a number.`);
+    }
+    const offsetMatch = query.match(/OFFSET\s+([^\s]+)/i);
+    if (offsetMatch && isNaN(Number(offsetMatch[1]))) {
+      errors.push(`Invalid OFFSET value: '${offsetMatch[1]}'. Must be a number.`);
+    }
+
+    // Missing required tokens
+    if (/\bSELECT\s+FROM\b/i.test(query)) {
+      errors.push("Missing fields between 'SELECT' and 'FROM'.");
+    }
+    if (/\bFROM\s+(WHERE|WITH|GROUP|HAVING|ORDER|LIMIT|OFFSET|FOR|UPDATE|$)/i.test(query) || /\bFROM\s*$/i.test(query)) {
+      errors.push("Missing object name after 'FROM'.");
+    }
+    if (/\bWHERE\s+(WITH|GROUP|HAVING|ORDER|LIMIT|OFFSET|FOR|UPDATE|$)/i.test(query) || /\bWHERE\s*$/i.test(query)) {
+      errors.push("Missing condition after 'WHERE'.");
+    }
+    if (/\bGROUP\s+BY\s+(HAVING|ORDER|LIMIT|OFFSET|FOR|UPDATE|$)/i.test(query) || /\bGROUP\s+BY\s*$/i.test(query)) {
+      errors.push("Missing fields after 'GROUP BY'.");
+    }
+    
+    // Warning for missing {{tickets}} if applicable
+    if (form.soql.toLowerCase().includes("in (") && !form.soql.includes("{{tickets}}")) {
+       warnings.push("Tip: Use {{tickets}} placeholder for dynamic injection inside IN () clauses.");
+    }
+
+    // Clause order check
+    const clauses = ["SELECT", "FROM", "WHERE", "WITH", "GROUP BY", "HAVING", "ORDER BY", "LIMIT", "OFFSET", "FOR VIEW", "FOR REFERENCE", "UPDATE TRACKING", "UPDATE VIEWSTAT"];
+    let lastFoundIdx = -1;
+    let lastFoundName = "";
+    
+    for (let i = 0; i < clauses.length; i++) {
+      const clause = clauses[i];
+      const regex = new RegExp(`\\b${clause}\\b`, "i");
+      const match = query.match(regex);
+      if (match && match.index !== undefined) {
+        if (match.index < lastFoundIdx) {
+          errors.push(`'${clause}' is out of order. It must appear after '${lastFoundName}'.`);
+        }
+        lastFoundIdx = match.index;
+        lastFoundName = clause;
+      }
+    }
+
+    if (errors.length > 0) {
+      errors.forEach(err => toast.error(`Error: ${err}`));
+    } else {
+      toast.success("Query passed advanced SOQL syntax validation! ✅");
+      warnings.forEach(warn => toast.info(warn));
+    }
+  };
+
+  const openHistory = async (query: LibraryQuery) => {
+    setHistoryQuery(query);
+    setHistoryModalOpen(true);
+    setLoadingHistory(true);
+    try {
+      const data = await requestJson<{ history: any[] }>(`/api/soql-library/${query.id}/history`);
+      setHistoryRecords(data.history || []);
+    } catch (e) {
+      toast.error("Failed to load history");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleRestore = async (historyId: string) => {
+    if (!historyQuery) return;
+    setLoadingHistory(true);
+    try {
+      const data = await requestJson<{ query: LibraryQuery }>(`/api/soql-library/${historyQuery.id}/rollback`, {
+        method: "POST",
+        body: JSON.stringify({ historyId })
+      });
+      setQueries((current) => current.map((q) => (q.id === data.query.id ? data.query : q)));
+      toast.success("Query successfully restored to previous version!");
+      setHistoryModalOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to restore version");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const handleSave = async () => {
     const payload = {
       label: form.label.trim(),
       category: form.category.trim(),
+      tags: form.tags,
       description: form.description.trim(),
       soql: form.soql.trim(),
     };
@@ -432,9 +735,80 @@ export default function QueryLibraryPage() {
       setQueries((current) => [data.query, ...current]);
       toast.success("Query duplicated");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Unable to duplicate query");
+      toast.error(error instanceof Error ? error.message : "Failed to duplicate query");
     }
   };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedIds.size} queries?`)) return;
+
+    setLoading(true);
+    try {
+      await requestJson("/api/soql-library/bulk-delete", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedIds) })
+      });
+      setQueries(current => current.filter(q => !selectedIds.has(q.id)));
+      setSelectedIds(new Set());
+      toast.success(`Successfully deleted ${selectedIds.size} queries!`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete queries");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkCategorize = async () => {
+    if (selectedIds.size === 0) return;
+    const newCategory = window.prompt(`Enter new category for ${selectedIds.size} selected queries:`);
+    if (!newCategory || !newCategory.trim()) return;
+
+    setLoading(true);
+    try {
+      await requestJson("/api/soql-library/bulk-categorize", {
+        method: "POST",
+        body: JSON.stringify({ ids: Array.from(selectedIds), category: newCategory.trim() })
+      });
+      
+      // Reload everything to get updated history and data easily
+      await loadQueries();
+      setSelectedIds(new Set());
+      toast.success(`Updated category for ${selectedIds.size} queries!`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update categories");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExportJSON = () => {
+    if (selectedIds.size === 0) return;
+    
+    const itemsToExport = queries.filter(q => selectedIds.has(q.id)).map(q => ({
+      label: q.label,
+      category: q.category,
+      tags: q.tags,
+      description: q.description,
+      soql: q.soql,
+    }));
+
+    const blob = new Blob([JSON.stringify(itemsToExport, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `soql_templates_export_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast.success(`Exported ${selectedIds.size} queries to JSON!`);
+  };
+
+
+
+
 
   const handleUse = async (query: LibraryQuery) => {
     try {
@@ -536,13 +910,13 @@ export default function QueryLibraryPage() {
   };
 
   return (
-    <div className="workspace-page mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-5 md:space-y-8 p-3 sm:p-5 lg:p-8">
       {/* ─── 1. FULL-WIDTH SALESFORCE LIGHTNING PAGE HEADER ───────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
+        className="page-hero relative flex flex-col gap-4 md:gap-6 overflow-hidden rounded-3xl p-5 md:p-8"
       >
         <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-500/20 dark:mix-blend-screen" />
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
@@ -594,7 +968,7 @@ export default function QueryLibraryPage() {
         </div>
 
         {/* Bottom Toolbar Row: Secondary utility tools */}
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-6 mt-2 border-t border-slate-200/70 dark:border-slate-700/60">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-4 md:pt-6 mt-2 border-t border-slate-200/70 dark:border-slate-700/60">
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 backdrop-blur-sm">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Repository Active & Syncing</span>
@@ -644,36 +1018,244 @@ export default function QueryLibraryPage() {
         <input ref={fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={handleImport} />
       </motion.div>
 
-      {/* ─── 2. DEDICATED KPI SUMMARY ROW: 4 EQUAL CARDS ─────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { title: "Total Templates", val: stats.total, sub: "Stored in repository", icon: Code2, color: "text-[#0176d3] dark:text-blue-400", bg: "bg-[#0176d3]/10 dark:bg-blue-500/10", border: "border-t-[#0176d3] dark:border-t-blue-500", grad: "from-[#0176d3]/5 dark:from-blue-500/10 to-transparent" },
-          { title: "Favourites", val: stats.favourites, sub: "Starred quick access", icon: Star, color: "text-amber-500 dark:text-amber-400", bg: "bg-amber-500/10 dark:bg-amber-500/10", border: "border-t-amber-500 dark:border-t-amber-400", grad: "from-amber-500/5 dark:from-amber-500/10 to-transparent" },
-          { title: "SFDC Objects", val: stats.categories, sub: "Distinct object types", icon: Layers, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-500/10", border: "border-t-purple-500 dark:border-t-purple-400", grad: "from-purple-500/5 dark:from-purple-500/10 to-transparent" },
-          { title: "Executions", val: stats.uses, sub: "Lifetime query runs", icon: TrendingUp, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/10", border: "border-t-emerald-500 dark:border-t-emerald-400", grad: "from-emerald-500/5 dark:from-emerald-500/10 to-transparent" },
-        ].map((kpi, i) => (
-          <motion.div key={kpi.title} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-            <div className={cn("relative overflow-hidden shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl transition-all hover:shadow-xl hover:-translate-y-1 rounded-2xl border-t-4", kpi.border)}>
-              <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", kpi.grad)} />
-              <div className="p-6 flex flex-col justify-between h-full relative z-10">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{kpi.title}</span>
-                  <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm border border-black/5 dark:border-white/5 transition-transform hover:scale-105", kpi.bg, kpi.color)}>
-                    <kpi.icon className={cn("h-5 w-5", kpi.title === "Favourites" ? "fill-current" : "")} />
+      {/* ─── 2. DEDICATED KPI SUMMARY ROW OR FORM ─────────────────── */}
+      <AnimatePresence mode="wait">
+        {!showForm ? (
+          <motion.div
+            key="kpi-cards"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
+            transition={{ duration: 0.3 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+          >
+            {[
+              { title: "Total Templates", val: stats.total, sub: "Stored in repository", icon: Code2, color: "text-[#0176d3] dark:text-blue-400", bg: "bg-[#0176d3]/10 dark:bg-blue-500/10", border: "border-t-[#0176d3] dark:border-t-blue-500", grad: "from-[#0176d3]/5 dark:from-blue-500/10 to-transparent" },
+              { title: "Favourites", val: stats.favourites, sub: "Starred quick access", icon: Star, color: "text-amber-500 dark:text-amber-400", bg: "bg-amber-500/10 dark:bg-amber-500/10", border: "border-t-amber-500 dark:border-t-amber-400", grad: "from-amber-500/5 dark:from-amber-500/10 to-transparent" },
+              { title: "SFDC Objects", val: stats.categories, sub: "Distinct object types", icon: Layers, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-500/10", border: "border-t-purple-500 dark:border-t-purple-400", grad: "from-purple-500/5 dark:from-purple-500/10 to-transparent" },
+              { title: "Executions", val: stats.uses, sub: "Lifetime query runs", icon: TrendingUp, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/10", border: "border-t-emerald-500 dark:border-t-emerald-400", grad: "from-emerald-500/5 dark:from-emerald-500/10 to-transparent" },
+            ].map((kpi, i) => (
+              <motion.div key={kpi.title} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+                <div className={cn("relative overflow-hidden shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl transition-all hover:shadow-xl hover:-translate-y-1 rounded-2xl border-t-4", kpi.border)}>
+                  <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", kpi.grad)} />
+                  <div className="p-6 flex flex-col justify-between h-full relative z-10">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{kpi.title}</span>
+                      <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm border border-black/5 dark:border-white/5 transition-transform hover:scale-105", kpi.bg, kpi.color)}>
+                        <kpi.icon className={cn("h-5 w-5", kpi.title === "Favourites" ? "fill-current" : "")} />
+                      </div>
+                    </div>
+                    <div className="mt-5">
+                      <h3 className="text-4xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight drop-shadow-sm">{kpi.val}</h3>
+                      <p className="mt-1 text-[13px] font-semibold text-slate-500 dark:text-slate-400">{kpi.sub}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-5">
-                  <h3 className="text-4xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight drop-shadow-sm">{kpi.val}</h3>
-                  <p className="mt-1 text-[13px] font-semibold text-slate-500 dark:text-slate-400">{kpi.sub}</p>
-                </div>
-              </div>
-            </div>
+              </motion.div>
+            ))}
           </motion.div>
-        ))}
-      </div>
+        ) : (
+          <motion.div
+            key="create-form"
+            initial={{ opacity: 0, y: 15, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.98 }}
+            transition={{ duration: 0.3, type: "spring", bounce: 0.2 }}
+            className="relative z-20"
+          >
+            <Card className="border-0 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden relative transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)] focus-within:ring-blue-500/40">
+              <div className="absolute top-0 right-0 p-40 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 p-40 bg-gradient-to-tr from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+              
+              <CardHeader className="bg-gradient-to-r from-slate-100/50 to-transparent dark:from-slate-800/50 px-8 py-6 border-b border-slate-200/50 dark:border-slate-700/50 flex flex-row items-center justify-between relative z-10">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold shadow-lg shadow-blue-500/20">
+                    <Code2 className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-black tracking-tight text-foreground">
+                      {editing ? "Edit SOQL Query Template" : "Create New SOQL Template"}
+                    </CardTitle>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Tip: Include <code className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-xs font-mono text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">{`{{tickets}}`}</code> placeholder to dynamically inject ticket lists from the generator.
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={closeForm} className="h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                  <X className="h-5 w-5" />
+                </Button>
+              </CardHeader>
+
+              <CardContent className="p-5 md:p-8 space-y-4 md:space-y-6 relative z-10">
+                <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Query Label *</label>
+                    <Input
+                      placeholder="e.g. Open WorkOrders by Technician"
+                      className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
+                      value={form.label}
+                      onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2 relative">
+                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Category (Folder) *</label>
+                    {!isCreatingNewCategory ? (
+                      <Select
+                        value={form.category || undefined}
+                        onValueChange={(value) => {
+                          if (value === "__NEW__") {
+                            setIsCreatingNewCategory(true);
+                            setForm((current) => ({ ...current, category: "" }));
+                          } else {
+                            setForm((current) => ({ ...current, category: value }));
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-12 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 shadow-inner font-semibold text-blue-600 dark:text-blue-400 text-sm transition-all px-4">
+                          <SelectValue placeholder="Select a category..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
+                          {categories.filter(c => c !== "all").map((c) => (
+                            <SelectItem key={c} value={c} className="font-semibold text-slate-700 dark:text-slate-300 focus:bg-blue-500/10 focus:text-blue-600 dark:focus:text-blue-400 rounded-lg cursor-pointer my-0.5">
+                              {c}
+                            </SelectItem>
+                          ))}
+                          <SelectSeparator className="bg-slate-200 dark:bg-slate-800 my-1" />
+                          <SelectItem value="__NEW__" className="font-bold text-blue-600 dark:text-blue-400 focus:bg-blue-500/10 rounded-lg cursor-pointer">
+                            + Create New Category
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <div className="relative flex gap-2">
+                        <Input
+                          placeholder="Type new category name..."
+                          className="h-12 flex-1 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner font-semibold text-blue-600 dark:text-blue-400 text-sm transition-all pr-10"
+                          value={form.category}
+                          onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCreatingNewCategory(false);
+                            setForm((current) => ({ ...current, category: categories.length > 1 ? categories[1] : "" }));
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                          title="Cancel and select existing"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Tags (Press Enter)</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {form.tags && form.tags.map((tag) => (
+                      <Badge key={tag} className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1", getTagColor(tag))}>
+                        {tag}
+                        <button
+                          onClick={() => setForm((c) => ({ ...c, tags: c.tags.filter((t) => t !== tag) }))}
+                          className="hover:bg-black/10 dark:hover:bg-white/10 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <Input
+                    placeholder="Add a tag and press Enter..."
+                    className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === ",") {
+                        e.preventDefault();
+                        const val = e.currentTarget.value.trim().toLowerCase();
+                        if (val && !(form.tags || []).includes(val)) {
+                          setForm((c) => ({ ...c, tags: [...(c.tags || []), val] }));
+                          e.currentTarget.value = "";
+                        }
+                      }
+                    }}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Description (Optional)</label>
+                  <Input
+                    placeholder="Briefly describe what this query fetches and when to use it..."
+                    className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
+                    value={form.description}
+                    onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">SOQL Query Syntax *</label>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={handleTestSOQL}
+                        className="text-[10px] flex items-center gap-1.5 font-bold uppercase tracking-wider text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-md transition-colors"
+                        type="button"
+                      >
+                        <PlayCircle className="h-3 w-3" /> Test Query
+                      </button>
+                      <button 
+                        onClick={handleFormatSOQL}
+                        className="text-[10px] flex items-center gap-1.5 font-bold uppercase tracking-wider text-blue-600 bg-blue-500/10 hover:bg-blue-500/20 px-2.5 py-1 rounded-md transition-colors"
+                        type="button"
+                      >
+                        <Sparkles className="h-3 w-3" /> Format Query
+                      </button>
+                    </div>
+                  </div>
+                  <div className="min-h-[180px] rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-950/80 overflow-hidden shadow-inner focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500 transition-all pt-2 pb-2">
+                    <Editor
+                      height="180px"
+                      language="soql"
+                      theme="vs-dark"
+                      value={form.soql}
+                      onChange={(value) => setForm((current) => ({ ...current, soql: value || "" }))}
+                      options={{
+                        minimap: { enabled: false },
+                        lineNumbers: "on",
+                        wordWrap: "on",
+                        scrollBeyondLastLine: false,
+                        fontFamily: "var(--font-inter), monospace",
+                        fontSize: 13,
+                        renderLineHighlight: "all",
+                        roundedSelection: true,
+                        scrollbar: { vertical: "hidden", horizontal: "hidden" },
+                        padding: { top: 8, bottom: 8 },
+                      }}
+                      loading={<div className="p-4 text-sm text-slate-500 font-mono">Loading editor...</div>}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-6 mt-4 border-t border-slate-200/50 dark:border-slate-700/50">
+                  <Button variant="outline" onClick={closeForm} disabled={saving} className="h-12 px-8 rounded-xl font-bold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="h-12 px-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-500/25 hover:-translate-y-0.5 transition-all"
+                  >
+                    {saving ? "Saving..." : editing ? "Update Template" : "Save to Library"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── 3. INTERACTIVE SEARCH & FILTER TOOLBAR ─────── */}
-      <div className="flex flex-col lg:flex-row items-center gap-3 p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 w-full relative z-10">
+      <div className="flex flex-col lg:flex-row items-center gap-2 md:gap-3 p-2 md:p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 w-full relative z-10">
         
         {/* Search Input */}
         <div className="relative flex-1 w-full min-w-[280px] group" suppressHydrationWarning data-protonpass-ignore="true">
@@ -765,98 +1347,7 @@ export default function QueryLibraryPage() {
         </div>
       </div>
 
-      {/* ─── Create / Edit Query Modal Slide-Down ────────────────────────── */}
-      <AnimatePresence initial={false}>
-        {showForm && (
-          <motion.div
-            initial={{ opacity: 0, y: 15, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 15, scale: 0.98 }}
-            transition={{ duration: 0.3, type: "spring", bounce: 0.2 }}
-            className="relative z-20"
-          >
-            <Card className="border-0 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-40 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 p-40 bg-gradient-to-tr from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-              
-              <CardHeader className="bg-gradient-to-r from-slate-100/50 to-transparent dark:from-slate-800/50 px-8 py-6 border-b border-slate-200/50 dark:border-slate-700/50 flex flex-row items-center justify-between relative z-10">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold shadow-lg shadow-blue-500/20">
-                    <Code2 className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-xl font-black tracking-tight text-foreground">
-                      {editing ? "Edit SOQL Query Template" : "Create New SOQL Template"}
-                    </CardTitle>
-                    <p className="text-sm text-slate-500 mt-1">
-                      Tip: Include <code className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-xs font-mono text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">{`{{tickets}}`}</code> placeholder to dynamically inject ticket lists from the generator.
-                    </p>
-                  </div>
-                </div>
-                <Button variant="ghost" size="icon" onClick={closeForm} className="h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                  <X className="h-5 w-5" />
-                </Button>
-              </CardHeader>
 
-              <CardContent className="p-8 space-y-6 relative z-10">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Query Label *</label>
-                    <Input
-                      placeholder="e.g. Open WorkOrders by Technician"
-                      className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
-                      value={form.label}
-                      onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Salesforce Object / Category *</label>
-                    <Input
-                      placeholder="e.g. WorkOrder, Case, Asset"
-                      className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner font-semibold text-blue-600 dark:text-blue-400 text-sm transition-all"
-                      value={form.category}
-                      onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Description (Optional)</label>
-                  <Input
-                    placeholder="Briefly describe what this query fetches and when to use it..."
-                    className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
-                    value={form.description}
-                    onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">SOQL Query Syntax *</label>
-                  <Textarea
-                    className="min-h-[220px] font-mono text-sm leading-relaxed rounded-xl border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-950/80 backdrop-blur-sm text-slate-800 dark:text-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 p-5 shadow-inner transition-all resize-y"
-                    value={form.soql}
-                    onChange={(event) => setForm((current) => ({ ...current, soql: event.target.value }))}
-                    placeholder={`SELECT Id, WorkOrderNumber, Status, Subject\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`}
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-6 mt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                  <Button variant="outline" onClick={closeForm} disabled={saving} className="h-12 px-8 rounded-xl font-bold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="h-12 px-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-500/25 hover:-translate-y-0.5 transition-all"
-                  >
-                    {saving ? "Saving..." : editing ? "Update Template" : "Save to Library"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ─── 4. CONTENT DISPLAY: PREMIUM GLASSMORPHISM CARDS & TABLES ─────────── */}
       {loading ? (
@@ -902,14 +1393,14 @@ export default function QueryLibraryPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
-              className="flex flex-col justify-between h-full rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl p-6 shadow-lg hover:shadow-xl hover:border-blue-500/40 transition-all duration-300 group relative overflow-hidden ring-1 ring-black/5 dark:ring-white/5"
+              className="flex flex-col justify-between h-full rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl p-5 md:p-6 shadow-lg hover:shadow-xl hover:border-blue-500/40 transition-all duration-300 group relative overflow-hidden ring-1 ring-black/5 dark:ring-white/5"
             >
               <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-all duration-500" />
               
               <div className="relative z-10">
                 {/* Top Row: Category Badge & Star */}
                 <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-200/50 dark:border-slate-700/50">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest shadow-sm">
                       {query.category}
                     </Badge>
@@ -927,18 +1418,29 @@ export default function QueryLibraryPage() {
                 </div>
 
                 {/* Title & Description */}
-                <div className="py-5">
+                <div className="py-4 md:py-5">
                   <h3 className="text-lg font-black text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1 drop-shadow-sm">
                     {query.label}
                   </h3>
                   <p className="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed min-h-[40px]">
                     {query.description || "No description provided for this SOQL template."}
                   </p>
+                  
+                  {/* Tags */}
+                  {query.tags && query.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {query.tags.map((tag) => (
+                        <Badge key={tag} className={cn("text-[9px] font-bold px-2 py-0.5 rounded-md", getTagColor(tag))}>
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* SOQL Code Snippet */}
                 <div className="relative group/code my-2">
-                  <pre className="max-h-48 min-h-[120px] overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-slate-100/80 dark:bg-slate-950/80 text-slate-800 dark:text-slate-200 p-5 font-mono text-xs leading-relaxed border border-slate-200 dark:border-slate-800 shadow-inner ring-1 ring-inset ring-black/5 dark:ring-white/5 relative z-0">
+                  <pre className="max-h-48 min-h-[100px] overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-slate-100/80 dark:bg-slate-950/80 text-slate-800 dark:text-slate-200 p-4 md:p-5 font-mono text-xs leading-relaxed border border-slate-200 dark:border-slate-800 shadow-inner ring-1 ring-inset ring-black/5 dark:ring-white/5 relative z-0">
                     <code className="relative z-10">{query.soql}</code>
                   </pre>
                   <button
@@ -981,6 +1483,15 @@ export default function QueryLibraryPage() {
                     title="Edit Query"
                   >
                     <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openHistory(query)}
+                    className="h-9 w-9 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 transition-colors"
+                    title="Version History"
+                  >
+                    <History className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
@@ -1042,9 +1553,20 @@ export default function QueryLibraryPage() {
 
                       {/* Category Cell */}
                       <td className="py-5 px-5 align-middle">
-                        <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest shadow-sm">
-                          {query.category}
-                        </Badge>
+                        <div className="flex flex-col items-start gap-1.5">
+                          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest shadow-sm">
+                            {query.category}
+                          </Badge>
+                          {query.tags && query.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {query.tags.map((tag) => (
+                                <Badge key={tag} className={cn("text-[8px] font-bold px-1.5 py-0 rounded", getTagColor(tag))}>
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       {/* SOQL Snippet Cell */}
@@ -1091,6 +1613,97 @@ export default function QueryLibraryPage() {
           </Card>
         </motion.div>
       )}
+      {/* ─── VERSION HISTORY MODAL ───────────────────────── */}
+      <AnimatePresence>
+        {historyModalOpen && historyQuery && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setHistoryModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl bg-white/90 dark:bg-slate-900/90 shadow-2xl ring-1 ring-slate-200/50 dark:ring-slate-800/50 backdrop-blur-xl flex flex-col"
+            >
+              <CardHeader className="bg-gradient-to-r from-slate-100/50 to-transparent dark:from-slate-800/50 px-8 py-6 border-b border-slate-200/50 dark:border-slate-700/50 flex flex-row items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold shadow-lg shadow-indigo-500/20">
+                    <History className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-black tracking-tight text-foreground">
+                      Version History: {historyQuery.label}
+                    </CardTitle>
+                    <p className="text-sm text-slate-500 mt-1">
+                      View past edits and safely restore previous versions.
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setHistoryModalOpen(false)} className="h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                  <X className="h-5 w-5" />
+                </Button>
+              </CardHeader>
+              
+              <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50">
+                {loadingHistory ? (
+                  <div className="flex items-center justify-center h-40">
+                    <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+                  </div>
+                ) : historyRecords.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-40 text-slate-500">
+                    <History className="h-12 w-12 mb-4 opacity-20" />
+                    <p className="font-bold">No previous versions found.</p>
+                    <p className="text-sm">Edits will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {historyRecords.map((record, index) => (
+                      <div key={record.id} className="relative pl-6 before:absolute before:left-[11px] before:top-2 before:bottom-[-24px] before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700 last:before:hidden">
+                        <div className="absolute left-0 top-1 h-[24px] w-[24px] rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-4 border-white dark:border-slate-900 flex items-center justify-center shadow-sm">
+                          <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                        </div>
+                        <Card className="border-0 shadow-md ring-1 ring-black/5 dark:ring-white/10 bg-white dark:bg-slate-800 overflow-hidden rounded-2xl">
+                          <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
+                            <div>
+                              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                                {index === 0 ? "Latest Backup" : `Version ${historyRecords.length - index}`}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                Saved on {new Date(record.createdAt).toLocaleString()}
+                              </p>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleRestore(record.id)}
+                              className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 text-xs font-bold"
+                            >
+                              <History className="h-3.5 w-3.5 mr-1.5" /> Restore This Version
+                            </Button>
+                          </div>
+                          <div className="p-4">
+                            <div className="mb-3 flex items-center gap-2">
+                              <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-0">{record.category}</Badge>
+                              <span className="font-bold text-sm text-foreground">{record.label}</span>
+                            </div>
+                            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-slate-900 text-slate-200 p-4 font-mono text-xs leading-relaxed shadow-inner">
+                              <code>{record.soql}</code>
+                            </pre>
+                          </div>
+                        </Card>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

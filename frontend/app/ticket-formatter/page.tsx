@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Copy, Download, Trash2, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
+import { showDataFeedbackToast } from "@/lib/custom-toasts";
 import { cn } from "@/lib/utils";
 
 type FormatOption = {
@@ -92,13 +93,14 @@ export default function TicketFormatterPage() {
   const handleCopy = (value: string) => {
     if (!value) return;
     navigator.clipboard.writeText(value);
-    toast.success("Copied to clipboard");
+    showDataFeedbackToast("Copied to clipboard", value, "copy");
   };
 
   const handleCopyAll = () => {
     if (outputBatches.length === 0) return;
-    navigator.clipboard.writeText(outputBatches.join("\n\n"));
-    toast.success("Copied all batches to clipboard");
+    const value = outputBatches.join("\n\n");
+    navigator.clipboard.writeText(value);
+    showDataFeedbackToast("Copied all batches to clipboard", value, "copy");
 
     trackDashboardEvent({
       metricKey: "tickets_formatted",
@@ -114,14 +116,15 @@ export default function TicketFormatterPage() {
 
   const handleDownload = () => {
     if (outputBatches.length === 0) return;
-    const blob = new Blob([outputBatches.join("\n\n")], { type: "text/plain" });
+    const value = outputBatches.join("\n\n");
+    const blob = new Blob([value], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `tickets-${selectedFormat}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("Downloaded");
+    showDataFeedbackToast("Downloaded text file", value, "download");
 
     trackDashboardEvent({
       metricKey: "tickets_formatted",
@@ -176,7 +179,7 @@ export default function TicketFormatterPage() {
         
         {/* Left Side: Input Panel */}
         <motion.div initial="hidden" animate="show" variants={containerVariants} className="h-full">
-          <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden relative group">
+          <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)] focus-within:border-blue-500/40">
             <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
             
             <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-8 py-6 border-b border-white/10 dark:border-slate-800/50 flex flex-row items-center justify-between relative z-10 backdrop-blur-md">
@@ -256,7 +259,7 @@ export default function TicketFormatterPage() {
 
           {/* Output Result panel */}
           <motion.div initial="hidden" animate="show" variants={containerVariants} className="flex-1 min-h-[300px]">
-            <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden flex flex-col relative group">
+            <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden flex flex-col relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(99,102,241,0.3)] focus-within:border-indigo-500/40">
               <div className="absolute bottom-0 right-0 p-32 bg-gradient-to-tl from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
               
               <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 backdrop-blur-md">

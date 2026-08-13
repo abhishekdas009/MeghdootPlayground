@@ -97,14 +97,16 @@ function activityMeta(type: ActivityEntry["type"]) {
 interface KPIConfig {
   label: string;
   value: number;
+  totalValue: number;
   icon: React.ComponentType<{ className?: string }>;
   iconBg: string;
   iconText: string;
   delay: number;
 }
 
-function KPICard({ label, value, icon: Icon, iconBg, iconText, delay }: KPIConfig) {
+function KPICard({ label, value, totalValue, icon: Icon, iconBg, iconText, delay }: KPIConfig) {
   const [displayValue, setDisplayValue] = React.useState(0);
+  const [displayTotal, setDisplayTotal] = React.useState(0);
 
   React.useEffect(() => {
     if (displayValue === value) return;
@@ -123,6 +125,24 @@ function KPICard({ label, value, icon: Icon, iconBg, iconText, delay }: KPIConfi
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
   }, [value, displayValue]);
+
+  React.useEffect(() => {
+    if (displayTotal === totalValue) return;
+    const start = displayTotal;
+    const end = totalValue;
+    const duration = 600;
+    const startTime = performance.now();
+
+    let frame: number;
+    const step = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayTotal(Math.round(start + (end - start) * eased));
+      if (progress < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [totalValue, displayTotal]);
 
   return (
     <motion.div
@@ -143,7 +163,11 @@ function KPICard({ label, value, icon: Icon, iconBg, iconText, delay }: KPIConfi
               <p className="text-[clamp(2rem,5vw,2.75rem)] font-black tabular-nums text-foreground tracking-tight drop-shadow-sm">
                 {displayValue.toLocaleString()}
               </p>
+              <span className="text-sm font-semibold text-muted-foreground ml-1 mb-2">/ wk</span>
             </div>
+            <p className="text-xs font-medium text-muted-foreground mt-1">
+              All-time: <span className="text-foreground">{displayTotal.toLocaleString()}</span>
+            </p>
             {value > 0 && (
               <motion.div
                 initial={{ opacity: 0, x: -10 }}
@@ -286,7 +310,7 @@ function SectionHeader({
 
 // ─── KPI Definitions ──────────────────────────────────────────────────
 
-const kpiRow1: Omit<KPIConfig, "value">[] = [
+const kpiRow1: Omit<KPIConfig, "value" | "totalValue">[] = [
   {
     label: "Queries Generated",
     icon: Terminal,
@@ -317,7 +341,7 @@ const kpiRow1: Omit<KPIConfig, "value">[] = [
   },
 ];
 
-const kpiRow2: Omit<KPIConfig, "value">[] = [
+const kpiRow2: Omit<KPIConfig, "value" | "totalValue">[] = [
   {
     label: "Case Assignments",
     icon: Users,
@@ -391,11 +415,17 @@ const quickActions = [
 
 export default function DashboardPage() {
   const soqlGeneratedCount = useDashboardStore((s) => s.soqlGeneratedCount);
+  const soqlGeneratedCountTotal = useDashboardStore((s) => s.soqlGeneratedCountTotal);
   const excelOperationCount = useDashboardStore((s) => s.excelOperationCount);
+  const excelOperationCountTotal = useDashboardStore((s) => s.excelOperationCountTotal);
   const ticketCancellationCount = useDashboardStore((s) => s.ticketCancellationCount);
+  const ticketCancellationCountTotal = useDashboardStore((s) => s.ticketCancellationCountTotal);
   const assetTransferCount = useDashboardStore((s) => s.assetTransferCount);
+  const assetTransferCountTotal = useDashboardStore((s) => s.assetTransferCountTotal);
   const caseAssignmentCount = useDashboardStore((s) => s.caseAssignmentCount);
+  const caseAssignmentCountTotal = useDashboardStore((s) => s.caseAssignmentCountTotal);
   const templatesCreatedCount = useDashboardStore((s) => s.templatesCreatedCount);
+  const templatesCreatedCountTotal = useDashboardStore((s) => s.templatesCreatedCountTotal);
   const activity = useDashboardStore((s) => s.activity);
   const favouritesCount = useDashboardStore((s) => s.favourites.size);
   const hydrateFromServer = useDashboardStore((s) => s.hydrateFromServer);
@@ -412,7 +442,9 @@ export default function DashboardPage() {
   }, []);
 
   const row1Values = [soqlGeneratedCount, excelOperationCount, ticketCancellationCount, assetTransferCount];
+  const row1TotalValues = [soqlGeneratedCountTotal, excelOperationCountTotal, ticketCancellationCountTotal, assetTransferCountTotal];
   const row2Values = [caseAssignmentCount, templatesCreatedCount, activity.length, favouritesCount];
+  const row2TotalValues = [caseAssignmentCountTotal, templatesCreatedCountTotal, activity.length, favouritesCount]; // No total for activity/favorites
 
   const fetchDashboard = React.useCallback(async () => {
     try {
@@ -554,14 +586,14 @@ export default function DashboardPage() {
       {/* ─── Primary KPI Row ────────────────────────────────────────── */}
       <div className="responsive-grid">
         {kpiRow1.map((kpi, i) => (
-          <KPICard key={kpi.label} {...kpi} value={row1Values[i] ?? 0} />
+          <KPICard key={kpi.label} {...kpi} value={row1Values[i] ?? 0} totalValue={row1TotalValues[i] ?? 0} />
         ))}
       </div>
 
       {/* ─── Secondary KPI Row ──────────────────────────────────────── */}
       <div className="responsive-grid">
         {kpiRow2.map((kpi, i) => (
-          <KPICard key={kpi.label} {...kpi} value={row2Values[i] ?? 0} />
+          <KPICard key={kpi.label} {...kpi} value={row2Values[i] ?? 0} totalValue={row2TotalValues[i] ?? 0} />
         ))}
       </div>
 

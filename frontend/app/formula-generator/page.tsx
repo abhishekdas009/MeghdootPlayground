@@ -208,7 +208,7 @@ export default function FormulaGeneratorPage() {
         {/* Right Column: Parameters and Result */}
         <div className="flex flex-col gap-6 lg:col-span-8 xl:col-span-8">
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-shadow hover:shadow-xl relative min-h-[350px] flex flex-col">
+            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-all duration-500 hover:shadow-xl relative min-h-[350px] flex flex-col focus-within:shadow-[0_0_50px_-15px_rgba(16,185,129,0.3)] focus-within:ring-emerald-500/40">
               <CardHeader className="border-b bg-gradient-to-b from-muted/50 to-muted/10 px-6 py-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
@@ -269,7 +269,7 @@ export default function FormulaGeneratorPage() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-shadow hover:shadow-xl bg-slate-900">
+            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-all duration-500 hover:shadow-xl bg-slate-900 focus-within:shadow-[0_0_50px_-15px_rgba(16,185,129,0.3)] focus-within:ring-emerald-500/40">
               <CardHeader className="border-b border-slate-800 bg-slate-950 px-6 py-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle className="text-base text-slate-200 flex items-center gap-2">

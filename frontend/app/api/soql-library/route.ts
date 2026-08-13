@@ -8,6 +8,7 @@ type SOQLLibraryInput = {
   id?: unknown;
   label?: unknown;
   category?: unknown;
+  tags?: unknown;
   description?: unknown;
   soql?: unknown;
   favourite?: unknown;
@@ -18,6 +19,10 @@ function normalizeQueryInput(input: SOQLLibraryInput) {
   const category = typeof input.category === "string" ? input.category.trim() : "";
   const description = typeof input.description === "string" ? input.description.trim() : "";
   const soql = typeof input.soql === "string" ? input.soql.trim() : "";
+  let tags: string[] = [];
+  if (Array.isArray(input.tags)) {
+    tags = input.tags.filter((t) => typeof t === "string").map((t) => t.trim()).filter(Boolean);
+  }
 
   if (!label || !category || !soql) {
     throw new Error("Label, category and SOQL query are required");
@@ -26,6 +31,7 @@ function normalizeQueryInput(input: SOQLLibraryInput) {
   return {
     label,
     category,
+    tags,
     description,
     soql,
     favourite: typeof input.favourite === "boolean" ? input.favourite : false,
