@@ -574,8 +574,7 @@ export default function QueryLibraryPage() {
     let lastFoundIdx = -1;
     let lastFoundName = "";
     
-    for (let i = 0; i < clauses.length; i++) {
-      const clause = clauses[i];
+    for (const clause of clauses) {
       const regex = new RegExp(`\\b${clause}\\b`, "i");
       const match = query.match(regex);
       if (match && match.index !== undefined) {
