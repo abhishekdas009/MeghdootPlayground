@@ -1001,7 +1001,7 @@ function AnimatedEmptyState({ label, isDragDrop = false }: { label: string, isDr
 const DataGridTSV = ({ content }: { content: string }) => {
   if (!content) return null;
   const lines = content.split('\n').filter(line => line.trim().length > 0);
-  if (lines.length === 0) return null;
+  if (lines.length === 0 || !lines[0]) return null;
   
   const headers = lines[0].split('\t').map(h => h.replace(/^"|"$/g, ''));
   const rows = lines.slice(1).map(line => line.split('\t'));
@@ -1078,7 +1078,7 @@ const SmartPasteTextarea = React.forwardRef<HTMLTextAreaElement, React.Component
   const handleDragEnter = (e: React.DragEvent<HTMLTextAreaElement>) => {
     e.preventDefault();
     dragCounter.current += 1;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0 && e.dataTransfer.items[0].kind === 'file') {
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0 && e.dataTransfer.items[0]?.kind === 'file') {
         setIsDragging(true);
     }
   };
@@ -1102,6 +1102,7 @@ const SmartPasteTextarea = React.forwardRef<HTMLTextAreaElement, React.Component
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       const file = e.dataTransfer.files[0];
+      if (!file) return;
       const text = await file.text();
       
       const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
