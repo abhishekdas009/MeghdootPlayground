@@ -1138,7 +1138,7 @@ export default function QueryLibraryPage() {
                           type="button"
                           onClick={() => {
                             setIsCreatingNewCategory(false);
-                            setForm((current) => ({ ...current, category: categories.length > 1 ? categories[1] : "" }));
+                            setForm((current) => ({ ...current, category: categories.length > 1 ? (categories[1] || "") : "" }));
                           }}
                           className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
                           title="Cancel and select existing"
