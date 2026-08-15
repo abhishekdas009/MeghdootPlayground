@@ -1,13 +1,17 @@
 <div align="center">
 
-<!-- Logo Placeholder (Can be replaced with actual logo) -->
-<img src="https://via.placeholder.com/150/000000/FFFFFF/?text=☁️+Meghdoot" alt="Meghdoot Logo" width="150" height="150" style="border-radius: 20px;" />
+<!-- Animated Header Image / Banner (SVG animation) -->
+<a href="https://github.com/AbhishekDas">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=250&section=header&text=☁️%20Meghdoot&fontSize=70&fontAlignY=35&animation=twinkling" width="100%" alt="Meghdoot Header" />
+</a>
 
-# ☁️ Meghdoot 
+<br/>
 
-[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=3B82F6&center=true&vCenter=true&width=600&lines=Intelligent+SOQL+Template+Engine;Excel+Automation+Platform;Streamline+your+Workflows;Cloud+Messenger)](https://git.io/typing-svg)
+[![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&pause=1000&color=00F0FF&center=true&vCenter=true&width=800&lines=Intelligent+SOQL+Template+Engine...;Advanced+Excel+Automation+Platform...;Streamlining+Data+Workflows...;Sanskrit+for+"Cloud+Messenger"...)](https://git.io/typing-svg)
 
-**Intelligent SOQL Template Engine & Excel Automation Platform**
+<br/>
+
+**The Ultimate Solution for Salesforce SOQL Operations & Excel Reporting Automation**
 
 [![Next.js](https://img.shields.io/badge/Next.js-15.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -24,152 +28,184 @@
 
 ## 📖 Table of Contents
 
-- [About The Project](#-about-the-project)
-- [Key Features](#-key-features)
-- [Architecture](#-architecture)
-- [Tech Stack](#-tech-stack)
+- [Overview](#-overview)
+- [Deep Dive: Core Components](#-deep-dive-core-components)
+  - [Frontend Ecosystem](#1-frontend-ecosystem-nextjs)
+  - [Backend Ecosystem](#2-backend-ecosystem-fastapi)
+  - [Database & ORM](#3-database--orm)
+- [Architecture Flow](#-architecture-flow)
+- [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
-- [Usage](#-usage)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
-- [License](#-license)
+- [Future Roadmap](#-future-roadmap)
+- [Author](#-author)
 
 ---
 
-## 🚀 About The Project
+## 🚀 Overview
 
-**Meghdoot** (Sanskrit for "Cloud Messenger") is a cutting-edge platform designed to bridge the gap between complex Salesforce Object Query Language (SOQL) operations and intuitive Excel-based reporting. It serves as an intelligent template engine and automation suite that significantly reduces the manual effort required for data extraction and formatting.
+**Meghdoot** is an enterprise-grade web application engineered to solve complex Salesforce data extraction and reporting challenges. By combining a highly responsive frontend with a blazing-fast Python backend, Meghdoot allows users to:
+1. Write dynamic **SOQL queries** with template variables.
+2. Bind these variables visually.
+3. Automatically execute and map the results into **complex Excel files** with one click.
 
 <div align="center">
-  <!-- Placeholder for a demo animation GIF -->
-  <img src="https://via.placeholder.com/800x400/1E1E1E/FFFFFF/?text=Demo+Animation+GIF+Goes+Here" alt="Meghdoot Demo" style="border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"/>
-  <p><i>Dashboard & SOQL Editor Preview</i></p>
+  <img src="https://raw.githubusercontent.com/abhisheknaiidu/abhisheknaiidu/master/code.gif" width="70%" alt="Coding Animation" style="border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.2);"/>
+  <br/>
+  <i>(Real-time SOQL parsing & dynamic variable mapping in action)</i>
 </div>
 
 ---
 
-## ✨ Key Features
+## 🧩 Deep Dive: Core Components
 
-| Feature | Description |
-| :--- | :--- |
-| 🧠 **Intelligent SOQL Engine** | Advanced parser and executor for SOQL with dynamic template variable injection. |
-| 📊 **Excel Automation** | One-click export of complex relational data into beautifully formatted Excel reports. |
-| ⚡ **Real-time Editor** | Integrated Monaco Editor for code-editing experience with syntax highlighting. |
-| 🎨 **Modern UI/UX** | Built with Tailwind CSS and Radix UI for a highly responsive, accessible interface. |
-| 🔐 **Secure & Scalable** | FastAPI backend with Postgres ensures high performance and data integrity. |
+Here is a detailed breakdown of how each component within Meghdoot is orchestrated to deliver a seamless experience.
+
+### 1. Frontend Ecosystem (Next.js)
+The client-side application is designed for absolute performance and developer experience.
+* ⚛️ **Next.js 15+ (App Router):** Utilizes server-side rendering (SSR) and optimized routing for lightning-fast page loads.
+* 🎨 **Tailwind CSS & Radix UI:** A meticulously crafted, accessible, and highly customizable UI component system. Unstyled Radix primitives provide the accessibility layer (Dialogs, Dropdowns, Tooltips), while Tailwind handles the visual polish.
+* 🧠 **Zustand & React Query:** 
+  * `Zustand` manages global UI state (like active editor themes and user preferences) without boilerplate.
+  * `React Query (@tanstack/react-query)` handles robust server-state management, caching, and background data fetching for API endpoints.
+* 📝 **Monaco Editor:** Integrates the VS Code engine directly into the browser, providing syntax highlighting, autocomplete, and a premium code-editing feel for SOQL templates.
+* 📈 **Recharts:** Renders dynamic, responsive data visualizations and dashboards directly in the browser.
+
+### 2. Backend Ecosystem (FastAPI)
+The backend is a high-performance RESTful API built to handle heavy data processing.
+* 🐍 **FastAPI:** Built on Starlette and Pydantic, it provides automatic interactive API documentation (Swagger UI/ReDoc) and incredible async performance.
+* ⚙️ **Uvicorn:** A lightning-fast ASGI server implementation used to run the FastAPI application.
+* 🛠️ **SOQL Engine:** A custom-built parser that processes template tags within SOQL strings, safely injects user-bound variables, and validates queries before hitting the Salesforce API.
+* 📊 **Excel Automation Layer:** Processes raw relational JSON data from Salesforce and maps it dynamically into highly formatted `.xlsx` files using specialized Python libraries.
+
+### 3. Database & ORM
+Data persistence is handled with safety and scalability in mind.
+* 🐘 **PostgreSQL:** The world's most advanced open-source relational database, ensuring ACID compliance and robust relational data storage.
+* ⬡ **Prisma ORM (`@prisma/client` & `@prisma/adapter-pg`):** Provides type-safe database access. It auto-generates TypeScript types based on the schema, ensuring that database queries in Next.js API routes (or backend syncs) are strictly typed and error-free.
 
 ---
 
-## 🏗 Architecture
+## 🏗 Architecture Flow
 
 ```mermaid
-graph TD;
-    Client([💻 Web Client / Next.js])
-    Backend([⚙️ FastAPI Backend])
-    DB[(🗄️ PostgreSQL)]
-    Prisma([ORM / Prisma])
-    SF([☁️ Salesforce API])
+sequenceDiagram
+    participant U as User
+    participant F as Frontend (Next.js)
+    participant B as Backend (FastAPI)
+    participant DB as PostgreSQL
+    participant SF as Salesforce API
 
-    Client <-->|REST API / JSON| Backend
-    Backend <-->|SQL| Prisma
-    Prisma <--> DB
-    Backend <-->|SOQL Queries| SF
+    U->>F: Writes Template SOQL in Monaco Editor
+    F->>B: POST /api/v1/templates (Save Template)
+    B->>DB: Prisma Client inserts Template Record
+    DB-->>B: Success
+    B-->>F: Template Saved
+
+    U->>F: Bind Variables & Click "Export to Excel"
+    F->>B: POST /api/v1/execute (With bound variables)
+    B->>B: Parse Template & Inject Variables
+    B->>SF: Execute Final SOQL Query
+    SF-->>B: Returns JSON Data
+    B->>B: Process JSON into Formatted Excel buffer
+    B-->>F: Returns .xlsx File Stream
+    F-->>U: Triggers File Download
 ```
 
 ---
 
-## 💻 Tech Stack
+## 🗂️ Project Structure
 
-### Frontend
-- **Framework:** Next.js (React)
-- **Styling:** Tailwind CSS, Radix UI Primitives, Framer Motion (Animations)
-- **State Management:** Zustand, React Query
-- **Editor:** Monaco Editor
-- **Charts:** Recharts
-
-### Backend
-- **Framework:** FastAPI (Python)
-- **Database:** PostgreSQL
-- **ORM:** Prisma (using `@prisma/adapter-pg`)
-- **Server:** Uvicorn
+```text
+MeghdootPlayground/
+├── backend/                   # FastAPI Python Server
+│   ├── app/                   # Core application logic
+│   │   ├── api/               # REST API Routes
+│   │   ├── core/              # Config, Database setup, Security
+│   │   └── main.py            # FastAPI Entry Point
+│   └── requirements.txt       # Python dependencies
+├── frontend/                  # Next.js React Client
+│   ├── app/                   # Next.js App Router (Pages & Layouts)
+│   ├── components/            # Reusable UI components (Radix + Tailwind)
+│   ├── lib/                   # Utility functions & helpers
+│   ├── prisma/                # Database schema & migrations
+│   ├── public/                # Static assets
+│   ├── store/                 # Zustand state management
+│   ├── package.json           # Node dependencies
+│   └── tailwind.config.ts     # Tailwind design system tokens
+└── README.md                  # Project Documentation
+```
 
 ---
 
 ## 🏁 Getting Started
 
-Follow these steps to set up the project locally.
+Follow these precise steps to spin up the entire Meghdoot stack locally.
 
-### Prerequisites
-- Node.js (v18+)
-- Python (v3.10+)
-- PostgreSQL (v14+)
+### 1. Prerequisites
+Ensure your development environment meets these requirements:
+* **Node.js** v18.0.0 or higher
+* **Python** v3.10 or higher
+* **PostgreSQL** v14+ running locally or in Docker
 
-### Installation
+### 2. Repository Setup
+```bash
+git clone https://github.com/AbhishekDas/meghdoot.git
+cd meghdoot
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/meghdoot.git
-   cd meghdoot
-   ```
+### 3. Frontend Initialization
+```bash
+# Install Node modules
+npm install
 
-2. **Setup Frontend**
-   ```bash
-   # Install dependencies
-   npm install
-   
-   # Generate Prisma Client
-   npm run prisma:generate
-   ```
+# Setup Prisma and push schema to database
+npm run prisma:generate
+npx prisma db push
+```
 
-3. **Setup Backend**
-   ```bash
-   cd backend
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
+### 4. Backend Initialization
+```bash
+cd backend
 
-4. **Environment Variables**
-   Create a `.env` file in the root directory based on `.env.example`.
-   ```env
-   DATABASE_URL="postgresql://user:password@localhost:5432/meghdoot"
-   ```
+# Create & activate a virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-5. **Run the Application**
-   ```bash
-   # Terminal 1: Run Frontend
-   npm run dev
-   
-   # Terminal 2: Run Backend
-   npm run backend:dev
-   ```
+# Install Python requirements
+pip install -r requirements.txt
+```
 
----
+### 5. Launch Development Servers
+You will need two terminal windows to run both services simultaneously:
 
-## 💡 Usage
+**Terminal 1 (Root Directory):**
+```bash
+# Starts Next.js on http://localhost:3000
+npm run dev
+```
 
-1. **Create Templates**: Navigate to the Template Builder to design your SOQL queries.
-2. **Bind Variables**: Use the interactive UI to bind dynamic variables to your SOQL clauses.
-3. **Execute & Export**: Run the queries against your connected Salesforce environment and export the results directly to customized Excel sheets.
+**Terminal 2 (Root Directory):**
+```bash
+# Starts FastAPI on http://localhost:8000
+npm run backend:dev
+```
 
 ---
 
-## 🤝 Contributing
+## 🌟 Future Roadmap
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- [ ] **AI-Powered Query Suggestions:** Integrate LLMs to help users write SOQL faster.
+- [ ] **Automated Email Reports:** Schedule and dispatch Excel reports directly to stakeholders.
+- [ ] **Multi-Tenant Support:** Allow distinct organizations to have isolated workspaces.
 
 ---
-
-## 📄 License
-
-Distributed under the MIT License. See `LICENSE` for more information.
 
 <div align="center">
-  <p>Built with ❤️ by the Meghdoot Team</p>
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&height=100&section=footer" width="100%" alt="Footer" />
+  
+  <h3>Built with ❤️ and ☕ by <b>Abhishek Das</b></h3>
+  <p>
+    <a href="https://github.com/AbhishekDas">
+      <img src="https://img.shields.io/github/followers/AbhishekDas?label=Follow&style=social" alt="GitHub" />
+    </a>
+  </p>
 </div>
