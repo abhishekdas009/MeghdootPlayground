@@ -49,6 +49,7 @@ export interface CancellationExecutionRow {
 export interface CaseAssignmentRow {
   id: string;
   status: "Open";
+  category?: string;
 }
 
 export interface CaseAssignmentResult {
@@ -607,7 +608,7 @@ export function buildCaseAssignmentOutput(assignments: Array<{ row: CaseAssignme
   return outputLines.join("\n");
 }
 
-export function getSecureRandomIndex(maxExclusive: number): number {
+function getSecureRandomIndex(maxExclusive: number): number {
   if (maxExclusive <= 1) return 0;
 
   if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function") {
@@ -644,7 +645,24 @@ export function buildBalancedAssignments(
   roundRobinPointer?: number
 ): CaseAssignmentResult {
   const isRoundRobin = roundRobinPointer !== undefined;
-  const shuffledRows = shuffleItems(rows);
+  
+  const groups = new Map<string, CaseAssignmentRow[]>();
+  rows.forEach(r => {
+    const cat = r.category || 'none';
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat)!.push(r);
+  });
+  
+  const shuffledRows: CaseAssignmentRow[] = [];
+  const categories = Array.from(groups.keys()).sort((a, b) => {
+    if (a === 'none') return 1;
+    if (b === 'none') return -1;
+    return a.localeCompare(b);
+  });
+  for (const cat of categories) {
+    shuffledRows.push(...shuffleItems(groups.get(cat)!));
+  }
+  
   const shuffledOwners = isRoundRobin ? owners : shuffleItems(owners);
 
   if (owners.length === 0) {
@@ -659,19 +677,10 @@ export function buildBalancedAssignments(
 
   const casesPerOwner = Math.floor(rows.length / owners.length);
   const remainder = isRoundRobin ? (rows.length % owners.length) : 0;
-  
+  const totalToAssign = (casesPerOwner * owners.length) + remainder;
+
   const assignments: Array<{ row: CaseAssignmentRow; owner: Pick<CaseOwner, "ownerId"> }> = [];
-  let rowIndex = 0;
-
-  shuffledOwners.forEach((owner) => {
-    for (let i = 0; i < casesPerOwner; i++) {
-      if (rowIndex < shuffledRows.length) {
-        assignments.push({ row: shuffledRows[rowIndex]!, owner });
-        rowIndex++;
-      }
-    }
-  });
-
+  
   const extraOwners: CaseOwner[] = [];
   let nextPointer = roundRobinPointer ?? 0;
   let startOwner: CaseOwner | undefined;
@@ -682,27 +691,24 @@ export function buildBalancedAssignments(
     startOwner = owners[startIndex];
     
     for (let i = 0; i < remainder; i++) {
-      const extraOwnerIndex = (startIndex + i) % owners.length;
-      const owner = owners[extraOwnerIndex]!;
-      extraOwners.push(owner);
-      
-      if (rowIndex < shuffledRows.length) {
-         assignments.push({ row: shuffledRows[rowIndex]!, owner });
-         rowIndex++;
-      }
+      extraOwners.push(owners[(startIndex + i) % owners.length]!);
     }
     
     nextPointer = (startIndex + remainder) % owners.length;
     nextStartOwner = owners[nextPointer];
-  } else {
-    // If not round robin (e.g. owner-wise mode), we only assigned casesPerOwner * owners.length cases
-    // and rowIndex is already correctly set to that amount.
+  }
+
+  let rPtr = isRoundRobin ? (roundRobinPointer % owners.length) : 0;
+  for (let i = 0; i < totalToAssign; i++) {
+     const owner = shuffledOwners[rPtr % shuffledOwners.length]!;
+     assignments.push({ row: shuffledRows[i]!, owner });
+     rPtr++;
   }
 
   return {
     output: buildCaseAssignmentOutput(assignments),
     assignedCount: assignments.length,
-    unassignedCaseIds: shuffledRows.slice(rowIndex).map((row) => row.id),
+    unassignedCaseIds: shuffledRows.slice(totalToAssign).map((row) => row.id),
     ownerCount: owners.length,
     casesPerOwner,
     remainder,
@@ -737,18 +743,40 @@ export function buildQuantityWiseAssignments(
     return { error: `Selected quantity (${totalQuantity}) cannot exceed ${rows.length} Case IDs` };
   }
 
-  const shuffledRows = shuffleItems(rows);
+  const groups = new Map<string, CaseAssignmentRow[]>();
+  rows.forEach(r => {
+    const cat = r.category || 'none';
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat)!.push(r);
+  });
+  
+  const shuffledRows: CaseAssignmentRow[] = [];
+  const categories = Array.from(groups.keys()).sort((a, b) => {
+    if (a === 'none') return 1;
+    if (b === 'none') return -1;
+    return a.localeCompare(b);
+  });
+  for (const cat of categories) {
+    shuffledRows.push(...shuffleItems(groups.get(cat)!));
+  }
+
   const assignments: Array<{ row: CaseAssignmentRow; owner: { ownerId: string } }> = [];
   let rowIndex = 0;
 
-  selectedOwners.forEach((owner) => {
-    for (let i = 0; i < owner.quantity; i += 1) {
-      const row = shuffledRows[rowIndex];
-      if (!row) break;
-      assignments.push({ row, owner: { ownerId: owner.ownerId } });
-      rowIndex += 1;
-    }
-  });
+  const remainingNeeds = selectedOwners.map(o => ({ ownerId: o.ownerId, qty: o.quantity }));
+  
+  while (rowIndex < totalQuantity) {
+     let assignedInRound = false;
+     for (const ownerNeed of remainingNeeds) {
+        if (ownerNeed.qty > 0 && rowIndex < totalQuantity) {
+           assignments.push({ row: shuffledRows[rowIndex]!, owner: { ownerId: ownerNeed.ownerId } });
+           ownerNeed.qty--;
+           rowIndex++;
+           assignedInRound = true;
+        }
+     }
+     if (!assignedInRound) break;
+  }
 
   return {
     result: {

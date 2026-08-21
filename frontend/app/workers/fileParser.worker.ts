@@ -1,5 +1,5 @@
 import * as xlsx from "xlsx";
-import { SALESFORCE_TICKET_REGEX } from "../../lib/parsers";
+import { SALESFORCE_TICKET_REGEX, CASE_ID_REGEX } from "../../lib/parsers";
 
 
 
@@ -29,7 +29,106 @@ self.onmessage = async (event: MessageEvent) => {
     }
 
     // Process depending on the requested mode
-    if (mode === "case-assignment" || mode === "tickets") {
+    if (mode === "case-assignment") {
+      const keywords = [
+        "pms cancellation",
+        "ticket cancellation",
+        "dop change",
+        "warranty update",
+        "policy update",
+        "sap mr",
+        "otp",
+        "feedback",
+        "asset transfer",
+        "transfer",
+        "promotional",
+        "product"
+      ];
+      const caseIds: string[] = [];
+
+      if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+        let headerRowIdx = -1;
+        let caseIdIdx = -1;
+        let subjectIdx = -1;
+        let descIdx = -1;
+
+        for (let i = 0; i < Math.min(rows.length, 10); i++) {
+          const row = rows[i] as any[];
+          if (!row) continue;
+          
+          let cId = -1, subId = -1, desId = -1;
+          for (let j = 0; j < row.length; j++) {
+            const val = String(row[j] || "").toLowerCase().trim();
+            if (val === "case id" || val === "case number" || val === "caseid") cId = j;
+            else if (val === "subject") subId = j;
+            else if (val === "description") desId = j;
+          }
+          if (cId !== -1) {
+            headerRowIdx = i;
+            caseIdIdx = cId;
+            subjectIdx = subId;
+            descIdx = desId;
+            break;
+          }
+        }
+
+        if (headerRowIdx !== -1) {
+          for (let i = headerRowIdx + 1; i < rows.length; i++) {
+            const row = rows[i] as any[];
+            if (!row) continue;
+            
+            const caseIdRaw = String(row[caseIdIdx] || "").trim();
+            const match = caseIdRaw.match(/(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?)/);
+            if (!match) continue;
+            const caseId = match[1];
+
+            const subject = subjectIdx !== -1 ? String(row[subjectIdx] || "").toLowerCase() : "";
+            const description = descIdx !== -1 ? String(row[descIdx] || "").toLowerCase() : "";
+            const combined = subject + " " + description;
+
+            const matchedKeyword = keywords.find(k => combined.includes(k));
+            if (matchedKeyword) {
+              caseIds.push(caseId + "|" + matchedKeyword);
+            } else {
+              if (caseId) caseIds.push(caseId);
+            }
+          }
+        } else {
+          for (let i = 0; i < rows.length; i++) {
+            const row = rows[i] as any[];
+            if (!row) continue;
+            const rowText = row.map(cell => String(cell || "")).join(" ").toLowerCase();
+            const matchedKeyword = keywords.find(k => rowText.includes(k));
+            const matches = Array.from(rowText.matchAll(CASE_ID_REGEX));
+            for (const m of matches) {
+              if (matchedKeyword) {
+                caseIds.push(m[1] + "|" + matchedKeyword);
+              } else {
+                caseIds.push(m[1]!);
+              }
+            }
+          }
+        }
+      } else {
+        const lines = textContent.split("\n");
+        for (const line of lines) {
+          const lowerLine = line.toLowerCase();
+          const matchedKeyword = keywords.find(k => lowerLine.includes(k));
+          const matches = Array.from(line.matchAll(CASE_ID_REGEX)).map((m) => m[1]);
+          if (matchedKeyword) {
+            caseIds.push(...matches.map(m => m + "|" + matchedKeyword));
+          } else {
+            caseIds.push(...matches.filter((m): m is string => !!m));
+          }
+        }
+      }
+
+      if (caseIds.length > 0) {
+        self.postMessage({ success: true, result: Array.from(new Set(caseIds)) });
+      } else {
+        throw new Error("No valid Case IDs found in the file.");
+      }
+    } else if (mode === "tickets") {
       if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
         // Always use column F (index 5) for ticket numbers
         let ticketColumnIndex = 5;

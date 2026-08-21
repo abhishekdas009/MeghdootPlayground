@@ -12,14 +12,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { sidebarCollapsed } = useUIStore();
 
   return (
-    <div className="app-shell relative min-h-screen overflow-x-hidden bg-background">
+    <div className="app-shell relative min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#010309]">
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        <div className="absolute -top-[20%] left-[-10%] h-[50%] w-[50%] rounded-full bg-blue-400/20 mix-blend-multiply blur-[120px] dark:bg-blue-500/30 dark:blur-[150px] dark:mix-blend-normal sm:h-[60%] sm:w-[60%]" />
+        <div className="absolute right-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-purple-400/20 mix-blend-multiply blur-[120px] dark:bg-orange-500/25 dark:blur-[150px] dark:mix-blend-normal sm:h-[60%] sm:w-[60%]" />
+        <div className="absolute bottom-[-20%] left-[20%] h-[50%] w-[60%] rounded-full bg-sky-300/20 mix-blend-multiply blur-[120px] dark:bg-cyan-500/20 dark:blur-[150px] dark:mix-blend-normal sm:h-[60%] sm:w-[60%]" />
+      </div>
       <ParticleBackground />
       <Header />
       <Sidebar />
       <main
         className={cn(
           "relative z-10 min-w-0 pt-[var(--app-header-height)] transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-          sidebarCollapsed ? "md:pl-[68px]" : "md:pl-[250px]"
+          sidebarCollapsed ? "md:pl-[104px]" : "md:pl-[288px]"
         )}
       >
         <motion.div

@@ -237,7 +237,7 @@ export default function AnalyticsPage() {
   // Filter events for the stream
   const filteredEvents = React.useMemo(() => {
     // Combine Live Store Activity + DB Events
-    const allActivity = [
+    const rawActivity = [
       ...liveStore.activity.map(a => ({
         id: a.id,
         type: a.type,
@@ -248,6 +248,15 @@ export default function AnalyticsPage() {
       })),
       ...events
     ];
+
+    // Deduplicate by ID
+    const uniqueMap = new Map();
+    rawActivity.forEach(item => {
+      if (!uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, item);
+      }
+    });
+    const allActivity = Array.from(uniqueMap.values());
 
     if (eventFilter === "all") return allActivity;
     return allActivity.filter((e) => {
@@ -517,8 +526,8 @@ export default function AnalyticsPage() {
       {/* 3. MIDDLE INTERACTIVE ARENA (2 Columns: Leaderboard/Charts + Live DB Event Stream) */}
       <div className="grid gap-8 lg:grid-cols-12">
         {/* LEFT 2 COLUMNS: DB LEADERBOARD & DISTRIBUTIONS */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="lg:col-span-7 xl:col-span-8 flex flex-col h-full">
-          <Card className="flex-1 border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden flex flex-col bg-card rounded-3xl min-h-[600px]">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-7 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-8">
+          <Card className="h-full min-h-0 border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden flex flex-col bg-card rounded-3xl">
             <CardHeader className="p-6 border-b border-border/40 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sticky top-0 z-10 backdrop-blur-md">
               <div className="space-y-1">
                 <div className="flex items-center gap-3">
@@ -559,7 +568,7 @@ export default function AnalyticsPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="p-0 flex-1 overflow-y-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:24px_24px]">
+            <CardContent className="analytics-panel-scroll min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] p-0 dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:24px_24px]">
               <div className="p-6">
                 <AnimatePresence mode="wait">
                   {/* TAB 0: TRENDS CHART */}
@@ -823,8 +832,8 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* RIGHT COLUMN: REAL-TIME DB EVENT STREAM */}
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="lg:col-span-5 xl:col-span-4 h-full flex flex-col">
-          <Card className="border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden flex flex-col bg-card h-full min-h-[600px] rounded-3xl">
+        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-5 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-4">
+          <Card className="h-full min-h-0 border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden flex flex-col bg-card rounded-3xl">
             <CardHeader className="p-6 border-b border-border/40 bg-gradient-to-b from-muted/60 to-muted/20 flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -866,7 +875,7 @@ export default function AnalyticsPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="p-4 flex-1 overflow-y-auto space-y-3 bg-slate-50/50 dark:bg-slate-900/30">
+            <CardContent className="analytics-panel-scroll min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50/50 p-4 dark:bg-slate-900/30">
               {filteredEvents.length === 0 ? (
                 /* Fallback rich log if DB events table is fresh/empty */
                 [

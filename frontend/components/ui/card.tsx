@@ -15,10 +15,10 @@ const Card = React.forwardRef<HTMLElement, CardProps>(
     <Component
       ref={ref}
       className={cn(
-        "app-card min-w-0 rounded-[18px] border border-border/70 bg-card/65 text-foreground shadow-none backdrop-blur-xl",
+        "app-card card-motion min-w-0 rounded-[18px] border border-border/70 bg-card/65 text-foreground shadow-card backdrop-blur-xl",
         "transition-[transform,box-shadow,border-color] duration-250 ease-in-out",
         interactive && [
-          "cursor-pointer hover:-translate-y-0.5 hover:border-primary/30",
+          "cursor-pointer hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-card-hover",
           "focus-within:ring-2 focus-within:ring-primary/50 focus-within:outline-none"
         ],
         className

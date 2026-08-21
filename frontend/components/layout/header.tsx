@@ -3,7 +3,7 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, Command, Menu, Sun, Moon } from "lucide-react";
+import { Search, Command, Menu, Sun, Moon, Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { useUIStore } from "@/store/ui-store";
@@ -12,7 +12,13 @@ import { GlobalSearchModal } from "@/components/layout/global-search-modal";
 
 type ThemeMode = "light" | "dark";
 
-const THEME_STORAGE_KEY = "meghdoot-theme";
+type ViewTransitionDocument = Document & {
+  startViewTransition?: (updateCallback: () => void | Promise<void>) => {
+    finished: Promise<void>;
+  };
+};
+
+const THEME_STORAGE_KEY = "meghdoot-theme-v2";
 
 export function Header() {
   const router = useRouter();
@@ -20,26 +26,37 @@ export function Header() {
 
   const [searchFocused, setSearchFocused] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
-  const [theme, setTheme] = React.useState<ThemeMode>("light");
+  const [theme, setTheme] = React.useState<ThemeMode>("dark");
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const nextTheme: ThemeMode = savedTheme === "dark" ? "dark" : "light";
+    const nextTheme: ThemeMode = savedTheme === "light" ? "light" : "dark";
 
     setTheme(nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
   }, []);
 
+  const applyTheme = React.useCallback((nextTheme: ThemeMode) => {
+    document.documentElement.classList.toggle("dark", nextTheme === "dark");
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    setTheme(nextTheme);
+  }, []);
+
   const toggleTheme = () => {
-    setTheme((currentTheme) => {
-      const nextTheme: ThemeMode = currentTheme === "dark" ? "light" : "dark";
+    const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
+    const root = document.documentElement;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const transitionDocument = document as ViewTransitionDocument;
 
-      document.documentElement.classList.toggle("dark", nextTheme === "dark");
-      window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    if (!prefersReducedMotion && transitionDocument.startViewTransition) {
+      transitionDocument.startViewTransition(() => applyTheme(nextTheme));
+      return;
+    }
 
-      return nextTheme;
-    });
+    root.classList.add("theme-transition");
+    applyTheme(nextTheme);
+    window.setTimeout(() => root.classList.remove("theme-transition"), 480);
   };
 
   // Enable the Cmd+K / Ctrl+K keyboard shortcut for global search
@@ -56,7 +73,7 @@ export function Header() {
   }, []);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 w-full border-b border-border/40 bg-background/65 backdrop-blur-xl shadow-[0_1px_0_rgb(255_255_255_/_0.04)] transition-all duration-200" suppressHydrationWarning>
+    <header className="desktop-command-bar fixed top-0 left-0 right-0 z-50 h-14 w-full border-b border-border/40 bg-background/65 backdrop-blur-xl shadow-[0_1px_0_rgb(255_255_255_/_0.04)] transition-all duration-200" suppressHydrationWarning>
       <div className="flex h-full items-center justify-between px-4 sm:px-5 gap-3" suppressHydrationWarning>
         {/* Left Section: Menu & Brand */}
         <div className="flex items-center gap-2.5 shrink-0" suppressHydrationWarning>
@@ -221,6 +238,16 @@ export function Header() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </button>
+
+          <button
+            type="button"
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-2xs transition-all hover:border-[#58b7ff]/45 hover:bg-muted/60 hover:text-[#81c9ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#58b7ff]/50"
+            aria-label="Notifications"
+            title="Notifications"
+          >
+            <Bell className="h-4.5 w-4.5" />
+            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#58b7ff] shadow-[0_0_8px_#58b7ff]" />
           </button>
 
           {/* Blue Star Logo */}

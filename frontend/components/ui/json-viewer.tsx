@@ -115,7 +115,7 @@ export const JsonViewer = ({ data, className }: { data: any, className?: string 
           <JsonTree data={parsedData} />
         </div>
       ) : (
-        <pre className="font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-0 whitespace-pre-wrap break-words selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
+        <pre className="font-mono text-xs leading-relaxed text-inherit min-h-0 whitespace-pre-wrap break-words selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
           {typeof parsedData === 'string' ? parsedData : JSON.stringify(parsedData, null, 2)}
         </pre>
       )}

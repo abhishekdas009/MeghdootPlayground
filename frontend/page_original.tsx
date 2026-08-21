@@ -1923,17 +1923,6 @@ export default function SOQLGeneratorPage() {
       const recordType = assetRow.record_type__c || assetRow.recordtype || "";
       const isComponent = recordType.toLowerCase().includes("component");
 
-      let assetId: string | undefined;
-      let sourceNote: string;
-
-      if (isComponent) {
-        assetId = assetRow["parent.id"] || assetRow.parentid || assetRow.parent_id || assetRow.id;
-        sourceNote = "Parent.Id (Component record type)";
-      } else {
-        assetId = assetRow.id;
-        sourceNote = "Asset.Id";
-      }
-
       const accountId = accountData[pair.newCid];
       if (!accountId) {
         missingCids.push(pair.newCid);
@@ -1941,13 +1930,39 @@ export default function SOQLGeneratorPage() {
         continue;
       }
 
-      if (!assetId) {
-        debugLines.push(`❌ ${pair.componentId} → No valid asset ID found`);
-        continue;
-      }
+      if (isComponent) {
+        const childAssetId = assetRow.id;
+        const parentAssetId = assetRow["parent.id"] || assetRow.parentid || assetRow.parent_id;
+        let added = false;
+        const addedIds: string[] = [];
 
-      rows.push(`"[Asset]","${assetId}","${accountId}"`);
-      debugLines.push(`✅ ${pair.componentId} → ${assetId} (${sourceNote}) | CID ${pair.newCid} → ${accountId}`);
+        if (parentAssetId) {
+          rows.push(`"[Asset]","${parentAssetId}","${accountId}"`);
+          addedIds.push(`${parentAssetId} (Parent.Id)`);
+          added = true;
+        }
+
+        if (childAssetId && childAssetId !== parentAssetId) {
+          rows.push(`"[Asset]","${childAssetId}","${accountId}"`);
+          addedIds.push(`${childAssetId} (Child.Id)`);
+          added = true;
+        }
+
+        if (!added) {
+          debugLines.push(`❌ ${pair.componentId} → No valid asset ID found`);
+          continue;
+        }
+
+        debugLines.push(`✅ ${pair.componentId} → ${addedIds.join(" & ")} | CID ${pair.newCid} → ${accountId}`);
+      } else {
+        const assetId = assetRow.id;
+        if (!assetId) {
+          debugLines.push(`❌ ${pair.componentId} → No valid asset ID found`);
+          continue;
+        }
+        rows.push(`"[Asset]","${assetId}","${accountId}"`);
+        debugLines.push(`✅ ${pair.componentId} → ${assetId} (Asset.Id) | CID ${pair.newCid} → ${accountId}`);
+      }
     }
 
     setTransferOutput(rows.join("\n"));

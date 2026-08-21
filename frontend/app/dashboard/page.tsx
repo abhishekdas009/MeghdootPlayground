@@ -152,7 +152,7 @@ function KPICard({ label, value, totalValue, icon: Icon, iconBg, iconText, delay
       whileHover={{ y: -4, scale: 1.02 }}
       className="relative group h-full"
     >
-      <div className="relative h-full min-h-[11rem] flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-[clamp(1rem,2vw,1.5rem)] shadow-none backdrop-blur-xl dark:border-white/10">
+      <div className="glass-panel glass-panel--elevated relative h-full min-h-[11rem] flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-[clamp(1rem,2vw,1.5rem)] shadow-none backdrop-blur-xl dark:border-white/10">
         <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
           <Icon className="w-24 h-24 -mr-6 -mt-6 transform rotate-12" />
         </div>
@@ -220,7 +220,7 @@ function QuickActionCard({
       whileHover={{ y: -2 }}
     >
       <Link href={href} className="block h-full">
-        <div className="group relative h-full overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-5 shadow-none backdrop-blur-xl transition-all duration-300 hover:border-blue-300/30 hover:bg-card/70 dark:border-white/10">
+        <div className="glass-panel group relative h-full overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-5 shadow-none backdrop-blur-xl transition-all duration-300 hover:border-blue-300/30 hover:bg-card/70 dark:border-white/10">
           <div className={cn("absolute inset-x-0 top-0 h-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100", gradient)} />
 
           <div className="flex items-center gap-4">
@@ -512,13 +512,13 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-700 backdrop-blur-md dark:bg-blue-500/15 dark:text-sky-200">
                 <Sparkles className="h-4 w-4" />
-                <span>Welcome back, Commander</span>
+                <span>Salesforce operations workspace</span>
               </div>
               <h1 className="text-4xl font-black tracking-tight text-slate-950 dark:text-white lg:text-5xl">
-                Command <span className="bg-gradient-to-r from-sky-300 to-blue-400 bg-clip-text text-transparent">Center</span>
+                Good evening, <span className="bg-gradient-to-r from-sky-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">Team</span>
               </h1>
               <p className="max-w-xl text-lg font-medium text-slate-600 dark:text-slate-300">
-                Your centralized hub for automation metrics, system health, and quick actions.
+                Stay focused and keep every Salesforce workflow moving.
               </p>
             </div>
             

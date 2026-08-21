@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   Search,
@@ -444,52 +445,65 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
     }
   };
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh] px-4 bg-slate-900/30 dark:bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-200">
-      {/* Click outside to close */}
-      <div className="absolute inset-0" onClick={() => onOpenChange(false)} />
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/30 px-4 pt-[10vh] backdrop-blur-sm animate-in fade-in duration-200 dark:bg-black/55"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onOpenChange(false);
+      }}
+    >
 
       {/* Modal Container */}
       <div
-        className="relative w-full max-w-[700px] rounded-2xl bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-white/10 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.2)] dark:shadow-[0_16px_40px_-12px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col max-h-[75vh] animate-in zoom-in-95 duration-200"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Global search"
+        className="relative flex w-full max-w-[700px] max-h-[75vh] flex-col overflow-hidden rounded-[1.35rem] border border-white/65 bg-white/70 shadow-[0_24px_70px_-22px_rgba(15,23,42,0.38)] backdrop-blur-[28px] backdrop-saturate-150 animate-in zoom-in-95 duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-[0_24px_70px_-22px_rgba(0,0,0,0.7)]"
         onKeyDown={handleKeyDown}
       >
         {/* Sleek Search Input Bar */}
-        <div className="relative flex items-center px-6 py-4 gap-4 bg-slate-50/50 dark:bg-slate-900/50">
-          <Search className="h-6 w-6 text-[#0176d3] shrink-0 drop-shadow-sm" />
-          <div className="flex-1 relative" suppressHydrationWarning data-protonpass-ignore="true">
+        <div className="relative bg-white/15 p-3 sm:p-4 dark:bg-white/[0.025]">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/50 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition-colors focus-within:border-blue-400/50 focus-within:bg-white/65 focus-within:ring-4 focus-within:ring-blue-500/10 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] dark:focus-within:border-sky-400/35 dark:focus-within:bg-white/[0.07]">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-[#0176d3] ring-1 ring-blue-500/15 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-300/15">
+              <Search className="h-5 w-5" />
+            </span>
+            <div className="relative flex-1" suppressHydrationWarning data-protonpass-ignore="true">
             <input
               ref={inputRef}
               type="text"
               placeholder="Search modules, pages, or SOQL queries..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-transparent text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-xl font-medium focus:outline-none pr-8 tracking-tight"
+              className="w-full bg-transparent pr-8 text-base font-semibold tracking-tight text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500 sm:text-lg"
               autoComplete="off"
               data-lpignore="true"
               data-protonpass-ignore="true"
               data-form-type="other"
               suppressHydrationWarning
             />
+            </div>
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/55 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-100"
+                title="Clear text"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+            {!query && (
+              <kbd className="hidden rounded-md border border-slate-200/70 bg-white/40 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 sm:inline-flex dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500">ESC</kbd>
+            )}
           </div>
-          {query && (
-            <button
-              onClick={() => setQuery("")}
-              className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 dark:hover:text-slate-200 dark:hover:bg-slate-800 transition-colors"
-              title="Clear text"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          )}
         </div>
         
         {/* Soft Divider */}
-        <div className="h-px w-full bg-slate-100 dark:bg-slate-800/60" />
+        <div className="h-px w-full bg-white/65 dark:bg-white/[0.07]" />
 
         {/* Simple Results List Area */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1 min-h-[250px] max-h-[55vh] custom-scrollbar bg-white dark:bg-slate-950">
+        <div className="custom-scrollbar flex-1 min-h-[250px] max-h-[55vh] space-y-1.5 overflow-y-auto bg-white/[0.14] p-2.5 dark:bg-slate-950/[0.18]">
           {filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <Search className="h-10 w-10 text-slate-300 dark:text-slate-700 mb-4" />
@@ -505,17 +519,17 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
-                    "flex items-center justify-between p-3 rounded-xl transition-all gap-4 cursor-pointer group",
+                    "group flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-transparent bg-white/[0.16] p-3 transition-all duration-200 dark:bg-white/[0.035]",
                     isSelected
-                      ? "bg-blue-50 dark:bg-blue-500/10 shadow-sm ring-1 ring-blue-500/20"
-                      : "hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                      ? "border-blue-400/25 bg-blue-500/10 shadow-[0_8px_24px_-16px_rgba(37,99,235,0.65)] ring-1 ring-blue-500/10 dark:border-sky-300/15 dark:bg-sky-400/[0.09]"
+                      : "hover:border-white/70 hover:bg-white/45 hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.3)] dark:hover:border-white/[0.08] dark:hover:bg-white/[0.065]"
                   )}
                 >
                   {/* Left Icon + Info */}
                   <div className="flex items-start gap-4 min-w-0 flex-1">
                     <div className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-105",
-                      isSelected ? "bg-white dark:bg-slate-800 ring-1 ring-black/5 dark:ring-white/10" : "bg-slate-100 dark:bg-slate-800/80 border border-slate-200/50 dark:border-white/5"
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105",
+                      isSelected ? "border-white/70 bg-white/50 shadow-sm dark:border-white/10 dark:bg-white/[0.06]" : "border-white/55 bg-white/30 dark:border-white/[0.06] dark:bg-white/[0.035]"
                     )}>
                       {item.icon}
                     </div>
@@ -528,7 +542,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                           {item.title}
                         </span>
                         {item.typeTag && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-black bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 uppercase tracking-widest shrink-0">
+                          <span className="inline-flex shrink-0 items-center rounded-md border border-white/55 bg-white/35 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:border-white/[0.07] dark:bg-white/[0.04] dark:text-slate-400">
                             {item.typeTag}
                           </span>
                         )}
@@ -540,7 +554,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                         )}>{item.subtitle}</p>
                       )}
                       {item.soql && (
-                        <div className="mt-2 px-2 py-1.5 rounded-md bg-slate-100/70 dark:bg-slate-900/70 border border-slate-200/50 dark:border-slate-800/50 font-mono text-[10px] text-slate-500 dark:text-slate-400 truncate shadow-inner">
+                        <div className="mt-2 truncate rounded-lg border border-white/45 bg-white/20 px-2 py-1.5 font-mono text-[10px] text-slate-500 shadow-inner dark:border-white/[0.06] dark:bg-black/15 dark:text-slate-400">
                           {item.soql.replace(/\n/g, " ")}
                         </div>
                       )}
@@ -554,10 +568,10 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                         type="button"
                         onClick={(e) => handleCopySOQL(e, item)}
                         className={cn(
-                          "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm",
+                          "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all shadow-sm",
                           copiedId === item.id
                             ? "bg-emerald-500 text-white shadow-emerald-500/20"
-                            : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
+                            : "border border-white/70 bg-white/45 text-slate-600 hover:border-blue-300/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 dark:hover:border-sky-300/25"
                         )}
                         title="Copy SOQL"
                       >
@@ -574,10 +588,10 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                     )}
 
                     <div className={cn(
-                      "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition-colors",
+                      "flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold shadow-sm transition-colors",
                       isSelected 
                         ? "bg-[#0176d3] text-white shadow-blue-500/20" 
-                        : "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
+                        : "border border-white/70 bg-white/45 text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300"
                     )}>
                       <span>{item.category === "navigation" ? "Open" : "Run"}</span>
                       <ArrowRight className="h-3.5 w-3.5" />
@@ -589,6 +603,7 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

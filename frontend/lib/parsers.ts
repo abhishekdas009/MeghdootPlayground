@@ -120,12 +120,33 @@ export function parseCaseIds(input: string): string[] {
   const seen = new Set<string>();
   const caseIds: string[] = [];
 
-  for (const match of input.matchAll(CASE_ID_REGEX)) {
-    const caseId = match[1];
-    const recordKey = caseId?.slice(0, 15);
-    if (!caseId || !recordKey || seen.has(recordKey)) continue;
-    seen.add(recordKey);
-    caseIds.push(caseId);
+  const lines = input.split(/[\r\n]+/);
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    // Check if it's the specific format: ID|Category
+    const pipeIndex = trimmed.indexOf("|");
+    if (pipeIndex > 0) {
+      const idPart = trimmed.slice(0, pipeIndex).trim();
+      if (CASE_ID_REGEX.test(idPart)) {
+        const recordKey = idPart.slice(0, 15);
+        if (!seen.has(recordKey)) {
+          seen.add(recordKey);
+          caseIds.push(trimmed);
+        }
+        continue;
+      }
+    }
+    
+    // Fallback to normal parsing
+    for (const match of trimmed.matchAll(CASE_ID_REGEX)) {
+      const caseId = match[1];
+      const recordKey = caseId?.slice(0, 15);
+      if (!caseId || !recordKey || seen.has(recordKey)) continue;
+      seen.add(recordKey);
+      caseIds.push(caseId);
+    }
   }
 
   return caseIds;
