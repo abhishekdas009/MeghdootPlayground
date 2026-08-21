@@ -3,6 +3,15 @@ export const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-
 export const SALESFORCE_TICKET_REGEX = /(?:^|[^A-Za-z0-9])([BISXCAD]\d{14,})(?![A-Za-z0-9])/gi;
 export const CID_REGEX = /CID-?\d+/i;
 
+// Spreadsheet and chat pastes can contain non-breaking or zero-width spaces.
+// Treat them like ordinary whitespace when reading Asset Transfer identifiers.
+const ASSET_TRANSFER_IDENTIFIER_WHITESPACE = /[\s\u180E\u200B-\u200D\u2060\uFEFF]+/g;
+const ASSET_TRANSFER_IDENTIFIER_SEPARATOR = "[\\s\\u180E\\u200B-\\u200D\\u2060\\uFEFF]*";
+const ASSET_TRANSFER_CID_REGEX = new RegExp(
+  `C${ASSET_TRANSFER_IDENTIFIER_SEPARATOR}I${ASSET_TRANSFER_IDENTIFIER_SEPARATOR}D${ASSET_TRANSFER_IDENTIFIER_SEPARATOR}-?${ASSET_TRANSFER_IDENTIFIER_SEPARATOR}\\d(?:${ASSET_TRANSFER_IDENTIFIER_SEPARATOR}\\d)*`,
+  'i'
+);
+
 export interface ComponentIdParseResult {
   totalCount: number;
   componentIds: string[];
@@ -163,23 +172,17 @@ export function parseAssetTransferPairs(input: string): AssetTransferPair[] {
 
     if (lower.includes('component') && (lower.includes('new cid') || lower.includes('cid'))) continue;
 
-    const parts = trimmed.split(/[\s,\t]+/).filter(Boolean);
+    const cidMatch = trimmed.match(ASSET_TRANSFER_CID_REGEX);
+    if (!cidMatch || cidMatch.index === undefined) continue;
 
-    if (parts.length >= 2) {
-      const componentId = parts[0]?.trim() ?? '';
-      const newCid = parts[1]?.trim() ?? '';
-      if (componentId && newCid && /^CID/i.test(newCid)) {
-        pairs.push({ componentId, newCid });
-      }
-    } else {
-      const cidMatch = trimmed.match(CID_REGEX);
-      if (cidMatch && cidMatch.index !== undefined) {
-        const componentId = trimmed.slice(0, cidMatch.index).trim();
-        const newCid = cidMatch[0];
-        if (componentId) {
-          pairs.push({ componentId, newCid });
-        }
-      }
+    const componentId = trimmed
+      .slice(0, cidMatch.index)
+      .replace(ASSET_TRANSFER_IDENTIFIER_WHITESPACE, '')
+      .replace(/^[,;:]+|[,;:]+$/g, '');
+    const newCid = cidMatch[0].replace(ASSET_TRANSFER_IDENTIFIER_WHITESPACE, '');
+
+    if (componentId && /^CID-?\d+$/i.test(newCid)) {
+      pairs.push({ componentId, newCid });
     }
   }
 

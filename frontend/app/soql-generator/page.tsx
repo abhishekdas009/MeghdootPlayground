@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { dashboardStore, useDashboardStore } from "@/lib/dashboard-store";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
+import { parseAssetTransferPairs } from "@/lib/parsers";
 import {
   Copy,
   Trash2,
@@ -67,11 +68,6 @@ interface Template {
   type?: "normal" | "asset-transfer" | "child-details-to-parent";
   source?: "default" | "library";
   usageCount?: number;
-}
-
-interface AssetTransferPair {
-  componentId: string;
-  newCid: string;
 }
 
 interface ComponentIdParseResult {
@@ -439,41 +435,6 @@ function getTicketStats(tickets: string[]): TicketStats {
   }
 
   return stats;
-}
-
-function parseAssetTransferPairs(input: string): AssetTransferPair[] {
-  if (!input.trim()) return [];
-  const lines = input.split(/[\r\n]+/).filter((line) => line.trim());
-  const pairs: AssetTransferPair[] = [];
-  const cidRegex = /CID-?\d+/i;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    const lower = trimmed.toLowerCase();
-
-    if (lower.includes("component") && (lower.includes("new cid") || lower.includes("cid"))) continue;
-
-    const parts = trimmed.split(/[\s,\t]+/).filter(Boolean);
-
-    if (parts.length >= 2) {
-      const componentId = parts[0]?.trim() ?? "";
-      const newCid = parts[1]?.trim() ?? "";
-      if (componentId && newCid && /^CID/i.test(newCid)) {
-        pairs.push({ componentId, newCid });
-      }
-    } else {
-      const cidMatch = trimmed.match(cidRegex);
-      if (cidMatch && cidMatch.index !== undefined) {
-        const componentId = trimmed.slice(0, cidMatch.index).trim();
-        const newCid = cidMatch[0];
-        if (componentId) {
-          pairs.push({ componentId, newCid });
-        }
-      }
-    }
-  }
-
-  return pairs;
 }
 
 function parseCaseIds(input: string): string[] {
@@ -1928,7 +1889,7 @@ export default function SOQLGeneratorPage() {
     const componentIds = assetPairs.map((pair) => pair.componentId);
     const formatted = formatTicketsForSOQL(componentIds);
 
-    return `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n${formatted}\n)`;
+    return `SELECT Component_Id__c, Id, Asset_Obligation__c, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n${formatted}\n)`;
   }, [assetPairs, formatTicketsForSOQL]);
 
   const assetTransferAccountSOQL = React.useMemo(() => {
@@ -2034,11 +1995,17 @@ export default function SOQLGeneratorPage() {
   }, [childDetailsInvalidIdCount, childDetailsVisibleResult]);
 
   const handleProcessTransfer = () => {
+    const parsedAssetResult = parseSOQLResultWithHeaders(assetSOQLResult);
     const assetData = parseAssetResult(assetSOQLResult);
     const accountData = parseAccountResult(accountSOQLResult);
 
     if (Object.keys(assetData).length === 0) {
       toast.error("Paste Asset SOQL result first");
+      return;
+    }
+
+    if (!parsedAssetResult.headers.includes("asset_obligation__c")) {
+      toast.error("Asset SOQL result must include Asset_Obligation__c");
       return;
     }
 
@@ -2051,12 +2018,20 @@ export default function SOQLGeneratorPage() {
     const debugLines: string[] = [];
     const missingAssets: string[] = [];
     const missingCids: string[] = [];
+    let skippedAmcAssets = 0;
 
     for (const pair of assetPairs) {
       const assetRow = assetData[pair.componentId];
       if (!assetRow) {
         missingAssets.push(pair.componentId);
         debugLines.push(`❌ ${pair.componentId} → Asset not found in Component SOQL result`);
+        continue;
+      }
+
+      const assetObligation = (assetRow.asset_obligation__c || "").trim();
+      if (assetObligation.toLowerCase() === "amc") {
+        skippedAmcAssets += 1;
+        debugLines.push(`[Skipped] ${pair.componentId} -> Asset_Obligation__c is AMC`);
         continue;
       }
 
@@ -2094,9 +2069,13 @@ export default function SOQLGeneratorPage() {
     setTransferDebug(debugLines.join("\n"));
 
     if (rows.length === 1) {
-      toast.error(`No records generated. Missing: ${missingAssets.length} assets, ${missingCids.length} CIDs`);
+      toast.error(
+        `No records generated. Skipped: ${skippedAmcAssets} AMC asset${skippedAmcAssets === 1 ? "" : "s"}; Missing: ${missingAssets.length} assets, ${missingCids.length} CIDs`
+      );
     } else {
-      toast.success(`Generated ${rows.length - 1} transfer records`);
+      toast.success(
+        `Generated ${rows.length - 1} transfer records${skippedAmcAssets > 0 ? `; skipped ${skippedAmcAssets} AMC asset${skippedAmcAssets === 1 ? "" : "s"}` : ""}`
+      );
     }
   };
 
@@ -3420,7 +3399,7 @@ export default function SOQLGeneratorPage() {
                     onChange={(event) => setAssetTransferInput(event.target.value)}
                   />
                   <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
-                    Paste component ID and new CID pairs. Tab or space separated. One pair per line.
+                    Paste component ID and new CID pairs. Tab or space separated; spaces inside IDs are ignored. One pair per line.
                   </p>
                 </div>
 
@@ -3813,7 +3792,7 @@ export default function SOQLGeneratorPage() {
                 <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col min-h-0 relative z-10">
                   <Textarea
                     placeholder={`Paste Asset SOQL result here...
-"_"	"Component_Id__c"	"Id"	"Account.Customer_ID__c"	"Record_Type__c"	"Parent.Id"`}
+"_"	"Component_Id__c"	"Id"	"Asset_Obligation__c"	"Account.Customer_ID__c"	"Record_Type__c"	"Parent.Id"`}
                     className="flex-1 min-h-[100px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-none p-4 resize-none"
                     value={assetSOQLResult}
                     onChange={(event) => setAssetSOQLResult(event.target.value)}
