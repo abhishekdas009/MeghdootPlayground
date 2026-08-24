@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   TerminalSquare,
   FileSpreadsheet,
+  FileSearch,
   Ticket,
   Bookmark,
   History,
@@ -33,7 +34,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { label: "SOQL Generator", href: "/soql-generator", icon: TerminalSquare },
-  { label: "Excel Automation", href: "/excel-automation", icon: FileSpreadsheet },
+  { label: "Warranty Finder", href: "/warranty-finder", icon: FileSearch },
   { label: "Formula Generator", href: "/formula-generator", icon: Binary },
   { label: "Ticket Formatter", href: "/ticket-formatter", icon: Ticket },
   { label: "Query Library", href: "/template-manager", icon: Bookmark },
@@ -46,7 +47,7 @@ const NAV_ITEMS: NavItem[] = [
 const NAV_ICON_BG: Record<string, string> = {
   "/dashboard": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   "/soql-generator": "bg-sky-500/15 text-blue-700 dark:text-sky-300 font-extrabold",
-  "/excel-automation": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
+  "/warranty-finder": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
   "/formula-generator": "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
   "/ticket-formatter": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
   "/template-manager": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
@@ -82,11 +83,12 @@ export function Sidebar() {
             aria-current={isActive ? "page" : undefined}
             data-active={isActive ? "true" : undefined}
             className={cn(
-              "sidebar-nav-link group relative flex min-h-[44px] items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-[13px] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/50",
+              "sidebar-nav-link group relative flex items-center rounded-xl border border-transparent text-[13px] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/50",
+              isCompact ? "w-[50px] h-[50px] justify-center p-0 gap-0 mx-auto" : "min-h-[44px] w-full px-3 py-2.5 gap-3",
               isActive
                 ? "sidebar-nav-link--active bg-[#0176d3]/10 text-[#0176d3] font-extrabold"
                 : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-              isCompact ? "md:justify-center md:px-2" : ""
+              ""
             )}
             title={isCompact ? item.label : undefined}
           >
@@ -109,10 +111,16 @@ export function Sidebar() {
                 opacity: isCompact ? 0 : 1,
                 width: isCompact ? 0 : "auto",
               }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
               className={cn(
-                "truncate tracking-tight md:block",
-                isCompact ? "md:hidden" : ""
+                "truncate tracking-tight",
+                !isCompact && "md:block"
               )}
+              style={{
+                display: "inline-block",
+                whiteSpace: "nowrap",
+                overflow: "hidden"
+              }}
             >
               {item.label}
             </motion.span>
@@ -197,7 +205,7 @@ export function Sidebar() {
       {/* ─── Desktop & Tablet Sidebar ────────────────────────────────── */}
       <motion.aside
         initial={false}
-        animate={{ width: sidebarCollapsed ? 72 : 256 }}
+        animate={{ width: sidebarCollapsed ? 84 : 256 }}
         transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
         data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
         className="desktop-icon-dock fixed left-0 top-[var(--app-header-height)] z-30 hidden h-[calc(100dvh-var(--app-header-height))] flex-col overflow-hidden border-r border-border/40 bg-background/45 backdrop-blur-xl md:flex shadow-[1px_0_0_rgb(255_255_255_/_0.03)]"

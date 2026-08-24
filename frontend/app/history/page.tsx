@@ -79,7 +79,7 @@ export default function HistoryPage() {
             </div>
           </div>
           <p className="text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed mt-2 text-sm">
-            A complete record of your operations across Meghdoot. Review past queries, Excel automation tasks, and formatting jobs.
+            A complete record of your operations across Meghdoot. Review past queries, warranty checking tasks, and formatting jobs.
           </p>
         </div>
       </motion.div>

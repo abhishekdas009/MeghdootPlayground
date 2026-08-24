@@ -181,8 +181,6 @@ FROM WorkOrder
 WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
 {{tickets}}
 )`;
-const CANCELLATION_BATCH_SIZE = 400;
-
 const defaultTemplates: Template[] = [
   {
     id: "1",
@@ -1087,22 +1085,32 @@ function QueryPreviewCard({
   batchIndex,
   setBatchIndex,
   onCopy,
-  isExample,
-}: {
+    isExample,
+    step,
+  }: {
   title: string;
   subtitle: string;
   batches: string[];
   batchIndex: number;
   setBatchIndex: React.Dispatch<React.SetStateAction<number>>;
   onCopy: (value: string) => void;
-  isExample?: boolean;
-}) {
+    isExample?: boolean;
+    step?: string;
+  }) {
   const currentBatch = batches[batchIndex] ?? "";
 
   return (
     <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 group relative h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]">
+      {step && (
+        <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
+          <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+            STEP {step}
+          </span>
+        </div>
+      )}
+
       <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className={`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${step ? "mt-6 md:mt-8" : ""}`}>
           <div>
             <div className="flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
@@ -1529,6 +1537,7 @@ const SmartPasteTextarea = React.forwardRef<HTMLTextAreaElement, React.Component
 SmartPasteTextarea.displayName = "SmartPasteTextarea";
 
 export default function SOQLGeneratorPage() {
+  const [cancellationBatchSize, setCancellationBatchSize] = React.useState(400);
   const [templates, setTemplates] = React.useState<Template[]>(defaultTemplates);
   const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
   const [libraryLoadState, setLibraryLoadState] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -1725,7 +1734,7 @@ export default function SOQLGeneratorPage() {
     () => (isCaseAssign ? parsedCaseIds : parseTickets(ticketsInput)),
     [isCaseAssign, parseTickets, parsedCaseIds, ticketsInput]
   );
-  const inputBatchSize = isCancellation ? CANCELLATION_BATCH_SIZE : SOQL_BATCH_SIZE;
+  const inputBatchSize = isCancellation ? cancellationBatchSize : SOQL_BATCH_SIZE;
   const inputBatchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / inputBatchSize) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
   const assetPairs = React.useMemo(() => parseAssetTransferPairs(assetTransferInput), [assetTransferInput]);
@@ -1789,7 +1798,7 @@ export default function SOQLGeneratorPage() {
 
   const cancellationResultBatchCount =
     uniqueExecutableCancellationRows.length > 0
-      ? Math.ceil(uniqueExecutableCancellationRows.length / CANCELLATION_BATCH_SIZE)
+      ? Math.ceil(uniqueExecutableCancellationRows.length / cancellationBatchSize)
       : 0;
 
   const cancellationUpdateDebug = React.useMemo(() => {
@@ -1879,10 +1888,10 @@ export default function SOQLGeneratorPage() {
 
     const templateSoql = activeTemplate?.soql || CANCELLATION_QUERY_TEMPLATE;
 
-    return chunkArray(parsedTickets, CANCELLATION_BATCH_SIZE).map((tickets) =>
+    return chunkArray(parsedTickets, cancellationBatchSize).map((tickets) =>
       templateSoql.replace("{{tickets}}", formatTicketsForSOQL(tickets))
     );
-  }, [formatTicketsForSOQL, parsedTickets, activeTemplate]);
+  }, [formatTicketsForSOQL, parsedTickets, activeTemplate, cancellationBatchSize]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
@@ -3429,16 +3438,18 @@ export default function SOQLGeneratorPage() {
           {isTS && (
             <>
               <QueryPreviewCard
-                title="TS (Ticket Status)"
-                subtitle="WorkOrder query preview"
+                  step="2"
+                  title="TS (Ticket Status)"
+                  subtitle="WorkOrder query preview"
                 batches={workOrderPreview} isExample={parsedTickets.length === 0}
                 batchIndex={tsBatchIndex}
                 setBatchIndex={setTsBatchIndex}
                 onCopy={handleCopy}
               />
               <QueryPreviewCard
-                title="SA (Service Appointment)"
-                subtitle="ServiceAppointment query preview"
+                  step="3"
+                  title="SA (Service Appointment)"
+                  subtitle="ServiceAppointment query preview"
                 batches={serviceAppointmentPreview} isExample={parsedTickets.length === 0}
                 batchIndex={saBatchIndex}
                 setBatchIndex={setSaBatchIndex}
@@ -3521,8 +3532,9 @@ export default function SOQLGeneratorPage() {
 
           {isSA && (
             <QueryPreviewCard
-              title="SA (Service Appointment)"
-              subtitle="ServiceAppointment query preview"
+                  step="3"
+                  title="SA (Service Appointment)"
+                  subtitle="ServiceAppointment query preview"
               batches={serviceAppointmentPreview} isExample={parsedTickets.length === 0}
               batchIndex={saBatchIndex}
               setBatchIndex={setSaBatchIndex}
@@ -3945,7 +3957,10 @@ export default function SOQLGeneratorPage() {
             </>
           )}
 
-          {isCancellation && (() => {
+                    {isCancellation && (() => {
+            const extractedFailedTickets = Array.from(new Set(cancellationFailedInput.match(/[BISXCAD]\d{14,}/gi) || [])).join('\n');
+            const cancellationEmailText = `Hello,\nCancellation has been done successfully.\nExcept: \n${extractedFailedTickets}\n\nTotal count: ${parsedTickets.length}\nRegards`;
+            const cancellationPostText = `@tag_user Cancellation has been done successfully.\nExcept: \n${extractedFailedTickets}\n\nTotal count: ${parsedTickets.length}`;
             return (
               <>
                 {/* STEP 2 */}
@@ -3967,7 +3982,7 @@ export default function SOQLGeneratorPage() {
                           Cancellation<br />SOQL Batches
                         </CardTitle>
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          Status not completed, 500 tickets per query
+                          Status not completed, {cancellationBatchSize} tickets per query
                         </p>
                       </div>
                     </div>
@@ -4005,8 +4020,48 @@ export default function SOQLGeneratorPage() {
                         </Button>
                       </div>
                     )}
-                    <div className="flex justify-end mt-4">
-                       <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] || "")} disabled={!cancellationQueryBatches.length}>
+                    <div className="flex items-end justify-between mt-5">
+                        {parsedTickets.length > 0 ? (
+                          <div className="relative z-10 w-full max-w-[220px]">
+                            <div className="flex justify-between items-center text-[10px] font-black text-slate-400 dark:text-slate-500 mb-3 px-0.5">
+                              <span>100</span>
+                              <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-2 py-1 rounded-md tracking-wider uppercase shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] border border-blue-500/10 dark:border-blue-400/10">
+                                {cancellationBatchSize} TICKETS
+                              </span>
+                              <span>1000</span>
+                            </div>
+                            
+                            <div className="relative w-full h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/80 flex items-center shadow-inner">
+                              {/* Filled Track Segment */}
+                              <div 
+                                className="absolute left-0 top-0 h-full rounded-l-full bg-gradient-to-r from-blue-600 to-blue-400 dark:from-indigo-900 dark:via-blue-700 dark:to-blue-400 transition-all duration-150"
+                                style={{ width: `${((cancellationBatchSize - 100) / 900) * 100}%` }}
+                              />
+                              <input 
+                                type="range" 
+                                min="100" 
+                                max="1000" 
+                                step="50"
+                                value={cancellationBatchSize} 
+                                onChange={(e) => setCancellationBatchSize(Number(e.target.value))}
+                                className={cn(
+                                  "absolute inset-0 w-full h-full appearance-none cursor-pointer outline-none bg-transparent transition-all",
+                                  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[14px] [&::-webkit-slider-thumb]:h-[14px]",
+                                  "[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(59,130,246,0.15)]",
+                                  "hover:[&::-webkit-slider-thumb]:shadow-[0_0_0_6px_rgba(59,130,246,0.25)] hover:[&::-webkit-slider-thumb]:scale-110",
+                                  "[&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:duration-150 [&::-webkit-slider-thumb]:ease-out",
+                                  "[&::-moz-range-thumb]:w-[14px] [&::-moz-range-thumb]:h-[14px] [&::-moz-range-thumb]:border-0",
+                                  "[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(59,130,246,0.15)]",
+                                  "hover:[&::-moz-range-thumb]:shadow-[0_0_0_6px_rgba(59,130,246,0.25)] hover:[&::-moz-range-thumb]:scale-110",
+                                  "[&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:duration-150 [&::-moz-range-thumb]:ease-out"
+                                )}
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div></div>
+                        )}
+                        <Button variant="outline" size="sm" className="h-9 px-4 gap-2 text-[11px] font-extrabold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border-slate-200 dark:border-slate-700 rounded-xl shadow-sm bg-white/50 dark:bg-slate-900/50" onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] || "")} disabled={!cancellationQueryBatches.length}>
                           <Copy className="h-3.5 w-3.5" /> Copy Query
                        </Button>
                     </div>
@@ -4144,9 +4199,81 @@ export default function SOQLGeneratorPage() {
                         {cancellationUpdateDebug}
                       </pre>
                     </div>
-                  </CardContent>
+                                    </CardContent>
                 </Card>
               )}
+
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                {/* Massive Watermark FOR EMAIL */}
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
+                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                    FOR EMAIL
+                  </span>
+                </div>
+
+                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
+                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
+                    <div className="flex flex-col gap-1 w-full relative">
+                      <div className="absolute top-0 right-0">
+                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationEmailText)}>
+                          <Copy className="h-3.5 w-3.5" /> Copy
+                        </Button>
+                      </div>
+                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
+                        Email Template<br />Output
+                      </CardTitle>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
+                    <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
+                      <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
+                        STANDARD EMAIL FORMAT
+                      </span>
+                    </div>
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
+                      {cancellationEmailText}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                {/* Massive Watermark FOR POST */}
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
+                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                    FOR POST
+                  </span>
+                </div>
+
+                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
+                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
+                    <div className="flex flex-col gap-1 w-full relative">
+                      <div className="absolute top-0 right-0">
+                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationPostText)}>
+                          <Copy className="h-3.5 w-3.5" /> Copy
+                        </Button>
+                      </div>
+                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
+                        Chatter / Post<br />Template
+                      </CardTitle>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
+                    <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
+                      <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
+                        CHATTER POST FORMAT
+                      </span>
+                    </div>
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
+                      {cancellationPostText}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
             </>
           );
           })()}

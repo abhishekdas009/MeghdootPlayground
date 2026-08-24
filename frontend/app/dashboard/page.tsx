@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { TypewriterQuotes } from "@/components/ui/typewriter-quotes";
 import { Button } from "@/components/ui/button";
 import {
   useDashboardStore,
@@ -14,7 +15,7 @@ import {
 } from "@/lib/dashboard-store";
 import {
   Terminal,
-  FileSpreadsheet,
+  FileSearch,
   History,
   Star,
   RefreshCw,
@@ -71,7 +72,7 @@ function activityMeta(type: ActivityEntry["type"]) {
     case "soql-generated":
       return { icon: Terminal, bg: "bg-blue-500/10 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", ring: "ring-blue-500/20" };
     case "excel-operation":
-      return { icon: FileSpreadsheet, bg: "bg-emerald-500/10 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/20" };
+      return { icon: FileSearch, bg: "bg-emerald-500/10 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/20" };
     case "favourite-added":
     case "favourite-removed":
       return { icon: Star, bg: "bg-amber-500/10 dark:bg-amber-500/20", text: "text-amber-600 dark:text-amber-400", ring: "ring-amber-500/20" };
@@ -319,8 +320,8 @@ const kpiRow1: Omit<KPIConfig, "value" | "totalValue">[] = [
     delay: 0.05,
   },
   {
-    label: "Excel Operations",
-    icon: FileSpreadsheet,
+    label: "Warranty Checks",
+    icon: FileSearch,
     iconBg: "bg-gradient-to-br from-sky-400 to-blue-700",
     iconText: "text-white",
     delay: 0.1,
@@ -383,10 +384,10 @@ const quickActions = [
     delay: 0.1,
   },
   {
-    title: "Excel Automation",
-    description: "Clean and transform spreadsheets",
-    href: "/excel-automation",
-    icon: FileSpreadsheet,
+    title: "Warranty Finder",
+    description: "Check product warranty details",
+    href: "/warranty-finder",
+    icon: FileSearch,
     gradient: "bg-gradient-to-r from-cyan-400 to-blue-700",
     iconBg: "bg-gradient-to-br from-cyan-400 to-blue-700",
     delay: 0.15,
@@ -470,6 +471,15 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [fetchDashboard]);
 
+  
+  const [greeting, setGreeting] = React.useState("Welcome");
+  React.useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting("Good morning");
+    else if (hour < 17) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+  }, []);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await fetchDashboard();
@@ -515,10 +525,10 @@ export default function DashboardPage() {
                 <span>Salesforce operations workspace</span>
               </div>
               <h1 className="text-4xl font-black tracking-tight text-slate-950 dark:text-white lg:text-5xl">
-                Good evening, <span className="bg-gradient-to-r from-sky-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">Team</span>
+                {greeting}, <span className="bg-gradient-to-r from-sky-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">Team</span>
               </h1>
               <p className="max-w-xl text-lg font-medium text-slate-600 dark:text-slate-300">
-                Stay focused and keep every Salesforce workflow moving.
+                <TypewriterQuotes />
               </p>
             </div>
             

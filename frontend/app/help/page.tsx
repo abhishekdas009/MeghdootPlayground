@@ -85,8 +85,8 @@ const MODULE_GUIDES = [
     proTip: "Use the top category pills (TS Template, Escalation, WorkOrder, Asset) to load pre-validated master queries in 1 click.",
   },
   {
-    id: "excel-automation",
-    name: "Excel Automation (VLOOKUP & Data Reconciler)",
+    id: "warranty-finder",
+    name: "Warranty Finder (VLOOKUP & Data Reconciler)",
     icon: FileSpreadsheet,
     color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
     badgeColor: "bg-emerald-500",
@@ -226,8 +226,8 @@ const FAQS_LIST = [
     category: "Collaboration",
   },
   {
-    q: "What spreadsheet file formats does Excel Automation support?",
-    a: "The Excel Automation module supports standard .xlsx, .xls, and CSV files. All spreadsheet parsing, VLOOKUP reconciliation, and column cleaning are performed 100% in-memory within your browser using specialized SheetJS parsers—guaranteeing high speed without server file uploads.",
+    q: "What spreadsheet file formats does Warranty Finder support?",
+    a: "The Warranty Finder module supports standard .xlsx, .xls, and CSV files. All spreadsheet parsing, VLOOKUP reconciliation, and column cleaning are performed 100% in-memory within your browser using specialized SheetJS parsers—guaranteeing high speed without server file uploads.",
     category: "Spreadsheet Suite",
   },
   {
@@ -262,7 +262,7 @@ const SHORTCUTS_LIST = [
   { keys: ["Ctrl", "Shift", "D"], label: "Download Output as Text File", cat: "Query Engine" },
   { keys: ["Alt", "1"], label: "Switch to Dashboard Module", cat: "Quick Jump" },
   { keys: ["Alt", "2"], label: "Switch to SOQL Generator", cat: "Quick Jump" },
-  { keys: ["Alt", "3"], label: "Switch to Excel Automation", cat: "Quick Jump" },
+  { keys: ["Alt", "3"], label: "Switch to Warranty Finder", cat: "Quick Jump" },
   { keys: ["Alt", "4"], label: "Switch to Query Library", cat: "Quick Jump" },
   { keys: ["Alt", "5"], label: "Switch to Analytics Arena", cat: "Quick Jump" },
   { keys: ["Esc"], label: "Close Active Modal or Preview Panel", cat: "General" },

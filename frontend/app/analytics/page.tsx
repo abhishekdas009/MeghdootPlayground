@@ -402,7 +402,7 @@ export default function AnalyticsPage() {
           },
           {
             key: "excel_operations",
-            label: "Excel Automation Runs",
+            label: "Warranty Finder Runs",
             val: getMetricValue("excel_operations").toLocaleString(),
             trend: "+8.4% vs last week",
             icon: FileSpreadsheet,
@@ -880,7 +880,7 @@ export default function AnalyticsPage() {
                 /* Fallback rich log if DB events table is fresh/empty */
                 [
                   { label: "SOQL Query Executed in Generator", mod: "SOQL Generator", time: "2 mins ago", badge: "Query", color: "bg-blue-500/10 text-blue-600 border-blue-500/30" },
-                  { label: "VLOOKUP Spreadsheet Reconciled", mod: "Excel Automation", time: "14 mins ago", badge: "Excel", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
+                  { label: "VLOOKUP Spreadsheet Reconciled", mod: "Warranty Finder", time: "14 mins ago", badge: "Excel", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
                   { label: "New Template Saved to DB Library", mod: "Template Manager", time: "38 mins ago", badge: "Library", color: "bg-purple-500/10 text-purple-600 border-purple-500/30" },
                   { label: "150 Raw Tickets Formatted to IN Syntax", mod: "Ticket Formatter", time: "1 hr ago", badge: "Utility", color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
                   { label: "Asset Transfer Component Mapping", mod: "Asset Transfer", time: "2 hrs ago", badge: "Asset", color: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30" },

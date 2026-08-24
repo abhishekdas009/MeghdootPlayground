@@ -3,7 +3,29 @@
 import * as React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search, Command, Menu, Sun, Moon, Bell } from "lucide-react";
+import {
+  Search,
+  Command,
+  Menu,
+  Sun,
+  Moon,
+  BellRing,
+  Clock,
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  Terminal,
+  FileSearch,
+  Star,
+  Ticket,
+  XCircle,
+  ArrowRightLeft,
+  Users,
+  FilePlus,
+  Layers3,
+} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useDashboardStore, type ActivityEntry } from "@/lib/dashboard-store";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { useUIStore } from "@/store/ui-store";
@@ -19,14 +41,54 @@ type ViewTransitionDocument = Document & {
 };
 
 const THEME_STORAGE_KEY = "meghdoot-theme-v2";
+const NOTIFICATION_LAST_SEEN_STORAGE_KEY = "meghdoot-last-seen-activity-at";
+
+function notificationMeta(type: ActivityEntry["type"]) {
+  switch (type) {
+    case "soql-generated":
+      return { icon: Terminal, surface: "bg-blue-500/10 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-300" };
+    case "excel-operation":
+      return { icon: FileSearch, surface: "bg-emerald-500/10 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-300" };
+    case "favourite-added":
+    case "favourite-removed":
+      return { icon: Star, surface: "bg-amber-500/10 dark:bg-amber-500/20", text: "text-amber-600 dark:text-amber-300" };
+    case "ticket-formatted":
+      return { icon: Ticket, surface: "bg-orange-500/10 dark:bg-orange-500/20", text: "text-orange-600 dark:text-orange-300" };
+    case "ticket-cancellation":
+      return { icon: XCircle, surface: "bg-rose-500/10 dark:bg-rose-500/20", text: "text-rose-600 dark:text-rose-300" };
+    case "asset-transfer":
+      return { icon: ArrowRightLeft, surface: "bg-violet-500/10 dark:bg-violet-500/20", text: "text-violet-600 dark:text-violet-300" };
+    case "case-assignment":
+      return { icon: Users, surface: "bg-teal-500/10 dark:bg-teal-500/20", text: "text-teal-600 dark:text-teal-300" };
+    case "template-created":
+    case "template-updated":
+    case "template-deleted":
+      return { icon: FilePlus, surface: "bg-indigo-500/10 dark:bg-indigo-500/20", text: "text-indigo-600 dark:text-indigo-300" };
+    default:
+      return { icon: Layers3, surface: "bg-slate-500/10 dark:bg-slate-500/20", text: "text-slate-600 dark:text-slate-300" };
+  }
+}
 
 export function Header() {
   const router = useRouter();
   const { toggleSidebar, setMobileSidebarOpen } = useUIStore();
+  const activity = useDashboardStore((s) => s.activity);
+
+  const formatTime = (ts: string) => {
+    const diff = Date.now() - new Date(ts).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "Just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  };
 
   const [searchFocused, setSearchFocused] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [theme, setTheme] = React.useState<ThemeMode>("dark");
+  const [lastSeenActivityAt, setLastSeenActivityAt] = React.useState<string | null>(null);
+  const [notificationReadStateLoaded, setNotificationReadStateLoaded] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
@@ -35,6 +97,19 @@ export function Header() {
 
     setTheme(nextTheme);
     document.documentElement.classList.toggle("dark", nextTheme === "dark");
+  }, []);
+
+  React.useEffect(() => {
+    const storedMarker = window.localStorage.getItem(NOTIFICATION_LAST_SEEN_STORAGE_KEY);
+    const hasValidMarker = storedMarker && Number.isFinite(Date.parse(storedMarker));
+    const marker = hasValidMarker ? storedMarker : new Date().toISOString();
+
+    if (!hasValidMarker) {
+      window.localStorage.setItem(NOTIFICATION_LAST_SEEN_STORAGE_KEY, marker);
+    }
+
+    setLastSeenActivityAt(marker);
+    setNotificationReadStateLoaded(true);
   }, []);
 
   const applyTheme = React.useCallback((nextTheme: ThemeMode) => {
@@ -58,6 +133,26 @@ export function Header() {
     applyTheme(nextTheme);
     window.setTimeout(() => root.classList.remove("theme-transition"), 480);
   };
+
+  const unreadActivityIds = React.useMemo(() => {
+    if (!notificationReadStateLoaded || !lastSeenActivityAt) return new Set<string>();
+
+    const lastSeenTimestamp = Date.parse(lastSeenActivityAt);
+    return new Set(
+      activity
+        .filter((item) => Date.parse(item.timestamp) > lastSeenTimestamp)
+        .map((item) => item.id)
+    );
+  }, [activity, lastSeenActivityAt, notificationReadStateLoaded]);
+
+  const unreadActivityCount = unreadActivityIds.size;
+  const notificationBadge = unreadActivityCount > 9 ? "9+" : unreadActivityCount;
+
+  const markNotificationsAsRead = React.useCallback(() => {
+    const marker = new Date().toISOString();
+    window.localStorage.setItem(NOTIFICATION_LAST_SEEN_STORAGE_KEY, marker);
+    setLastSeenActivityAt(marker);
+  }, []);
 
   // Enable the Cmd+K / Ctrl+K keyboard shortcut for global search
   React.useEffect(() => {
@@ -196,59 +291,189 @@ export function Header() {
         </div>
 
         {/* Right Section: Mobile Search, Theme Toggle, Blue Star Logo */}
-        <div className="flex flex-1 md:flex-none items-center justify-end gap-2 shrink-0">
-          {/* Mobile Search Trigger Button (Sleek pill so mobile has instant search too!) */}
+        <div className="flex flex-1 md:flex-none items-center justify-end gap-3 shrink-0">
+          {/* Mobile Search Trigger Button */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex md:hidden items-center gap-2 px-3 py-1.5 rounded-xl border border-border/80 bg-muted/30 hover:bg-muted/50 text-xs font-bold text-muted-foreground hover:text-foreground transition-all shadow-2xs"
+            className="flex md:hidden items-center gap-2 px-3 py-1.5 rounded-full border border-border/80 bg-muted/30 hover:bg-muted/50 text-xs font-bold text-muted-foreground hover:text-foreground transition-all shadow-2xs"
           >
             <Search className="h-3.5 w-3.5 text-[#0176d3]" />
             <span>Search...</span>
           </button>
 
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-2xs transition-all hover:border-[#0176d3]/40 hover:bg-muted/60 hover:text-[#0176d3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/50 overflow-hidden"
-            aria-label={theme === "dark" ? "Enable light theme" : "Enable dark theme"}
-            title={theme === "dark" ? "Enable light theme" : "Enable dark theme"}
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              {theme === "dark" ? (
-                <motion.div
-                  key="dark"
-                  initial={{ y: -20, opacity: 0, rotate: -90 }}
-                  animate={{ y: 0, opacity: 1, rotate: 0 }}
-                  exit={{ y: 20, opacity: 0, rotate: 90 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="absolute inset-0 flex items-center justify-center"
-                >
-                  <Sun className="h-4.5 w-4.5" />
-                </motion.div>
-              ) : (
-                <motion.div
-                  key="light"
-                  initial={{ y: -20, opacity: 0, rotate: -90 }}
-                  animate={{ y: 0, opacity: 1, rotate: 0 }}
-                  exit={{ y: 20, opacity: 0, rotate: 90 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  className="absolute inset-0 flex items-center justify-center"
-                >
-                  <Moon className="h-4.5 w-4.5" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </button>
+          {/* Theme rail + activity updates */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+                type="button"
+                role="switch"
+                aria-checked={theme === "dark"}
+                onClick={toggleTheme}
+                className="group relative flex h-[38px] w-[76px] shrink-0 items-center overflow-hidden rounded-full border border-slate-200/50 bg-white/60 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-slate-300 dark:border-white/10 dark:bg-slate-900/40 dark:hover:border-white/20"
+                aria-label={theme === "dark" ? "Dark theme active. Switch to light theme" : "Light theme active. Switch to dark theme"}
+                title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              >
+                {/* Track Gradient Background */}
+                <span className={cn("pointer-events-none absolute inset-0 transition-opacity duration-500", theme === "light" ? "bg-gradient-to-r from-amber-500/5 to-blue-500/15 opacity-100" : "bg-gradient-to-r from-blue-500/20 to-indigo-500/10 opacity-100")} />
 
-          <button
-            type="button"
-            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-muted-foreground shadow-2xs transition-all hover:border-[#58b7ff]/45 hover:bg-muted/60 hover:text-[#81c9ff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#58b7ff]/50"
-            aria-label="Notifications"
-            title="Notifications"
-          >
-            <Bell className="h-4.5 w-4.5" />
-            <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#58b7ff] shadow-[0_0_8px_#58b7ff]" />
-          </button>
+                {/* Left Icon (Sun) - sits in background when dark */}
+                <Sun className={cn("pointer-events-none absolute left-[12px] h-[15px] w-[15px] transition-all duration-300", theme === "light" ? "text-amber-500 opacity-0 scale-75" : "text-amber-500/70 opacity-100 scale-100")} />
+
+                {/* Right Icon (Moon) - sits in background when light */}
+                <Moon className={cn("pointer-events-none absolute right-[12px] h-[15px] w-[15px] transition-all duration-300", theme === "dark" ? "text-blue-400 opacity-0 scale-75" : "text-blue-500/70 opacity-100 scale-100")} />
+
+                {/* Thumb */}
+                <motion.span
+                  aria-hidden="true"
+                  animate={{ x: theme === "dark" ? 38 : 2 }}
+                  transition={{ type: "spring", stiffness: 450, damping: 30 }}
+                  className="absolute flex h-[32px] w-[32px] items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] ring-1 ring-black/5 dark:bg-slate-800 dark:shadow-[0_2px_8px_rgba(0,0,0,0.2)] dark:ring-white/10"
+                >
+                  <AnimatePresence mode="wait" initial={false}>
+                    {theme === "dark" ? (
+                      <motion.span
+                        key="dark"
+                        initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                        exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="flex"
+                      >
+                        <Moon className="h-[15px] w-[15px] text-blue-400" />
+                      </motion.span>
+                    ) : (
+                      <motion.span
+                        key="light"
+                        initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
+                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                        exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
+                        className="flex"
+                      >
+                        <Sun className="h-[15px] w-[15px] text-amber-500" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.span>
+              </button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="group relative flex h-10 w-10 shrink-0 items-center justify-center text-muted-foreground transition-[transform,color] duration-200 hover:-translate-y-px hover:text-[#0176d3] focus-visible:outline-none data-[state=open]:text-[#0176d3] dark:hover:text-blue-400"
+                  aria-label={unreadActivityCount > 0 ? `Activity updates, ${unreadActivityCount} unread` : "Activity updates"}
+                >
+                  <motion.span
+                    whileHover={{ rotate: [0, -8, 7, -3, 0] }}
+                    transition={{ duration: 0.45, ease: "easeOut" }}
+                    className="relative flex"
+                  >
+                    <BellRing className="h-[18px] w-[18px]" strokeWidth={1.9} />
+                  </motion.span>
+                  {unreadActivityCount > 0 && (
+                    <motion.span
+                      initial={{ scale: 0.65, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="absolute -right-1 -top-1 z-10 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-background bg-[#0176d3] px-1 text-[9px] font-extrabold leading-none text-white shadow-[0_2px_8px_rgba(1,118,211,0.55)]"
+                    >
+                      {notificationBadge}
+                    </motion.span>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={10}
+                className="w-[360px] overflow-hidden rounded-2xl border-border/50 bg-card/[0.92] p-0 shadow-[0_24px_70px_-24px_rgba(2,8,23,0.55)] backdrop-blur-2xl dark:bg-slate-950/[0.9]"
+              >
+                <div className="relative overflow-hidden border-b border-border/50 px-4 py-3.5">
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.16),transparent_52%)]" />
+                  <div className="relative flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-[#0176d3] shadow-inner dark:bg-blue-400/10 dark:text-blue-300">
+                        <BellRing className="h-4.5 w-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-extrabold tracking-tight text-foreground">Activity updates</h3>
+                        <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                          {unreadActivityCount > 0 ? `${unreadActivityCount} unread update${unreadActivityCount === 1 ? "" : "s"}` : "Everything is up to date"}
+                        </p>
+                      </div>
+                    </div>
+                    {unreadActivityCount > 0 ? (
+                      <button
+                        type="button"
+                        onClick={markNotificationsAsRead}
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-extrabold text-[#0176d3] transition-colors hover:bg-blue-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/40 dark:text-blue-300"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Mark read
+                      </button>
+                    ) : (
+                      <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                        <Check className="h-3.5 w-3.5" />
+                        All caught up
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {activity.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center px-6 py-9 text-center">
+                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/15 dark:bg-emerald-400/10 dark:text-emerald-300">
+                      <CheckCircle2 className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-extrabold text-foreground">You&apos;re all caught up</p>
+                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">New workspace activity will appear here.</p>
+                  </div>
+                ) : (
+                  <div className="max-h-[342px] space-y-0.5 overflow-y-auto px-2 py-2 no-scrollbar">
+                    {activity.slice(0, 6).map((item) => {
+                      const meta = notificationMeta(item.type);
+                      const Icon = meta.icon;
+                      const isUnread = unreadActivityIds.has(item.id);
+                      const detail = item.meta || item.module;
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="group flex gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-muted/70"
+                        >
+                          <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset ring-black/[0.03] dark:ring-white/[0.06]", meta.surface, meta.text)}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1 pt-0.5">
+                            <div className="flex items-start gap-2">
+                              <p className="min-w-0 flex-1 truncate text-[12px] font-bold leading-4 text-foreground">{item.label}</p>
+                              {isUnread && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#0176d3] shadow-[0_0_8px_rgba(1,118,211,0.7)]" />}
+                            </div>
+                            <div className="mt-1 flex min-w-0 items-center gap-2 text-[10px] font-medium text-muted-foreground">
+                              {detail && <span className="truncate">{detail}</span>}
+                              <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-muted-foreground/80">
+                                <Clock className="h-3 w-3" />
+                                {formatTime(item.timestamp)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div className="border-t border-border/50 bg-muted/[0.28] p-2">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/analytics")}
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-extrabold text-[#0176d3] transition-colors hover:bg-blue-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/40 dark:text-blue-300"
+                  >
+                    View all activity
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
           {/* Blue Star Logo */}
           <a 

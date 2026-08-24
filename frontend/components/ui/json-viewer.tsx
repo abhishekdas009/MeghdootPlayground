@@ -25,7 +25,7 @@ export const JsonTree: React.FC<JsonTreeProps> = ({ data, name, isLast = true, l
 
     return (
       <div className="flex font-mono text-xs leading-relaxed group">
-        {name && <span className="text-sky-500 dark:text-sky-400 font-bold mr-1 group-hover:text-sky-400 dark:group-hover:text-sky-300">"{name}":</span>}
+        {name && <span className="text-sky-500 dark:text-sky-400 font-bold mr-1 group-hover:text-sky-400 dark:group-hover:text-sky-300">&quot;{name}&quot;:</span>}
         <span className={valueColor} style={{ wordBreak: 'break-all' }}>
           {typeof data === 'string' ? `"${data}"` : String(data)}
         </span>
@@ -55,7 +55,7 @@ export const JsonTree: React.FC<JsonTreeProps> = ({ data, name, isLast = true, l
           <span className="w-4 h-4 mr-1" />
         )}
         
-        {name && <span className="text-sky-500 dark:text-sky-400 font-bold mr-1 group-hover/node:text-sky-400 dark:group-hover/node:text-sky-300">"{name}":</span>}
+        {name && <span className="text-sky-500 dark:text-sky-400 font-bold mr-1 group-hover/node:text-sky-400 dark:group-hover/node:text-sky-300">&quot;{name}&quot;:</span>}
         <span className="text-slate-600 dark:text-slate-400 font-bold">{openBracket}</span>
         
         {!isExpanded && !isEmpty && (
