@@ -6,6 +6,8 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { TypewriterQuotes } from "@/components/ui/typewriter-quotes";
+import { TodayHighlightCard } from "@/components/ui/today-highlight-card";
+
 import { Button } from "@/components/ui/button";
 import {
   useDashboardStore,

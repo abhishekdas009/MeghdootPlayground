@@ -1,19 +1,31 @@
+﻿import sys
 import re
 
-with open("frontend/components/layout/shell.tsx", "r", encoding="utf-8") as f:
-    shell = f.read()
+with open('frontend/components/layout/shell.tsx', 'r', encoding='utf-8') as f:
+    shell_content = f.read()
 
-# Make background deeper
-shell = shell.replace('dark:bg-[#020813]', 'dark:bg-[#010309]')
+# Replace the broken string lines
+shell_content = shell_content.replace(
+    "currentCard.style.transform = perspective(1200px) rotateX(deg) rotateY(deg) scale3d(1.01, 1.01, 1.01);",
+    "currentCard.style.transform = `perspective(1200px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale3d(1.01, 1.01, 1.01)`;"
+)
 
-# Top left blue
-shell = shell.replace('dark:bg-blue-600/15', 'dark:bg-blue-500/30 blur-[150px]')
-# Top right orange
-shell = shell.replace('dark:bg-purple-600/15', 'dark:bg-orange-500/25 blur-[150px]')
-# Bottom left cyan/indigo
-shell = shell.replace('dark:bg-sky-500/10', 'dark:bg-cyan-500/20 blur-[150px]')
+shell_content = shell_content.replace(
+    "currentCard.style.setProperty('--shine-x', ${shineX}%);",
+    "currentCard.style.setProperty('--shine-x', `${shineX}%`);"
+)
 
-with open("frontend/components/layout/shell.tsx", "w", encoding="utf-8") as f:
-    f.write(shell)
+shell_content = shell_content.replace(
+    "currentCard.style.setProperty('--shine-y', ${shineY}%);",
+    "currentCard.style.setProperty('--shine-y', `${shineY}%`);"
+)
 
-print("Updated shell.tsx for richer background glows")
+shell_content = shell_content.replace(
+    "currentCard.style.transform = perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1);",
+    "currentCard.style.transform = `perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;"
+)
+
+with open('frontend/components/layout/shell.tsx', 'w', encoding='utf-8') as f:
+    f.write(shell_content)
+
+print("Success")

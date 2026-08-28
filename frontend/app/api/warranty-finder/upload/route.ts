@@ -4,7 +4,24 @@ import { parseWarrantyImport } from '@/lib/warranty';
 
 export async function POST(request: Request) {
   try {
-    const { csvData } = await request.json();
+    let csvData: string | null = null;
+    
+    // Check Content-Type to support both JSON and FormData
+    const contentType = request.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const body = await request.json();
+      csvData = body.csvData;
+    } else {
+      const formData = await request.formData();
+      const csvFile = formData.get('csvFile') as File | null;
+      const csvText = formData.get('csvText') as string | null;
+      
+      if (csvFile) {
+        csvData = await csvFile.text();
+      } else if (csvText) {
+        csvData = csvText;
+      }
+    }
 
     if (!csvData) {
       return NextResponse.json({ error: 'No CSV data provided' }, { status: 400 });

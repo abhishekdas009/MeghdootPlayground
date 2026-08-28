@@ -179,10 +179,10 @@ export default function TicketFormatterPage() {
         
         {/* Left Side: Input Panel */}
         <motion.div initial="hidden" animate="show" variants={containerVariants} className="h-full">
-          <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)] focus-within:border-blue-500/40">
+          <Card className="h-full border border-white/10 shadow-2xl bg-white/5 dark:bg-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)] focus-within:border-blue-500/40">
             <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
             
-            <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-8 py-6 border-b border-white/10 dark:border-slate-800/50 flex flex-row items-center justify-between relative z-10 backdrop-blur-md">
+            <CardHeader className="bg-white/10 dark:bg-white/10 px-8 py-6 border-b border-white/10 dark:border-slate-800/50 flex flex-row items-center justify-between relative z-10 backdrop-blur-md">
               <CardTitle className="text-lg font-black tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 Input Tickets
               </CardTitle>
@@ -210,7 +210,7 @@ export default function TicketFormatterPage() {
             <CardContent className="p-8 relative z-10 h-[calc(100%-80px)] flex flex-col">
               <Textarea
                 placeholder={`Paste ticket numbers here...\n\nA260182314123\nA260182314124\nA260182314125`}
-                className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border border-slate-300 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-xl text-slate-800 dark:text-slate-100 focus-visible:ring-4 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 p-6 shadow-inner transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-100 focus-visible:ring-0 focus-visible:outline-none p-6 shadow-none transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
               />
@@ -227,8 +227,8 @@ export default function TicketFormatterPage() {
           
           {/* Format Options */}
           <motion.div initial="hidden" animate="show" variants={containerVariants}>
-            <Card className="border border-white/10 shadow-xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden">
-              <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 backdrop-blur-md">
+            <Card className="border border-white/10 shadow-xl bg-white/5 dark:bg-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden">
+              <CardHeader className="bg-white/10 dark:bg-white/10 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 backdrop-blur-md">
                 <CardTitle className="text-sm font-black tracking-widest uppercase text-slate-600 dark:text-slate-400">
                   Select Output Format
                 </CardTitle>
@@ -259,10 +259,10 @@ export default function TicketFormatterPage() {
 
           {/* Output Result panel */}
           <motion.div initial="hidden" animate="show" variants={containerVariants} className="flex-1 min-h-[300px]">
-            <Card className="h-full border border-white/10 shadow-2xl bg-white/40 dark:bg-slate-950/40 backdrop-blur-3xl rounded-3xl overflow-hidden flex flex-col relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(99,102,241,0.3)] focus-within:border-indigo-500/40">
+            <Card className="h-full border border-white/10 shadow-2xl bg-white/5 dark:bg-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden flex flex-col relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(99,102,241,0.3)] focus-within:border-indigo-500/40">
               <div className="absolute bottom-0 right-0 p-32 bg-gradient-to-tl from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
               
-              <CardHeader className="bg-white/20 dark:bg-slate-900/20 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 backdrop-blur-md">
+              <CardHeader className="bg-white/10 dark:bg-white/10 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 backdrop-blur-md">
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-base font-black tracking-tight text-slate-800 dark:text-slate-100">
                     Generated Result
@@ -338,7 +338,7 @@ export default function TicketFormatterPage() {
                   <Textarea
                     readOnly
                     value={currentOutput}
-                    className="h-full min-h-[250px] font-mono text-sm leading-relaxed rounded-2xl border border-slate-300 dark:border-slate-700/50 bg-slate-50/80 dark:bg-[#0a0f1c]/80 backdrop-blur-xl text-slate-800 dark:text-slate-200 p-6 shadow-inner transition-all resize-none custom-scrollbar focus-visible:ring-0"
+                    className="h-full min-h-[250px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-200 p-6 shadow-none transition-all resize-none custom-scrollbar focus-visible:ring-0 focus-visible:outline-none"
                   />
                   {/* Glowing Overlay effect on hover for the terminal block */}
                   <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/5 pointer-events-none group-hover:ring-blue-500/20 transition-all duration-300" />

@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Meghdoot Workspace",
+  "version": "1.0",
+  "description": "Premium Salesforce Operations Workspace.",
+  "action": {
+    "default_title": "Open Meghdoot",
+    "default_popup": "index.html",
+    "default_icon": {
+      "128": "icon.png"
+    }
+  },
+  "icons": {
+    "128": "icon.png"
+  },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "*://localhost/*"
+  ]
+}

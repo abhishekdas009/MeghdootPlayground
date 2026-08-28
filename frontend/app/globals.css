@@ -82,20 +82,7 @@
     overflow-x: hidden;
   }
 
-  body {
-    min-height: 100vh;
-    background-color: rgb(var(--color-background));
-    background-image:
-      radial-gradient(circle at 73% 42%, rgb(65 84 255 / 0.1), transparent 28rem),
-      radial-gradient(circle at 12% 12%, rgb(23 120 255 / 0.08), transparent 34rem),
-      linear-gradient(135deg, #02050d, #050a19 48%, #030611);
-    color: rgb(var(--color-foreground));
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-    line-height: 1.5;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
+  
 
   button,
   input,
@@ -212,33 +199,17 @@
   background: rgb(216 87 45 / 0.14);
 }
 
-.app-shell {
-  background-image:
-    radial-gradient(circle at 88% 26%, rgb(89 74 255 / 0.2), transparent 25rem),
-    radial-gradient(circle at 64% 85%, rgb(246 86 43 / 0.13), transparent 22rem),
-    radial-gradient(circle at 8% 2%, rgb(16 104 255 / 0.18), transparent 28rem),
-    linear-gradient(135deg, #02050d, #060b1b 50%, #030611);
-}
 
-.dark .app-shell::before {
-  background: rgb(25 110 255 / 0.17);
-}
 
-.dark .app-shell::after {
-  background: rgb(216 87 45 / 0.14);
-}
+.dark .app-shell::before { display: none !important; }
 
-.dark .app-shell {
-  background-image:
-    radial-gradient(circle at 88% 26%, rgb(89 74 255 / 0.2), transparent 25rem),
-    radial-gradient(circle at 64% 85%, rgb(246 86 43 / 0.13), transparent 22rem),
-    radial-gradient(circle at 8% 2%, rgb(16 104 255 / 0.18), transparent 28rem),
-    linear-gradient(135deg, #02050d, #060b1b 50%, #030611);
-}
+.dark .app-shell::after { display: none !important; }
+
+
 
 .page-hero {
   border: 1px solid rgb(141 171 255 / 0.2);
-  background-color: rgb(7 15 34 / 0.34);
+  background-color: rgba(0, 0, 0, 0.2);
   background-image:
     radial-gradient(circle at 92% 8%, rgb(50 111 255 / 0.26), transparent 20rem),
     linear-gradient(135deg, rgb(22 39 84 / 0.24), rgb(4 9 23 / 0.08));
@@ -254,8 +225,8 @@
 }
 
 .dark .page-hero {
-  border-color: rgb(141 171 255 / 0.2);
-  background-color: rgb(7 15 34 / 0.34);
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
   background-image:
     radial-gradient(circle at 92% 8%, rgb(50 111 255 / 0.26), transparent 20rem),
     linear-gradient(135deg, rgb(22 39 84 / 0.24), rgb(4 9 23 / 0.08));
@@ -310,8 +281,8 @@
 /* Shared application workspace: one quiet glass surface per task. */
 .workspace-page .app-card {
   border-width: 1px;
-  border-color: rgb(126 151 211 / 0.18);
-  background-color: rgb(5 13 31 / 0.38);
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
   background-image:
     radial-gradient(circle at 0% 0%, rgb(122 166 255 / 0.1), transparent 34%),
     linear-gradient(135deg, rgb(22 39 84 / 0.28), rgb(4 9 23 / 0.14));
@@ -323,8 +294,8 @@
 }
 
 .dark .workspace-page .app-card {
-  border-color: rgb(126 151 211 / 0.18);
-  background-color: rgb(5 13 31 / 0.38);
+  border-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
   background-image:
     radial-gradient(circle at 0% 0%, rgb(122 166 255 / 0.1), transparent 34%),
     linear-gradient(135deg, rgb(22 39 84 / 0.28), rgb(4 9 23 / 0.14));
@@ -389,15 +360,15 @@
 .dark .workspace-page textarea:not([readonly]),
 .dark .workspace-page input:not([type="checkbox"]):not([type="radio"]),
 .dark .workspace-page select {
-  border-color: rgb(114 142 207 / 0.17) !important;
-  background-color: rgb(3 8 20 / 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(0, 0, 0, 0.2) !important;
   box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.22) !important;
   color: #e2e8f0 !important;
 }
 
 .dark .workspace-page textarea[readonly] {
-  border-color: rgb(114 142 207 / 0.17) !important;
-  background-color: rgb(3 8 20 / 0.5) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(0, 0, 0, 0.2) !important;
   box-shadow: inset 0 1px 1px rgb(0 0 0 / 0.22) !important;
   color: #94a3b8 !important;
 }
@@ -604,16 +575,6 @@ html.theme-transition select {
   mask-composite: exclude;
 }
 
-.app-card:hover,
-.glass-panel:hover {
-  border-color: rgb(148 190 255 / 0.34) !important;
-  background-color: rgb(9 19 43 / 0.36) !important;
-  box-shadow:
-    0 20px 52px -28px rgb(0 0 0 / 0.92),
-    inset 1px 1px 0 rgb(150 199 255 / 0.3),
-    inset -1px -1px 0 rgb(253 156 109 / 0.18),
-    inset 0 1px 0 rgb(255 255 255 / 0.13) !important;
-}
 
 /* Fine, low-contrast shadows give text the crisp ink-on-glass appearance. */
 .app-card :is(h1, h2, h3, h4, h5, h6, p, label, li, th, td),
@@ -744,10 +705,7 @@ button.bg-primary,
    ========================================================================== */
 
 /* Base Canvas - White / Light Gray */
-body, .app-shell {
-  background-color: #f4f6fa !important;
-  background-image: none !important;
-}
+
 
 /* Light mode ambient glows */
 .app-shell::before {
@@ -815,42 +773,35 @@ body {
    DARK MODE GLASSMORPHISM (Pitch Black & Blue)
    ========================================================================== */
 
-.dark body, .dark .app-shell {
-  background-color: #000000 !important;
-  color: #e2e8f0 !important;
-}
 
-.dark .app-shell::before {
-  background: radial-gradient(circle, rgba(30, 90, 255, 0.25) 0%, transparent 65%) !important;
-}
 
-.dark .app-shell::after {
-  background: radial-gradient(circle, rgba(0, 140, 255, 0.2) 0%, transparent 60%) !important;
-}
+.dark .app-shell::before { display: none !important; }
+
+.dark .app-shell::after { display: none !important; }
 
 .dark .app-card, .dark .glass-panel, .dark .workspace-page .app-card {
   background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%) !important;
-  box-shadow: 0 0 24px rgba(0, 100, 255, 0.08), 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4) !important;
 }
 
 .dark .app-card::before, .dark .glass-panel::before {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.03) 40%, rgba(255, 255, 255, 0.01) 60%, rgba(0, 150, 255, 0.2) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.03) 40%, rgba(255, 255, 255, 0.01) 60%, rgba(255, 255, 255, 0.1) 100%);
 }
 
 .dark .app-card:hover, .dark .glass-panel:hover {
   background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.04) 100%) !important;
-  box-shadow: 0 0 28px rgba(0, 100, 255, 0.12), 0 12px 36px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 0 28px rgba(0, 0, 0, 0.25), 0 12px 36px rgba(0, 0, 0, 0.5) !important;
 }
 
 .dark .page-hero, .dark .glass-panel--elevated {
   background-image: 
     linear-gradient(110deg, transparent 10%, rgba(255, 255, 255, 0.05) 25%, transparent 40%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 28px rgba(0, 100, 255, 0.12), 0 12px 40px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 28px rgba(0, 0, 0, 0.25), 0 12px 40px rgba(0, 0, 0, 0.5) !important;
 }
 
 .dark .page-hero::before, .dark .glass-panel--elevated::before {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(255, 255, 255, 0.02) 65%, rgba(0, 150, 255, 0.25) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.05) 35%, rgba(255, 255, 255, 0.02) 65%, rgba(255, 255, 255, 0.1) 100%);
 }
 
 .dark .app-card :is(h1, h2, h3, h4, h5, h6, p, label, li, th, td),
@@ -930,3 +881,35 @@ body {
 .dark {
   color-scheme: dark;
 }
+
+
+.page-hero {
+  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  will-change: transform;
+  transform-style: preserve-3d;
+  --shine-x: 50%;
+  --shine-y: 50%;
+}
+
+.page-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(circle at var(--shine-x) var(--shine-y), rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 10;
+  mix-blend-mode: overlay;
+}
+
+.page-hero.tilt-active {
+  transition: transform 0.1s ease-out;
+}
+
+.page-hero.tilt-active::after {
+  opacity: 1;
+  transition: opacity 0.1s ease-out;
+}
+

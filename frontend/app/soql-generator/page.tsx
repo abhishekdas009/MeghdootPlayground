@@ -53,6 +53,9 @@ import {
   UploadCloud,
   ClipboardPaste,
   Sparkles,
+    FileWarning,
+    CalendarClock,
+    Database,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -65,7 +68,7 @@ interface Template {
   category: string;
   soql: string;
   favourite: boolean;
-  type?: "normal" | "asset-transfer" | "child-details-to-parent";
+  type?: "normal" | "asset-transfer" | "child-details-to-parent" | "product-record-type-update";
   source?: "default" | "library";
   usageCount?: number;
 }
@@ -184,9 +187,15 @@ WHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (
 const defaultTemplates: Template[] = [
   {
     id: "1",
-    name: "TS (Ticket Status)",
+    name: "Update Accepted and None",
     category: "WorkOrder",
-    soql: `SELECT Id, Status, ParentWorkOrderId\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
+    soql: `SELECT Id, Status
+FROM WorkOrder
+WHERE Status NOT IN (\'Completed\',\'Canceled\',\'Cancellation Requested\')
+AND ParentWorkOrderId = null
+AND Ticket_Number_Read_Only__c IN (
+{{tickets}}
+)`,
     favourite: true,
   },
   {
@@ -219,10 +228,24 @@ const defaultTemplates: Template[] = [
     favourite: false,
   },
   {
+    id: "20",
+    name: "Product Record Type update",
+    category: "Product",
+    soql: "SELECT Id,ProductCode, Product2.Name,Product2.RecordType.Name,Product2.Product_Family__r.Name,Product2.Product_Sub_Family__r.Name FROM Product2 WHERE ProductCode IN (\n{{tickets}}\n)",
+    favourite: false,
+    type: "product-record-type-update",
+  },
+  {
     id: "2",
-    name: "SA (Service Appointment)",
+    name: "Extract SA Details",
     category: "ServiceAppointment",
-    soql: `SELECT Id, Status\nFROM ServiceAppointment\nWHERE Ticket_Numbers__c IN (\n{{tickets}}\n)`,
+    soql: `SELECT Id, Status
+FROM ServiceAppointment
+WHERE Work_Order__r.Status NOT IN (\'Completed\',\'Canceled\',\'Cancellation Requested\')
+AND Work_Order__r.ParentWorkOrderId = null
+AND Ticket_Numbers__c IN (
+{{tickets}}
+)`,
     favourite: false,
   },
   {
@@ -336,6 +359,7 @@ const POST_TEMPLATE = `@tag_user Your service ticket status has been updated to 
 const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?)(?![\p{L}\p{N}])/gu;
 const SALESFORCE_TICKET_REGEX = /(?:^|[^A-Za-z0-9])([BISXCAD]\d{14,})(?![A-Za-z0-9])/gi;
 const SOQL_BATCH_SIZE = 400;
+const CANCELLATION_BATCH_SIZE = 400;
 
 interface TicketStats {
   total: number;
@@ -1078,6 +1102,131 @@ function StatPill({ code, count }: { code: string; count: number }) {
   );
 }
 
+
+function transformStatus(tsv: string, newStatus: string, expectedType?: "WorkOrder" | "ServiceAppointment"): string {
+  if (!tsv.trim()) return "";
+  const lines = tsv.split(/\r?\n/);
+  if (lines.length < 2) return tsv;
+
+  if (expectedType) {
+    const hasWrongType = lines.some((line, i) => {
+      if (i === 0 || !line.trim()) return false;
+      if (expectedType === "WorkOrder" && (line.includes("[ServiceAppointment]") || line.includes('"08p'))) return true;
+      if (expectedType === "ServiceAppointment" && (line.includes("[WorkOrder]") || line.includes('"0WO'))) return true;
+      return false;
+    });
+
+    if (hasWrongType) {
+      return `ERROR: Invalid data pasted.
+
+You pasted the wrong record type. Please ensure you are pasting ${expectedType} results.`;
+    }
+  }
+
+
+  const delimiter = tsv.includes('\t') ? '\t' : (tsv.includes(',') ? ',' : '\t');
+  
+  const headers = (lines[0] || '').split(delimiter).map(h => h.replace(/^"|"$/g, '').trim());
+  const statusIdx = headers.findIndex(h => h.toLowerCase() === 'status');
+  
+  if (statusIdx === -1) return tsv;
+  
+  const result = [lines[0]];
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line || !line.trim()) continue;
+    
+    const cols = line.split(delimiter);
+    if (cols.length > statusIdx) {
+      const oldVal = cols[statusIdx];
+      const hasQuotes = (oldVal || '').startsWith('"') && (oldVal || '').endsWith('"');
+      cols[statusIdx] = hasQuotes ? `"${newStatus}"` : newStatus;
+    }
+    result.push(cols.join(delimiter));
+  }
+  
+  return result.join('\n');
+}
+
+function PasteResultCard({
+  title,
+  subtitle,
+  value,
+  onChange,
+  transformedValue,
+  onCopy,
+  className,
+  step
+}: {
+  className?: string;
+  title: string;
+  subtitle: string;
+  value: string;
+  onChange: (val: string) => void;
+  transformedValue: string;
+  onCopy: (val: string) => void;
+  step?: string;
+}) {
+  return (
+    <Card className={`overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 group relative ${className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]'}`}>
+      {step && (
+        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+            {step}
+          </span>
+        </div>
+      )}
+      <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+        <div className={`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${step ? "mt-5 md:mt-6" : ""}`}>
+          <div>
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">{title}</CardTitle>
+            </div>
+            <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">{subtitle}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm"
+              onClick={() => { onChange(""); }}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Clear
+            </Button>
+            <MagneticButton
+              className="h-8 px-3 gap-2 text-xs font-bold bg-emerald-500/10 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg shadow-sm"
+              onClick={() => onCopy(transformedValue)}
+              glowColor="rgba(16, 185, 129, 0.15)"
+            >
+              <Copy className="h-3.5 w-3.5" /> Copy Output
+            </MagneticButton>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 pt-0 flex-1 flex flex-col gap-4 relative z-10 overflow-hidden">
+        <textarea
+          className="flex-1 w-full rounded-2xl border border-slate-200/50 bg-white/50 dark:bg-white/[0.02] dark:border-white/5 p-4 text-[13px] font-mono leading-relaxed text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-none transition-all shadow-inner custom-scrollbar"
+          placeholder="Paste CSV from Salesforce Inspector here..."
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {value.trim() && (
+          <div className="flex-1 w-full rounded-2xl border border-indigo-200/50 bg-indigo-50/30 dark:bg-indigo-900/10 dark:border-indigo-500/20 p-4 overflow-auto shadow-inner relative">
+            <div className="absolute top-2 right-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/70 dark:text-indigo-400/50">OUTPUT</span>
+            </div>
+            <pre className="font-mono text-[13px] leading-relaxed text-slate-800 dark:text-sky-200/90 custom-scrollbar whitespace-pre-wrap break-words">
+              {transformedValue}
+            </pre>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
 function QueryPreviewCard({
   title,
   subtitle,
@@ -1085,9 +1234,11 @@ function QueryPreviewCard({
   batchIndex,
   setBatchIndex,
   onCopy,
-    isExample,
-    step,
-  }: {
+  isExample,
+  step,
+  className
+}: {
+  className?: string;
   title: string;
   subtitle: string;
   batches: string[];
@@ -1100,97 +1251,94 @@ function QueryPreviewCard({
   const currentBatch = batches[batchIndex] ?? "";
 
   return (
-    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 group relative h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]">
+    <Card className={`overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 group relative ${className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]'}`}>
       {step && (
-        <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-          <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-            STEP {step}
+        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+            {step}
           </span>
         </div>
       )}
 
-      <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-        <div className={`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${step ? "mt-6 md:mt-8" : ""}`}>
+      <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+        <div className={`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${step ? "mt-5 md:mt-6" : ""}`}>
           <div>
             <div className="flex items-center gap-3">
-              <span className="h-2 w-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-              <CardTitle className="text-base font-black tracking-tight text-foreground">{title}</CardTitle>
+              <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">{title}</CardTitle>
             </div>
             <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">{subtitle}</p>
           </div>
-          <div className="flex items-center gap-3">
-            <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
               {batches.length} batch{batches.length === 1 ? "" : "es"}
-            </Badge>
-            <MagneticButton 
-              className="h-8 px-3 gap-2 text-xs font-bold bg-indigo-500/10 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 border border-indigo-500/20 hover:border-indigo-500/40 rounded-lg shadow-sm" 
-              onClick={() => onCopy(batches.join("\n\n"))}
-              glowColor="rgba(99, 102, 241, 0.15)"
-            >
-              <Copy className="h-3.5 w-3.5" /> Copy All
-            </MagneticButton>
+            </span>
+
+            {batches.length > 1 && (
+              <div className="flex items-center gap-0.5 bg-slate-100 dark:bg-white/[0.05] rounded-lg p-0.5 shadow-sm border border-slate-200 dark:border-slate-800">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-white/10 rounded-md"
+                  disabled={batchIndex <= 0}
+                  onClick={() => setBatchIndex((value) => Math.max(0, value - 1))}
+                  title="Previous Batch"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+                <span className="text-[10px] font-mono font-black px-2 text-slate-600 dark:text-slate-300">
+                  {batchIndex + 1} / {batches.length}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-white/10 rounded-md"
+                  disabled={batchIndex >= batches.length - 1}
+                  onClick={() => setBatchIndex((value) => Math.min(batches.length - 1, value + 1))}
+                  title="Next Batch"
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm"
+                onClick={() => onCopy(currentBatch)}
+              >
+                <Copy className="h-3.5 w-3.5" /> Copy
+              </Button>
+
+              {batches.length > 1 && (
+                <MagneticButton
+                  className="h-8 px-3 gap-2 text-xs font-bold bg-indigo-500/10 text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 border border-indigo-500/20 hover:border-indigo-500/40 rounded-lg shadow-sm"
+                  onClick={() => onCopy(batches.join("\n\n"))}
+                  glowColor="rgba(99, 102, 241, 0.15)"
+                >
+                  <Copy className="h-3.5 w-3.5" /> Copy All
+                </MagneticButton>
+              )}
+            </div>
           </div>
         </div>
       </CardHeader>
 
       <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
         {batches.length > 0 ? (
-          <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-            <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
-              <div className="flex items-center gap-3">
-                <div className="flex gap-1.5">
-                  <span className="h-3 w-3 rounded-full bg-rose-500/80 shadow-[0_0_6px_rgba(244,63,94,0.4)]" />
-                  <span className="h-3 w-3 rounded-full bg-amber-500/80 shadow-[0_0_6px_rgba(245,158,11,0.4)]" />
-                  <span className="h-3 w-3 rounded-full bg-emerald-500/80 shadow-[0_0_6px_rgba(16,185,129,0.4)]" />
-                </div>
-                <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
-                  SOQL QUERY · BATCH {batchIndex + 1} OF {batches.length}
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-lg transition-colors"
-                  disabled={batchIndex <= 0}
-                  onClick={() => setBatchIndex((value) => Math.max(0, value - 1))}
-                  title="Previous Batch"
-                >
-                  <ChevronLeft className="h-4.5 w-4.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 rounded-lg transition-colors"
-                  disabled={batchIndex >= batches.length - 1}
-                  onClick={() => setBatchIndex((value) => Math.min(batches.length - 1, value + 1))}
-                  title="Next Batch"
-                >
-                  <ChevronRight className="h-4.5 w-4.5" />
-                </Button>
-                <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1.5" />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-8 gap-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 px-3 text-xs font-bold rounded-lg transition-colors" 
-                  onClick={() => onCopy(currentBatch)}
-                >
-                  <Copy className="h-3.5 w-3.5 text-indigo-400" /> Copy
-                </Button>
-              </div>
+          <div className="rounded-2xl text-foreground flex flex-col min-h-0 flex-1 overflow-hidden relative bg-transparent border-transparent shadow-none transition-all duration-300 group/glass">
+            <div className="relative flex-1 min-h-0">
+              <pre className="h-full overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-[13px] leading-relaxed text-slate-700 selection:bg-indigo-500/20 selection:text-indigo-900 dark:text-sky-200/90 dark:selection:text-indigo-100 custom-scrollbar">
+                {currentBatch}
+              </pre>
             </div>
-            <JsonViewer 
-              data={currentBatch} 
-              className={cn("p-5 min-h-[120px] max-h-[320px] bg-transparent dark:bg-transparent border-0 shadow-none rounded-none", isExample ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200")} 
-            />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-white/[0.03] dark:border-white/[0.05] p-8 text-center shadow-inner">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white dark:bg-slate-800 text-slate-400 mb-3 shadow-sm ring-1 ring-slate-200 dark:ring-slate-700">
-              <PlayCircle className="h-6 w-6" />
-            </div>
-            <p className="text-sm font-black text-foreground">No Query Generated Yet</p>
-            <p className="text-xs text-slate-500 font-medium mt-1.5 max-w-xs">Paste your tickets or Case IDs on the left and select a template to generate a preview</p>
+          <div className="flex flex-1 items-center justify-center rounded-xl bg-slate-50/50 dark:bg-white/[0.02]">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+              {isExample ? "No valid tickets parsed" : "No queries generated"}
+            </p>
           </div>
         )}
       </CardContent>
@@ -1207,337 +1355,248 @@ function TemplatePicker({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [highlightedId, setHighlightedId] = React.useState(value);
+  const [menuPosition, setMenuPosition] = React.useState<{
+    left: number;
+    width: number;
+    top?: number;
+    bottom?: number;
+    maxHeight: number;
+  } | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const listboxId = React.useId();
   const selectedTemplate = templates.find((template) => template.id === value);
   const builtInTemplates = templates.filter((template) => template.source !== "library");
   const savedTemplates = templates.filter((template) => template.source === "library");
 
-  const getTemplateIcon = (category: string, name: string) => {
-    const c = category?.toLowerCase() || "";
-    const n = name?.toLowerCase() || "";
-    
-    if (n.includes("cancel")) return <Ban className="h-4 w-4" />;
-    if (c.includes("asset")) return <Box className="h-4 w-4" />;
-    if (c.includes("case")) return <Briefcase className="h-4 w-4" />;
-    if (c.includes("serviceappointment") || c.includes("appointment")) return <Calendar className="h-4 w-4" />;
-    if (c.includes("workorder")) return <FileText className="h-4 w-4" />;
-    if (c.includes("product")) return <Box className="h-4 w-4" />;
-    return <FileSpreadsheet className="h-4 w-4" />;
+  const updateMenuPosition = React.useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+
+    const rect = trigger.getBoundingClientRect();
+    const viewportPadding = 12;
+    const gap = 8;
+    const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+    const spaceAbove = rect.top - viewportPadding;
+    const opensBelow = spaceBelow >= 260 || spaceBelow >= spaceAbove;
+    const availableHeight = Math.max(180, Math.min(460, (opensBelow ? spaceBelow : spaceAbove) - gap));
+
+    setMenuPosition({
+      left: Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - rect.width - viewportPadding)),
+      width: Math.min(rect.width, window.innerWidth - viewportPadding * 2),
+      ...(opensBelow ? { top: rect.bottom + gap } : { bottom: window.innerHeight - rect.top + gap }),
+      maxHeight: availableHeight,
+    });
+  }, []);
+
+  const closeMenu = React.useCallback((restoreFocus = false) => {
+    setIsOpen(false);
+    if (restoreFocus) triggerRef.current?.focus();
+  }, []);
+
+  const openMenu = React.useCallback(() => {
+    setHighlightedId(value);
+    updateMenuPosition();
+    setIsOpen(true);
+  }, [updateMenuPosition, value]);
+
+  const selectTemplate = React.useCallback(
+    (templateId: string) => {
+      onChange(templateId);
+      setHighlightedId(templateId);
+      closeMenu(true);
+    },
+    [closeMenu, onChange]
+  );
+
+  React.useEffect(() => {
+    if (!templates.some((template) => template.id === highlightedId)) {
+      setHighlightedId(value);
+    }
+  }, [highlightedId, templates, value]);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !triggerRef.current?.contains(target)) {
+        closeMenu();
+      }
+    };
+    const handleViewportChange = () => updateMenuPosition();
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [closeMenu, isOpen, updateMenuPosition]);
+
+  const moveHighlight = (direction: 1 | -1) => {
+    const currentIndex = Math.max(0, templates.findIndex((template) => template.id === highlightedId));
+    const nextIndex = (currentIndex + direction + templates.length) % templates.length;
+    setHighlightedId(templates[nextIndex]?.id ?? value);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!isOpen) openMenu();
+      moveHighlight(event.key === "ArrowDown" ? 1 : -1);
+      return;
+    }
+
+    if (event.key === "Home" || event.key === "End") {
+      event.preventDefault();
+      if (!isOpen) openMenu();
+      setHighlightedId(event.key === "Home" ? templates[0]?.id ?? value : templates.at(-1)?.id ?? value);
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      if (isOpen) selectTemplate(highlightedId);
+      else openMenu();
+      return;
+    }
+
+    if (event.key === "Escape" && isOpen) {
+      event.preventDefault();
+      closeMenu();
+    }
+  };
+
+  const renderTemplate = (template: Template) => {
+    const isSelected = template.id === value;
+    const isHighlighted = template.id === highlightedId;
+    const isLibraryTemplate = template.source === "library";
+
+    return (
+      <button
+        key={template.id}
+        id={`${listboxId}-${template.id}`}
+        type="button"
+        role="option"
+        aria-selected={isSelected}
+        onClick={() => selectTemplate(template.id)}
+        onMouseEnter={() => setHighlightedId(template.id)}
+        className={cn(
+          "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150",
+          isSelected
+            ? "bg-blue-500/10 text-blue-950 shadow-[inset_0_0_0_1px_rgba(1,118,211,0.32)] dark:bg-blue-500/20 dark:text-white dark:shadow-[inset_0_0_0_1px_rgba(96,182,255,0.38)]"
+            : isHighlighted
+              ? "bg-sky-500/10 text-blue-950 dark:bg-sky-400/10 dark:text-sky-50"
+              : "text-slate-700 hover:bg-sky-500/10 hover:text-blue-950 dark:text-slate-300 dark:hover:bg-sky-400/10 dark:hover:text-sky-50"
+        )}
+      >
+        <span
+          className={cn(
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-colors",
+            isSelected
+              ? "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:border-blue-300/30 dark:bg-blue-400/15 dark:text-sky-200"
+              : "border-slate-200 bg-white/70 text-slate-500 group-hover:border-sky-500/30 group-hover:text-blue-600 dark:border-slate-700/80 dark:bg-slate-800/75 dark:text-slate-400 dark:group-hover:border-sky-400/20 dark:group-hover:text-sky-300"
+          )}
+        >
+          {isLibraryTemplate ? <Bookmark className="h-3.5 w-3.5" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
+          <span className={cn("mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em]", isSelected ? "text-blue-600 dark:text-sky-200/80" : "text-slate-500 group-hover:text-blue-500 dark:group-hover:text-sky-200/70")}>
+            {template.category}
+          </span>
+        </span>
+        {isSelected && (
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-[0_0_12px_rgba(96,182,255,0.3)] dark:bg-blue-400 dark:text-slate-950">
+            <Check className="h-3.5 w-3.5 stroke-[3]" />
+          </span>
+        )}
+      </button>
+    );
   };
 
   return (
     <div className="relative">
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="group flex h-auto w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-200 border-slate-200/80 bg-white/75 text-slate-900 hover:border-sky-400/45 hover:bg-white dark:border-slate-700/80 dark:bg-white/[0.03] dark:border-white/[0.05] dark:text-slate-100 dark:hover:bg-slate-900 data-[state=open]:border-blue-400/60 data-[state=open]:bg-white/90 data-[state=open]:text-slate-950 data-[state=open]:ring-2 data-[state=open]:ring-blue-400/20 data-[state=open]:dark:bg-slate-900 data-[state=open]:dark:text-white [&>svg]:hidden">
-          <div className="flex flex-1 items-center gap-3 min-w-0">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-blue-400/20 dark:text-blue-300">
-              {selectedTemplate?.source === "library" ? <Bookmark className="h-5 w-5" /> : getTemplateIcon(selectedTemplate?.category || "", selectedTemplate?.name || "")}
-            </span>
-            <span className="min-w-0 flex-1 text-left flex flex-col gap-1.5">
-              <span className="block truncate text-sm font-bold leading-tight">{selectedTemplate?.name ?? "Select a template"}</span>
-              {selectedTemplate ? (
-                <span className="flex items-center gap-2">
-                  <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 shrink-0 shadow-none">
-                    {selectedTemplate.category || "SOQL"}
-                  </Badge>
-                  {selectedTemplate.source === "library" && selectedTemplate.usageCount !== undefined && (
-                    <span className="text-[10px] font-bold text-slate-400 truncate">
-                      Used {selectedTemplate.usageCount} time{selectedTemplate.usageCount === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </span>
-              ) : (
-                <span className="block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  Choose a query type
-                </span>
-              )}
-            </span>
-          </div>
-          <div className="shrink-0 flex items-center justify-center">
-            <ChevronDown className="h-5 w-5 text-slate-500 transition-transform duration-200 group-hover:text-blue-600 dark:group-hover:text-sky-300 group-data-[state=open]:rotate-180 group-data-[state=open]:text-blue-600 group-data-[state=open]:dark:text-sky-300" />
-          </div>
-        </SelectTrigger>
-
-        <SelectContent className="max-h-[350px] z-[100] rounded-2xl border border-white/45 bg-white/15 p-1.5 backdrop-blur-3xl dark:border-white/10 dark:bg-black/20 shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 px-3 py-2.5 dark:border-slate-700/70 mb-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Choose a query template</span>
-            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold tabular-nums text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">{templates.length}</span>
-          </div>
-          
-          <SelectGroup>
-            {builtInTemplates.length > 0 && (
-              <SelectLabel className="px-2 pb-1 pt-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Built-in templates</SelectLabel>
-            )}
-            {builtInTemplates.map((template) => (
-              <SelectItem
-                key={template.id}
-                value={template.id}
-                className="group relative flex w-full items-center gap-3 rounded-xl pl-9 pr-3 py-2.5 text-left transition-all duration-150 data-[state=checked]:bg-blue-500/10 data-[state=checked]:text-blue-950 focus:bg-sky-500/10 focus:text-blue-950 dark:data-[state=checked]:bg-blue-500/20 dark:data-[state=checked]:text-white dark:focus:bg-sky-400/10 dark:focus:text-sky-50 cursor-pointer"
-              >
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/70 text-slate-500 group-focus:border-sky-500/30 group-focus:text-blue-600 group-data-[state=checked]:border-blue-500/25 group-data-[state=checked]:bg-blue-500/10 group-data-[state=checked]:text-blue-700 dark:border-slate-700/80 dark:bg-slate-800/75 dark:text-slate-400 dark:group-focus:border-sky-400/20 dark:group-focus:text-sky-300 dark:group-data-[state=checked]:border-blue-300/30 dark:group-data-[state=checked]:bg-blue-400/15 dark:group-data-[state=checked]:text-sky-200 transition-colors">
-                    {getTemplateIcon(template.category, template.name)}
-                  </span>
-                  <span className="min-w-0 flex-1 pl-1">
-                    <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
-                    <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 group-focus:text-blue-500 group-data-[state=checked]:text-blue-600 dark:group-focus:text-sky-200/70 dark:group-data-[state=checked]:text-sky-200/80">
-                      {template.category}
-                    </span>
-                  </span>
-                </div>
-              </SelectItem>
-            ))}
-          </SelectGroup>
-
-          {savedTemplates.length > 0 && (
-            <SelectGroup>
-              <div className="my-1.5 border-t border-slate-200/80 dark:border-slate-700/70" />
-              <SelectLabel className="flex items-center gap-2 px-2 pb-1 pt-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300/80">
-                <Bookmark className="h-3 w-3" /> Saved templates
-              </SelectLabel>
-              {savedTemplates.map((template) => (
-                <SelectItem
-                  key={template.id}
-                  value={template.id}
-                  className="group relative flex w-full items-center gap-3 rounded-xl pl-9 pr-3 py-2.5 text-left transition-all duration-150 data-[state=checked]:bg-blue-500/10 data-[state=checked]:text-blue-950 focus:bg-sky-500/10 focus:text-blue-950 dark:data-[state=checked]:bg-blue-500/20 dark:data-[state=checked]:text-white dark:focus:bg-sky-400/10 dark:focus:text-sky-50 cursor-pointer"
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white/70 text-slate-500 group-focus:border-sky-500/30 group-focus:text-blue-600 group-data-[state=checked]:border-blue-500/25 group-data-[state=checked]:bg-blue-500/10 group-data-[state=checked]:text-blue-700 dark:border-slate-700/80 dark:bg-slate-800/75 dark:text-slate-400 dark:group-focus:border-sky-400/20 dark:group-focus:text-sky-300 dark:group-data-[state=checked]:border-blue-300/30 dark:group-data-[state=checked]:bg-blue-400/15 dark:group-data-[state=checked]:text-sky-200 transition-colors">
-                      <Bookmark className="h-3.5 w-3.5" />
-                    </span>
-                    <span className="min-w-0 flex-1 pl-1">
-                      <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
-                      <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 group-focus:text-blue-500 group-data-[state=checked]:text-blue-600 dark:group-focus:text-sky-200/70 dark:group-data-[state=checked]:text-sky-200/80">
-                        {template.category}
-                      </span>
-                    </span>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          )}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-}
-
-function AnimatedEmptyState({ label, isDragDrop = false }: { label: string, isDragDrop?: boolean }) {
-  return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 opacity-70">
-      <motion.div 
-        className="relative mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200/50 dark:bg-slate-800/50 shadow-inner"
-        animate={{ 
-          y: [0, -6, 0],
-          scale: [1, 1.02, 1]
-        }}
-        transition={{ 
-          duration: 3, 
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-      >
-        {isDragDrop ? (
-          <UploadCloud className="h-8 w-8 text-slate-500 dark:text-slate-400" strokeWidth={1.5} />
-        ) : (
-          <ClipboardPaste className="h-8 w-8 text-slate-500 dark:text-slate-400" strokeWidth={1.5} />
-        )}
-        
-        <motion.div
-          className="absolute inset-0 rounded-2xl border-2 border-slate-400/20 dark:border-slate-500/20"
-          animate={{ opacity: [0, 0.5, 0], scale: [0.9, 1.15, 0.9] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        />
-      </motion.div>
-      <span className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 max-w-[200px] text-center leading-relaxed">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-const DataGridTSV = ({ content }: { content: string }) => {
-  if (!content) return null;
-  const lines = content.split('\n').filter(line => line.trim().length > 0);
-  if (lines.length === 0 || !lines[0]) return null;
-  
-  const headers = lines[0].split('\t').map(h => h.replace(/^"|"$/g, ''));
-  const rows = lines.slice(1).map(line => line.split('\t'));
-
-  return (
-    <div className="overflow-auto max-h-[320px] min-h-[120px] w-full bg-slate-50/50 dark:bg-black/20 dark:border dark:border-white/[0.05] rounded-xl no-scrollbar relative flex-1">
-      <table className="w-full text-left border-collapse text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-100/95 dark:bg-white/[0.03] dark:border-white/[0.05] backdrop-blur-md shadow-sm">
-          <tr>
-            <th className="px-3 py-2.5 font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 w-12 text-center text-[10px]">#</th>
-            {headers.map((h, i) => (
-              <th key={i} className="px-3 py-2.5 font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800 text-[10px] whitespace-nowrap">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="font-mono">
-          {rows.map((row, i) => (
-            <tr key={i} className="hover:bg-blue-50/80 dark:hover:bg-blue-900/20 transition-colors border-b border-slate-100 dark:border-slate-800/50 last:border-0 group">
-              <td className="px-3 py-2 text-slate-300 dark:text-slate-600 text-center border-r border-slate-100 dark:border-slate-800/50 group-hover:text-blue-400 transition-colors">
-                {i + 1}
-              </td>
-              {row.map((cell, j) => {
-                const val = cell.replace(/^"|"$/g, '');
-                let colorClass = "text-slate-600 dark:text-slate-300";
-                let bgClass = "";
-                if (val.startsWith('012') && (val.length === 15 || val.length === 18)) {
-                  colorClass = "text-amber-600 dark:text-amber-400 font-bold";
-                  bgClass = "bg-amber-500/10 rounded px-1.5 py-0.5";
-                } else if (/^[a-zA-Z0-9]{15,18}$/.test(val) && (val.startsWith('0') || val.startsWith('a') || val.startsWith('B') || val.startsWith('5'))) {
-                  colorClass = "text-blue-600 dark:text-blue-400 font-bold";
-                  bgClass = "bg-blue-500/10 rounded px-1.5 py-0.5";
-                } else if (val === 'Canceled' || val === 'Completed') {
-                  colorClass = "text-emerald-600 dark:text-emerald-400 font-bold";
-                } else if (val.startsWith('[')) {
-                  colorClass = "text-purple-600 dark:text-purple-400 font-bold";
-                }
-                
-                return (
-                  <td key={j} className="px-3 py-2 whitespace-nowrap">
-                    <span className={cn(colorClass, bgClass)}>{val}</span>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
-
-const SmartPasteTextarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<typeof Textarea>>(({ className, onPaste, ...props }, ref) => {
-  const [pasteAnim, setPasteAnim] = React.useState<{ active: boolean; count: number }>({ active: false, count: 0 });
-  const [isDragging, setIsDragging] = React.useState(false);
-  const dragCounter = React.useRef(0);
-
-  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    if (onPaste) onPaste(e);
-    const pastedText = e.clipboardData.getData("text");
-    if (!pastedText) return;
-    
-    const rows = pastedText.split(/[\n\r]+/).filter(t => t.trim().length > 0).length;
-    
-    if (rows > 5) {
-      setPasteAnim({ active: true, count: rows });
-      setTimeout(() => {
-        setPasteAnim({ active: false, count: rows });
-      }, 1500);
-    }
-  };
-
-  const handleDragEnter = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    dragCounter.current += 1;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0 && e.dataTransfer.items[0]?.kind === 'file') {
-        setIsDragging(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    dragCounter.current -= 1;
-    if (dragCounter.current === 0) {
-      setIsDragging(false);
-    }
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = async (e: React.DragEvent<HTMLTextAreaElement>) => {
-    e.preventDefault();
-    dragCounter.current = 0;
-    setIsDragging(false);
-
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      if (!file) return;
-      const text = await file.text();
-      
-      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")?.set;
-      const textarea = e.currentTarget;
-      if (nativeInputValueSetter && textarea) {
-        nativeInputValueSetter.call(textarea, text);
-        const event = new Event('input', { bubbles: true });
-        textarea.dispatchEvent(event);
-      }
-
-      const rows = text.split(/[\n\r]+/).filter(t => t.trim().length > 0).length;
-      if (rows > 0) {
-        setPasteAnim({ active: true, count: rows });
-        setTimeout(() => setPasteAnim({ active: false, count: rows }), 1500);
-      }
-    } else {
-      if (props.onDrop) props.onDrop(e);
-    }
-  };
-
-  return (
-    <div className="relative w-full flex-1 flex flex-col min-h-0 group">
-      <Textarea
-        ref={ref}
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={isOpen ? listboxId : undefined}
+        onClick={() => (isOpen ? closeMenu() : openMenu())}
+        onKeyDown={handleKeyDown}
         className={cn(
-          "transition-all duration-500 relative z-10",
-          pasteAnim.active ? "ring-2 ring-emerald-500/60 shadow-[inset_0_0_30px_rgba(16,185,129,0.15)] border-emerald-500/60 bg-emerald-500/5 dark:bg-emerald-500/5" : "",
-          isDragging ? "ring-4 ring-blue-500/40 border-2 border-dashed border-blue-500/80 bg-blue-500/10 backdrop-blur-xl shadow-[inset_0_0_50px_rgba(59,130,246,0.15)] scale-[1.01]" : "",
-          className
+          "group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-200",
+          isOpen
+            ? "border-blue-400/60 bg-white/90 text-slate-950 ring-2 ring-blue-400/20 dark:bg-slate-900 dark:text-white"
+            : "border-slate-200/80 bg-white/75 text-slate-900 hover:border-sky-400/45 hover:bg-white dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-900"
         )}
-        onPaste={handlePaste}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-        {...props}
-      />
+      >
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-blue-400/20 dark:text-blue-300">
+          {selectedTemplate?.source === "library" ? <Bookmark className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold leading-tight">{selectedTemplate?.name ?? "Select a template"}</span>
+          <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            {selectedTemplate?.source === "library" ? "Saved template" : selectedTemplate?.category ?? "Choose a query type"}
+          </span>
+        </span>
+        <ChevronDown className={cn("h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 group-hover:text-blue-600 dark:group-hover:text-sky-300", isOpen && "rotate-180 text-blue-600 dark:text-sky-300")} />
+      </button>
 
-      {/* Floating Drag overlay */}
-      <AnimatePresence>
-        {isDragging && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none rounded-xl"
+      {isOpen && menuPosition && typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={menuRef}
+            className="fixed z-[100] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/[0.98] p-1.5 text-slate-900 shadow-[0_20px_60px_rgba(15,23,42,0.16),0_0_0_1px_rgba(1,118,211,0.08)] backdrop-blur-2xl dark:border-slate-600/80 dark:bg-[#071426]/[0.98] dark:text-slate-100 dark:shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(96,182,255,0.08)]"
+            style={{
+              left: menuPosition.left,
+              width: menuPosition.width,
+              top: menuPosition.top,
+              bottom: menuPosition.bottom,
+              maxHeight: menuPosition.maxHeight,
+            }}
           >
-            <div className="bg-blue-600/90 text-white px-6 py-3 rounded-full font-black text-sm shadow-[0_10px_40px_rgba(37,99,235,0.4)] backdrop-blur-md flex items-center gap-3 animate-bounce">
-              <UploadCloud className="h-5 w-5" />
-              Drop CSV/TXT file here to parse
+            
+            <div
+              id={listboxId}
+              role="listbox"
+              aria-label="Query templates"
+              className="space-y-1 overflow-y-auto p-1.5"
+              style={{ maxHeight: Math.max(120, menuPosition.maxHeight - 58) }}
+            >
+              {builtInTemplates.length > 0 && (
+                <div className="pb-1 pt-1.5">
+                  <span className="px-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Built-in templates</span>
+                </div>
+              )}
+              {builtInTemplates.map(renderTemplate)}
+              {savedTemplates.length > 0 && (
+                <>
+                  <div className="my-1.5 border-t border-slate-200/80 dark:border-slate-700/70" />
+                  <div className="flex items-center gap-2 px-2 pb-1 pt-0.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300/80">
+                    <Bookmark className="h-3 w-3" /> Saved templates
+                  </div>
+                  {savedTemplates.map(renderTemplate)}
+                </>
+              )}
             </div>
-          </motion.div>
+          </div>,
+          document.body
         )}
-      </AnimatePresence>
-      
-      {/* Floating Badge overlay */}
-      <AnimatePresence>
-        {pasteAnim.active && !isDragging && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9, y: -5 }}
-            className="absolute top-4 right-6 pointer-events-none z-30"
-          >
-            <Badge className="bg-emerald-500 text-white border-none shadow-[0_0_15px_rgba(16,185,129,0.4)] px-3 py-1 font-bold text-xs flex items-center gap-1.5 backdrop-blur-md">
-              <Sparkles className="h-3.5 w-3.5" />
-              Parsed {pasteAnim.count} rows
-            </Badge>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
-});
-SmartPasteTextarea.displayName = "SmartPasteTextarea";
+}
 
 export default function SOQLGeneratorPage() {
-  const [cancellationBatchSize, setCancellationBatchSize] = React.useState(400);
+  const [tsResultPaste, setTsResultPaste] = React.useState("");
+  const [saResultPaste, setSaResultPaste] = React.useState("");
   const [templates, setTemplates] = React.useState<Template[]>(defaultTemplates);
   const [selectedTemplate, setSelectedTemplate] = React.useState<string>("13");
   const [libraryLoadState, setLibraryLoadState] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -1570,7 +1629,6 @@ export default function SOQLGeneratorPage() {
   const [caseAssignmentResult, setCaseAssignmentResult] = React.useState<CaseAssignmentResult | null>(null);
   const [caseAssignMode, setCaseAssignMode] = React.useState<CaseAssignMode>("equal");
   const [roundRobinPointer, setRoundRobinPointer] = React.useState<number>(0);
-  const [roundRobinPointerOwnerWise, setRoundRobinPointerOwnerWise] = React.useState<number>(0);
   const [roundRobinHistory, setRoundRobinHistory] = React.useState<RoundRobinHistoryEntry[]>([]);
   const [cumulativeLoad, setCumulativeLoad] = React.useState<CumulativeLoadMap>({});
   const [caseOwners, setCaseOwners] = React.useState<CaseOwner[]>([]);
@@ -1630,9 +1688,6 @@ export default function SOQLGeneratorPage() {
       try {
         const storedPointer = localStorage.getItem("caseAssignmentRoundRobin");
         if (storedPointer) setRoundRobinPointer(parseInt(storedPointer, 10) || 0);
-
-        const storedPointerOW = localStorage.getItem("caseAssignmentRoundRobinOwnerWise");
-        if (storedPointerOW) setRoundRobinPointerOwnerWise(parseInt(storedPointerOW, 10) || 0);
 
         const storedHistory = localStorage.getItem("caseAssignmentHistory");
         if (storedHistory) setRoundRobinHistory(JSON.parse(storedHistory));
@@ -1734,7 +1789,7 @@ export default function SOQLGeneratorPage() {
     () => (isCaseAssign ? parsedCaseIds : parseTickets(ticketsInput)),
     [isCaseAssign, parseTickets, parsedCaseIds, ticketsInput]
   );
-  const inputBatchSize = isCancellation ? cancellationBatchSize : SOQL_BATCH_SIZE;
+  const inputBatchSize = isCancellation ? CANCELLATION_BATCH_SIZE : SOQL_BATCH_SIZE;
   const inputBatchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / inputBatchSize) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
   const assetPairs = React.useMemo(() => parseAssetTransferPairs(assetTransferInput), [assetTransferInput]);
@@ -1798,7 +1853,7 @@ export default function SOQLGeneratorPage() {
 
   const cancellationResultBatchCount =
     uniqueExecutableCancellationRows.length > 0
-      ? Math.ceil(uniqueExecutableCancellationRows.length / cancellationBatchSize)
+      ? Math.ceil(uniqueExecutableCancellationRows.length / CANCELLATION_BATCH_SIZE)
       : 0;
 
   const cancellationUpdateDebug = React.useMemo(() => {
@@ -1888,17 +1943,17 @@ export default function SOQLGeneratorPage() {
 
     const templateSoql = activeTemplate?.soql || CANCELLATION_QUERY_TEMPLATE;
 
-    return chunkArray(parsedTickets, cancellationBatchSize).map((tickets) =>
+    return chunkArray(parsedTickets, CANCELLATION_BATCH_SIZE).map((tickets) =>
       templateSoql.replace("{{tickets}}", formatTicketsForSOQL(tickets))
     );
-  }, [formatTicketsForSOQL, parsedTickets, activeTemplate, cancellationBatchSize]);
+  }, [formatTicketsForSOQL, parsedTickets, activeTemplate]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
     const componentIds = assetPairs.map((pair) => pair.componentId);
     const formatted = formatTicketsForSOQL(componentIds);
 
-    return `SELECT Component_Id__c, Id, Asset_Obligation__c, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n${formatted}\n)`;
+    return `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n${formatted}\n)`;
   }, [assetPairs, formatTicketsForSOQL]);
 
   const assetTransferAccountSOQL = React.useMemo(() => {
@@ -2004,17 +2059,11 @@ export default function SOQLGeneratorPage() {
   }, [childDetailsInvalidIdCount, childDetailsVisibleResult]);
 
   const handleProcessTransfer = () => {
-    const parsedAssetResult = parseSOQLResultWithHeaders(assetSOQLResult);
     const assetData = parseAssetResult(assetSOQLResult);
     const accountData = parseAccountResult(accountSOQLResult);
 
     if (Object.keys(assetData).length === 0) {
       toast.error("Paste Asset SOQL result first");
-      return;
-    }
-
-    if (!parsedAssetResult.headers.includes("asset_obligation__c")) {
-      toast.error("Asset SOQL result must include Asset_Obligation__c");
       return;
     }
 
@@ -2027,7 +2076,6 @@ export default function SOQLGeneratorPage() {
     const debugLines: string[] = [];
     const missingAssets: string[] = [];
     const missingCids: string[] = [];
-    let skippedAmcAssets = 0;
 
     for (const pair of assetPairs) {
       const assetRow = assetData[pair.componentId];
@@ -2037,26 +2085,8 @@ export default function SOQLGeneratorPage() {
         continue;
       }
 
-      const assetObligation = (assetRow.asset_obligation__c || "").trim();
-      if (assetObligation.toLowerCase() === "amc") {
-        skippedAmcAssets += 1;
-        debugLines.push(`[Skipped] ${pair.componentId} -> Asset_Obligation__c is AMC`);
-        continue;
-      }
-
       const recordType = assetRow.record_type__c || assetRow.recordtype || "";
       const isComponent = recordType.toLowerCase().includes("component");
-
-      let assetId: string | undefined;
-      let sourceNote: string;
-
-      if (isComponent) {
-        assetId = assetRow["parent.id"] || assetRow.parentid || assetRow.parent_id || assetRow.id;
-        sourceNote = "Parent.Id (Component record type)";
-      } else {
-        assetId = assetRow.id;
-        sourceNote = "Asset.Id";
-      }
 
       const accountId = accountData[pair.newCid];
       if (!accountId) {
@@ -2065,26 +2095,48 @@ export default function SOQLGeneratorPage() {
         continue;
       }
 
-      if (!assetId) {
-        debugLines.push(`❌ ${pair.componentId} → No valid asset ID found`);
-        continue;
-      }
+      if (isComponent) {
+        const childAssetId = assetRow.id;
+        const parentAssetId = assetRow["parent.id"] || assetRow.parentid || assetRow.parent_id;
+        let added = false;
+        const addedIds: string[] = [];
 
-      rows.push(`"[Asset]","${assetId}","${accountId}"`);
-      debugLines.push(`✅ ${pair.componentId} → ${assetId} (${sourceNote}) | CID ${pair.newCid} → ${accountId}`);
+        if (parentAssetId) {
+          rows.push(`"[Asset]","${parentAssetId}","${accountId}"`);
+          addedIds.push(`${parentAssetId} (Parent.Id)`);
+          added = true;
+        }
+
+        if (childAssetId && childAssetId !== parentAssetId) {
+          rows.push(`"[Asset]","${childAssetId}","${accountId}"`);
+          addedIds.push(`${childAssetId} (Child.Id)`);
+          added = true;
+        }
+
+        if (!added) {
+          debugLines.push(`❌ ${pair.componentId} → No valid asset ID found`);
+          continue;
+        }
+
+        debugLines.push(`✅ ${pair.componentId} → ${addedIds.join(" & ")} | CID ${pair.newCid} → ${accountId}`);
+      } else {
+        const assetId = assetRow.id;
+        if (!assetId) {
+          debugLines.push(`❌ ${pair.componentId} → No valid asset ID found`);
+          continue;
+        }
+        rows.push(`"[Asset]","${assetId}","${accountId}"`);
+        debugLines.push(`✅ ${pair.componentId} → ${assetId} (Asset.Id) | CID ${pair.newCid} → ${accountId}`);
+      }
     }
 
     setTransferOutput(rows.join("\n"));
     setTransferDebug(debugLines.join("\n"));
 
     if (rows.length === 1) {
-      toast.error(
-        `No records generated. Skipped: ${skippedAmcAssets} AMC asset${skippedAmcAssets === 1 ? "" : "s"}; Missing: ${missingAssets.length} assets, ${missingCids.length} CIDs`
-      );
+      toast.error(`No records generated. Missing: ${missingAssets.length} assets, ${missingCids.length} CIDs`);
     } else {
-      toast.success(
-        `Generated ${rows.length - 1} transfer records${skippedAmcAssets > 0 ? `; skipped ${skippedAmcAssets} AMC asset${skippedAmcAssets === 1 ? "" : "s"}` : ""}`
-      );
+      toast.success(`Generated ${rows.length - 1} transfer records`);
     }
   };
 
@@ -2429,40 +2481,7 @@ export default function SOQLGeneratorPage() {
         return;
       }
 
-      result = buildBalancedAssignments(caseAssignmentRows, selectedOwnerObjects, roundRobinPointerOwnerWise);
-
-      if (result.nextPointer !== undefined && result.startOwner && result.nextStartOwner && result.extraOwners) {
-        setRoundRobinPointerOwnerWise(result.nextPointer);
-        localStorage.setItem("caseAssignmentRoundRobinOwnerWise", result.nextPointer.toString());
-
-        const newHistoryEntry: RoundRobinHistoryEntry = {
-          batchId: roundRobinHistory.length > 0 ? roundRobinHistory[0]!.batchId + 1 : 1,
-          totalCases: caseAssignmentRows.length,
-          baseCases: result.casesPerOwner,
-          extraCases: result.remainder ?? 0,
-          extraOwners: result.extraOwners,
-          startOwner: result.startOwner,
-          nextStartOwner: result.nextStartOwner,
-          timestamp: new Date().toISOString(),
-        };
-        const updatedHistory = [newHistoryEntry, ...roundRobinHistory].slice(0, 10);
-        setRoundRobinHistory(updatedHistory);
-        localStorage.setItem("caseAssignmentHistory", JSON.stringify(updatedHistory));
-
-        const updatedLoad = { ...cumulativeLoad };
-        selectedOwnerObjects.forEach((owner) => {
-          if (!updatedLoad[owner.ownerId]) {
-            updatedLoad[owner.ownerId] = { total: 0, extra: 0 };
-          }
-          updatedLoad[owner.ownerId]!.total += result.casesPerOwner;
-        });
-        result.extraOwners.forEach((owner) => {
-          updatedLoad[owner.ownerId]!.total += 1;
-          updatedLoad[owner.ownerId]!.extra += 1;
-        });
-        setCumulativeLoad(updatedLoad);
-        localStorage.setItem("caseAssignmentCumulativeLoad", JSON.stringify(updatedLoad));
-      }
+      result = buildBalancedAssignments(caseAssignmentRows, selectedOwnerObjects);
     } else {
       const quantityResult = buildQuantityWiseAssignments(caseAssignmentRows, quantityOwnerConfigs);
       if (quantityResult.error || !quantityResult.result) {
@@ -3001,24 +3020,24 @@ export default function SOQLGeneratorPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-[2rem] p-5 lg:p-6"
+        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
       >
         <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-[#0176d3]/10 blur-3xl pointer-events-none dark:bg-[#0176d3]/20 dark:mix-blend-screen" />
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none dark:bg-indigo-500/20 dark:mix-blend-screen" />
         
-        <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative z-10 flex flex-col gap-6 2xl:flex-row 2xl:items-center 2xl:justify-between">
           <div className="flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0176d3] to-indigo-600 text-white shadow-lg shadow-[#0176d3]/30 border border-white/10">
-              <Terminal className="h-6 w-6" />
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0176d3] to-indigo-600 text-white shadow-lg shadow-[#0176d3]/30 border border-white/10">
+              <Terminal className="h-7 w-7" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <Badge className="bg-[#0176d3]/10 text-blue-700 border border-[#0176d3]/30 text-[10px] sm:text-xs font-bold px-3 py-1 flex items-center gap-1.5 shadow-inner backdrop-blur-sm uppercase tracking-widest dark:bg-[#0176d3]/20 dark:text-blue-300 dark:border-[#0176d3]/40">
+                <span className="sm:text-xs font-bold flex items-center gap-1.5 backdrop-blur-sm uppercase tracking-widest text-[10px] font-black text-slate-500 dark:text-slate-400">
                   SALESFORCE DEVELOPER TOOLS
-                </Badge>
-                <Badge className="bg-white/60 text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-1 shadow-inner backdrop-blur-sm hidden sm:inline-flex dark:bg-white/10 dark:text-slate-300 dark:border-white/20">
+                </span>
+                <span className="font-bold backdrop-blur-sm hidden sm:inline-flex text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   Lightning v2.4
-                </Badge>
+                </span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
                 SOQL <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Generator</span>
@@ -3028,7 +3047,7 @@ export default function SOQLGeneratorPage() {
               </p>
             </div>
           </div>
-          <div className="flex w-full flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 self-start lg:w-auto lg:self-center">
+          <div className="flex w-full flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 self-start 2xl:w-auto 2xl:self-center">
             <Button variant="outline" onClick={handleClear} className="gap-2 h-12 px-6 rounded-xl border-slate-200 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-slate-600 font-bold transition-all backdrop-blur-sm bg-white/55 shadow-inner dark:border-slate-600 dark:text-slate-300 dark:bg-slate-800/50 dark:hover:text-red-400">
               <Trash2 className="h-4.5 w-4.5" /> Clear All
             </Button>
@@ -3046,14 +3065,14 @@ export default function SOQLGeneratorPage() {
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-slate-200/50 dark:border-slate-700/50 bg-white/60 dark:bg-white/[0.03] dark:border-white/[0.05] p-4 shadow-sm backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10"
+          className="rounded-2xl border border-slate-200/50 dark:border-slate-700/50 bg-white/60 dark:bg-slate-900/60 p-4 shadow-sm backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10"
         >
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-3 pr-4 border-r border-slate-200 dark:border-slate-700">
               <span className="text-xs font-black uppercase tracking-widest text-slate-500">Total Parsed</span>
-              <Badge className="text-sm font-black bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-3 py-1 shadow-inner">
+              <span className="font-black text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400">
                 {ticketStats.total}
-              </Badge>
+              </span>
             </div>
 
             {statEntries.map(([code, count]) => (
@@ -3072,29 +3091,73 @@ export default function SOQLGeneratorPage() {
         </motion.div>
       )}
 
+            {/* Shortcuts */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5 mb-6 relative z-10">
+          {(() => {
+            const baseShortcuts = [
+              { id: "14", name: "CANCELLATION EXCEPTION", icon: "FileWarning" },
+              { id: "3", name: "ASSET TRANSFER", icon: "ArrowRightLeft" },
+              { id: "4", name: "CASE ASSIGN", icon: "Users" },
+              { id: "20", name: "PRODUCT RECORD TYPE UPDATE", icon: "Database" },
+              { id: "1", name: "UPDATE ACCEPTED & NONE", icon: "CheckCircle2" }
+            ];
+            
+            const dynamicShortcuts = [...baseShortcuts];
+            for (const favId of Array.from(favourites)) {
+              if (!dynamicShortcuts.some(s => s.id === favId)) {
+                const t = templates.find(temp => temp.id === favId);
+                if (t) {
+                  dynamicShortcuts.push({ id: t.id, name: t.name.toUpperCase(), icon: "Star" });
+                }
+              }
+            }
+            return dynamicShortcuts;
+          })().map((shortcut) => (
+            <button
+              key={shortcut.id}
+              onClick={() => handleTemplateChange(shortcut.id)}
+              className="group p-2.5 rounded-2xl flex flex-col items-center justify-between h-full gap-2 transition-all duration-300 border backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 border-white/20 bg-white/40 dark:bg-slate-900/40 dark:border-white/10 dark:hover:bg-slate-800/60"
+            >
+              {shortcut.icon === "FileWarning" && <FileWarning className="h-7 w-7 text-amber-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]" />}
+              {shortcut.icon === "ArrowRightLeft" && <ArrowRightLeft className="h-7 w-7 text-blue-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]" />}
+              {shortcut.icon === "CalendarClock" && <CalendarClock className="h-7 w-7 text-emerald-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(16,185,129,0.6)]" />}
+              {shortcut.icon === "Users" && <Users className="h-7 w-7 text-purple-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]" />}
+              {shortcut.icon === "Database" && <Database className="h-7 w-7 text-indigo-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(99,102,241,0.6)]" />}
+              {shortcut.icon === "CheckCircle2" && <CheckCircle2 className="h-7 w-7 text-rose-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(244,63,94,0.6)]" />}
+              {shortcut.icon === "Star" && <Star className="h-7 w-7 text-amber-400 fill-amber-400/20 transition-all duration-500 ease-out group-hover:scale-125 group-hover:-rotate-12 group-hover:drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]" />}
+              <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight text-slate-700 dark:text-slate-300">
+              {shortcut.name}
+            </span>
+          </button>
+        ))}
+      </div>
       <div className="grid gap-6 grid-cols-1 xl:grid-cols-12 lg:gap-8">
         <motion.div
           initial={{ opacity: 0, x: -8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.25 }}
-          className="2xl:col-span-3 xl:col-span-4 space-y-4 min-w-0 flex flex-col min-h-0"
+          className="2xl:col-span-3 xl:col-span-4 space-y-4 min-w-0 flex flex-col h-full min-h-0"
         >
-          <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] overflow-hidden group">
+          <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
+              {/* WATERMARK */}
+              <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                <span className="text-[25px] md:text-[35px] lg:text-[45px] leading-[0.9] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent flex flex-col">
+                  <span>QUERY</span>
+                  <span>SELECTION</span>
+                </span>
+              </div>
             <CardHeader className="pb-4 bg-transparent relative z-10 p-6">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-                    <FileSpreadsheet className="h-5 w-5" />
-                  </div>
-                  <CardTitle className="text-base font-black tracking-tight whitespace-nowrap">Query Template</CardTitle>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge className="text-[10px] font-black bg-slate-100 dark:bg-slate-800 px-3 py-1 whitespace-nowrap text-slate-500 border border-slate-200 dark:border-slate-700 shadow-sm uppercase tracking-widest">
+              <div className="flex flex-col pt-8">
+                  <div className="flex items-center gap-3 shrink-0">
+                      <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight whitespace-nowrap">Query Template</CardTitle>
+                    </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-black whitespace-nowrap uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
                     {defaultTemplateCount} Built-in
-                  </Badge>
-                  <Badge className={cn("text-[10px] font-black px-3 py-1 whitespace-nowrap shadow-sm uppercase tracking-widest border", libraryLoadState === "error" ? "bg-red-500/10 text-red-600 border-red-500/20" : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20")}>
+                  </span>
+                  <span className={cn("text-[10px] font-black uppercase tracking-widest", libraryLoadState === "error" ? "text-rose-500" : "text-slate-500 dark:text-slate-400")}>
                     {libraryLoadState === "loading" ? "Loading..." : `${libraryTemplateCount} Saved`}
-                  </Badge>
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -3106,11 +3169,11 @@ export default function SOQLGeneratorPage() {
                 onChange={handleTemplateChange}
               />
 
-              <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-black/20 px-4 py-3 border border-slate-200/50 dark:border-slate-800/50 shadow-inner">
+              <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950/50 px-4 py-3 border border-slate-200/50 dark:border-slate-800/50 shadow-inner">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 shrink-0">
+                  <span className="font-black uppercase tracking-widest shrink-0 text-[10px] text-slate-500 dark:text-slate-400">
                     {activeTemplate?.category || "SOQL"}
-                  </Badge>
+                  </span>
                   {activeTemplate?.source === "library" && activeTemplate.usageCount !== undefined && (
                     <span className="text-[11px] font-bold text-slate-400 truncate">
                       Used {activeTemplate.usageCount} time{activeTemplate.usageCount === 1 ? "" : "s"}
@@ -3125,7 +3188,7 @@ export default function SOQLGeneratorPage() {
                   title={activeTemplate?.favourite || favourites.has(selectedTemplate) ? "Remove Bookmark" : "Bookmark Template"}
                 >
                   <Star
-                    className={`h-4.5 w-4.5 transition-transform hover:scale-110 ${
+                    className={`h-4.5 w-4.5 transition-all duration-500 ease-out hover:scale-125 hover:-rotate-12 ${
                       activeTemplate?.source === "library"
                         ? activeTemplate.favourite
                           ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
@@ -3146,12 +3209,12 @@ export default function SOQLGeneratorPage() {
                   </span>
                 </button>
               </div>
-
             </CardContent>
           </Card>
 
           {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && (
-            <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] overflow-hidden group">
+              <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl 
+dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
               <CardHeader className="pb-4 bg-transparent p-6">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
@@ -3206,39 +3269,31 @@ export default function SOQLGeneratorPage() {
 
 
           {!isAssetTransfer && !isChildDetailsToParent && (
-            <Card className="flex flex-col flex-1 min-h-0 rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] overflow-hidden relative">
-              
-              {/* Massive Watermark Step 1 */}
-              <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                  STEP 1
-                </span>
-              </div>
-
-              <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                  <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white">
-                    {isCancellation ? (
-                      <>Paste Your<br />Tickets</>
-                    ) : isCaseAssign ? (
-                      <>Upload or<br />Paste Case IDs</>
-                    ) : (
-                      <>Paste Ticket<br />Numbers</>
-                    )}
-                  </CardTitle>
-                </div>
+            <Card className="flex flex-col flex-1 min-h-0 rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+            STEP 1
+          </span>
+        </div>
+<CardHeader className="pb-4 bg-transparent p-6 relative">
+                <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2">
+                    
+                    <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight flex-1">
+                      {isCancellation ? "Paste Your Tickets" : isCaseAssign ? "Upload or Paste Case IDs" : "Paste Ticket Numbers"}
+                    </CardTitle>
+                  </div>
               </CardHeader>
 
-              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col min-h-0 relative z-10">
+              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
                 {isCaseAssign && (
-                  <div className="flex flex-col flex-1 min-h-0 space-y-4">
+                      <div className="flex flex-col space-y-4 flex-1 min-h-0 h-full">
                     <div 
                       onDragOver={handleDragOver}
                       onDragEnter={handleDragEnter}
                       onDragLeave={handleDragLeave}
                       onDrop={handleFileUpload}
                       className={cn(
-                        "relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 min-h-0 text-center transition-all duration-200 overflow-hidden w-full mx-auto flex-1",
+                        "relative flex flex-col flex-1 items-center justify-center rounded-2xl border-2 border-dashed p-10 min-h-[200px] text-center transition-all duration-200 overflow-hidden w-full mx-auto",
                         uploadState === "reading" || uploadState === "scanning" || uploadState === "validating" 
                           ? "border-blue-400/50 bg-blue-50/50 dark:bg-blue-900/10" 
                           : isDragging 
@@ -3288,31 +3343,13 @@ export default function SOQLGeneratorPage() {
                           <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                           <h4 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Upload Complete</h4>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 text-xs bg-white/40 dark:bg-black/20 dark:border dark:border-white/[0.05] rounded-xl p-3 border border-emerald-100/50 dark:border-emerald-800/30">
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500/80 dark:text-slate-400/80">File Name</span>
-                            <span className="font-black text-slate-700 dark:text-slate-300 truncate" title={uploadSummary.file}>{uploadSummary.file}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500/80 dark:text-slate-400/80">Records Scanned</span>
-                            <span className="font-black text-slate-700 dark:text-slate-300">{uploadSummary.scannedLines.toLocaleString()}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500/80 dark:text-slate-400/80">IDs Detected</span>
-                            <span className="font-black text-slate-700 dark:text-slate-300">{uploadSummary.total.toLocaleString()}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500/80 dark:text-slate-400/80">Unique IDs</span>
-                            <span className="font-black text-slate-700 dark:text-slate-300">{uploadSummary.unique.toLocaleString()}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">Valid Cases</span>
-                            <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{uploadSummary.valid.toLocaleString()}</span>
-                          </div>
-                          <div className="flex flex-col gap-1 min-w-0">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-rose-500 dark:text-rose-400">Not Found</span>
-                            <span className="font-black text-rose-500 dark:text-rose-400 text-sm">{uploadSummary.missing.toLocaleString()}</span>
-                          </div>
+                        <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">File</span><span className="font-bold truncate max-w-[120px]" title={uploadSummary.file}>{uploadSummary.file}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Records Scanned</span><span className="font-bold">{uploadSummary.scannedLines.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Case IDs Detected</span><span className="font-bold">{uploadSummary.total.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-500 font-medium">Unique Case IDs</span><span className="font-bold">{uploadSummary.unique.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-emerald-600 dark:text-emerald-400 font-bold">Valid Cases</span><span className="font-bold text-emerald-600 dark:text-emerald-400">{uploadSummary.valid.toLocaleString()}</span></div>
+                          <div className="flex justify-between"><span className="text-rose-500 font-bold">Not Found</span><span className="font-bold text-rose-500">{uploadSummary.missing.toLocaleString()}</span></div>
                         </div>
                         {missingCases.length > 0 && (
                           <div className="mt-4 pt-3 border-t border-emerald-100 dark:border-emerald-800/30">
@@ -3322,7 +3359,7 @@ export default function SOQLGeneratorPage() {
                                 <Copy className="h-3 w-3 mr-1" /> Copy Missing
                               </Button>
                             </div>
-                            <div className="max-h-24 overflow-y-auto rounded bg-white/60 dark:bg-black/20 dark:border dark:border-white/[0.05] p-2 text-[10px] font-mono text-slate-600 dark:text-slate-400">
+                            <div className="max-h-24 overflow-y-auto rounded bg-white/60 dark:bg-black/20 p-2 text-[10px] font-mono text-slate-600 dark:text-slate-400">
                               {missingCases.slice(0, 50).join("\n")}
                               {missingCases.length > 50 && `\n...and ${missingCases.length - 50} more`}
                             </div>
@@ -3338,7 +3375,7 @@ export default function SOQLGeneratorPage() {
                     <div className="flex-1 flex flex-col space-y-2">
                       <Textarea
                         placeholder={`Paste ticket numbers here...\nA26060134750678\nA26060134750476\nA26060134750619`}
-                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-none min-h-[320px]"
+                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y min-h-[320px]"
                         value={ticketsInput}
                         onChange={(event) => {
                           const value = event.target.value;
@@ -3355,15 +3392,15 @@ export default function SOQLGeneratorPage() {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                      <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
                         {parsedTickets.length === 0 ? "No tickets" : `${parsedTickets.length} ticket${parsedTickets.length === 1 ? "" : "s"}`}
-                      </Badge>
-                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                      </span>
+                      <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
                         {inputBatchCount === 0 ? "0 batches" : `${inputBatchCount} batch${inputBatchCount === 1 ? "" : "es"}`}
-                      </Badge>
-                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                      </span>
+                      <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
                         Max {inputBatchSize} / block
-                      </Badge>
+                      </span>
                       <div className="flex-1" />
                       <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
                         <Trash2 className="h-4 w-4" /> Clear
@@ -3379,43 +3416,44 @@ export default function SOQLGeneratorPage() {
           )}
 
           {isAssetTransfer && (
-            <Card className="flex flex-col rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] overflow-hidden relative">
-              {/* Massive Watermark Step 1 */}
-              <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                  STEP 1
-                </span>
-              </div>
-              <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                  <div className="flex flex-col gap-1 w-full relative">
-                    <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white">
-                      Asset Transfer<br />Data
-                    </CardTitle>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                      Component ID   New CID mapping
-                    </p>
+            <Card className="flex flex-col flex-1 min-h-0 rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+            STEP 1
+          </span>
+        </div>
+<CardHeader className="pb-4 bg-transparent p-6 relative">
+                <div className="flex items-center gap-3 relative z-10">
+                    <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Asset Transfer Data</CardTitle>
                   </div>
-                </div>
               </CardHeader>
-              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col min-h-0 relative z-10">
+              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
                 <div className="flex-1 flex flex-col space-y-2">
                   <label className="text-xs font-black text-slate-500 block uppercase tracking-widest pl-1">Component & New CID Pairs</label>
                   <Textarea
                     placeholder={`COMPONENT        NEW CID\nBSL34933847      CID-2025004\nBSL29709797      CID-4206214\nBSL22295338      CID-6074821`}
-                    className="flex-1 min-h-[100px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-none"
+                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y"
                     value={assetTransferInput}
-                    onChange={(event) => setAssetTransferInput(event.target.value)}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      setAssetTransferInput(val);
+                      if (!val.trim()) {
+                        setAssetSOQLResult("");
+                        setAccountSOQLResult("");
+                        setTransferOutput("");
+                        setTransferDebug("");
+                      }
+                    }}
                   />
                   <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
-                    Paste component ID and new CID pairs. Tab or space separated; spaces inside IDs are ignored. One pair per line.
+                    Paste component ID and new CID pairs. Tab or space separated. One pair per line.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                  <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                  <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
                     {assetPairs.length} pair{assetPairs.length === 1 ? "" : "s"}
-                  </Badge>
+                  </span>
                   <div className="flex-1" />
                   <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
                     <Trash2 className="h-4 w-4" /> Clear
@@ -3433,349 +3471,75 @@ export default function SOQLGeneratorPage() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.25 }}
-          className="2xl:col-span-9 xl:col-span-8 grid grid-cols-1 2xl:grid-cols-2 gap-6 min-w-0 content-start"
+          className={`2xl:col-span-9 xl:col-span-8 grid grid-cols-1 2xl:grid-cols-2 gap-6 min-w-0 ${isTS ? "2xl:grid-rows-2 h-full" : ""}`}
         >
           {isTS && (
             <>
               <QueryPreviewCard
-                  step="2"
-                  title="TS (Ticket Status)"
-                  subtitle="WorkOrder query preview"
-                batches={workOrderPreview} isExample={parsedTickets.length === 0}
+                step="STEP 2"
+                title="TS (Ticket Status)"
+                subtitle="WorkOrder query preview"
+                batches={workOrderPreview}
                 batchIndex={tsBatchIndex}
                 setBatchIndex={setTsBatchIndex}
-                onCopy={handleCopy}
+                className="h-[350px] 2xl:h-full min-h-[320px]"
+                  onCopy={handleCopy}
+              />
+              <PasteResultCard
+                step="PASTE HERE"
+                title="Paste Ticket result"
+                subtitle="Transform Status to Accepted"
+                value={tsResultPaste}
+                onChange={setTsResultPaste}
+                transformedValue={transformStatus(tsResultPaste, "Accepted", "WorkOrder")}
+                className="h-[350px] 2xl:h-full min-h-[320px]"
+                  onCopy={handleCopy}
               />
               <QueryPreviewCard
-                  step="3"
-                  title="SA (Service Appointment)"
-                  subtitle="ServiceAppointment query preview"
-                batches={serviceAppointmentPreview} isExample={parsedTickets.length === 0}
+                step="STEP 3"
+                title="SA (Service Appointment)"
+                subtitle="ServiceAppointment query preview"
+                batches={serviceAppointmentPreview}
                 batchIndex={saBatchIndex}
                 setBatchIndex={setSaBatchIndex}
-                onCopy={handleCopy}
+                className="h-[350px] 2xl:h-full min-h-[320px]"
+                  onCopy={handleCopy}
               />
 
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                {/* Massive Watermark FOR EMAIL */}
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                    FOR EMAIL
-                  </span>
-                </div>
-
-                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
-                    <div className="flex flex-col gap-1 w-full relative">
-                      <div className="absolute top-0 right-0">
-                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(EMAIL_TEMPLATE)}>
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </Button>
-                      </div>
-                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
-                        Email Template<br />Output
-                      </CardTitle>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                    <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
-                      <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
-                        STANDARD EMAIL FORMAT
-                      </span>
-                    </div>
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-0 selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
-                      {EMAIL_TEMPLATE}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                {/* Massive Watermark FOR POST */}
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                    FOR POST
-                  </span>
-                </div>
-
-                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
-                    <div className="flex flex-col gap-1 w-full relative">
-                      <div className="absolute top-0 right-0">
-                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(POST_TEMPLATE)}>
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </Button>
-                      </div>
-                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
-                        Chatter / Post<br />Template
-                      </CardTitle>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                    <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
-                      <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
-                        CHATTER POST FORMAT
-                      </span>
-                    </div>
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-0 selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
-                      {POST_TEMPLATE}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
+              <PasteResultCard
+                step="PASTE HERE"
+                title="Paste Service Appointment result"
+                subtitle="Transform Status to None"
+                value={saResultPaste}
+                onChange={setSaResultPaste}
+                transformedValue={transformStatus(saResultPaste, "None", "ServiceAppointment")}
+                className="h-[350px] 2xl:h-full min-h-[320px]"
+                  onCopy={handleCopy}
+              />
             </>
-          )}
-
-          {isSA && (
-            <QueryPreviewCard
-                  step="3"
-                  title="SA (Service Appointment)"
-                  subtitle="ServiceAppointment query preview"
-              batches={serviceAppointmentPreview} isExample={parsedTickets.length === 0}
-              batchIndex={saBatchIndex}
-              setBatchIndex={setSaBatchIndex}
-              onCopy={handleCopy}
-            />
-          )}
-
-          {isChildDetailsToParent && (
-            <div className="xl:col-span-2 space-y-3">
-              <div className="rounded-2xl border border-slate-200/50 bg-white/45 p-2.5 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)]">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  {[
-                    { step: "1", label: "Component IDs", active: childDetailsComponentIds.length > 0 },
-                    { step: "2", label: "Salesforce Result", active: childDetailsSOQLResult.trim().length > 0 },
-                    { step: "3", label: "Parent CSV", active: childDetailsOutput.trim().length > 0 },
-                  ].map((item) => (
-                    <div key={item.step} className={cn("flex min-h-12 items-center gap-2 rounded-xl border px-2.5 py-2 transition-all", item.active ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "border-slate-200/70 bg-white/35 text-slate-500 dark:border-slate-700/60 dark:bg-white/[0.03] dark:border-white/[0.05]")}>
-                      <span className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black shadow-inner", item.active ? "bg-emerald-500 text-white" : "bg-blue-500 text-white")}>{item.step}</span>
-                      <span className="min-w-0 text-[12px] font-black leading-tight">{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 xl:grid-cols-3">
-                <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)]">
-                  <CardHeader className="p-4 pb-3 bg-transparent relative z-10">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="mb-1.5 flex items-center gap-2">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-xs font-black text-white shadow-inner">1</span>
-                          <CardTitle className="text-sm font-black leading-tight text-foreground">Paste Component IDs</CardTitle>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500">Clean IDs and generate the Asset query.</p>
-                      </div>
-                      <Badge className="shrink-0 border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-600 shadow-sm dark:text-emerald-300">AUTO</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 space-y-3 relative z-10">
-                    <Textarea
-                      placeholder={`2400895187\n2400895188\n2400895189`}
-                      className="h-[118px] min-h-[118px] resize-none rounded-xl border border-transparent bg-slate-100/40 p-3 font-mono text-xs leading-relaxed shadow-none focus-visible:border-blue-500 focus-visible:ring-blue-500/40 dark:bg-black/20 dark:border dark:border-white/[0.05]"
-                      value={childDetailsComponentInput}
-                      onChange={(event) => setChildDetailsComponentInput(event.target.value)}
-                    />
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {childDetailsInputStats.map((item) => (
-                        <div key={item.label} className={cn("rounded-xl border px-2 py-2 shadow-inner", item.tone === "blue" && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-300", item.tone === "amber" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300", item.tone === "rose" && "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300", item.tone === "emerald" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300")}>
-                          <div className="text-base font-black tabular-nums leading-none">{item.value}</div>
-                          <div className="mt-1 text-[8px] font-black uppercase leading-tight opacity-75">{item.label}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50/60 shadow-inner dark:border-slate-700/60 dark:bg-white/[0.03] dark:border-white/[0.05]">
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 px-3 py-2 dark:border-slate-700/60">
-                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500">
-                          <Terminal className="h-3.5 w-3.5 text-blue-500" />
-                          Batch {childDetailsSOQLBatches.length ? childDetailsBatchIndex + 1 : 0}/{childDetailsSOQLBatches.length}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-lg p-0 text-slate-400 hover:bg-blue-500/10 hover:text-blue-600" disabled={childDetailsBatchIndex <= 0} onClick={() => setChildDetailsBatchIndex((value) => Math.max(0, value - 1))} title="Previous query batch">
-                            <ChevronLeft className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 rounded-lg p-0 text-slate-400 hover:bg-blue-500/10 hover:text-blue-600" disabled={childDetailsBatchIndex >= childDetailsSOQLBatches.length - 1} onClick={() => setChildDetailsBatchIndex((value) => Math.min(childDetailsSOQLBatches.length - 1, value + 1))} title="Next query batch">
-                            <ChevronRight className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-blue-500/10 hover:text-blue-600" onClick={() => handleCopy(childDetailsCurrentSOQLBatch)} disabled={!childDetailsCurrentSOQLBatch}>
-                            <Copy className="mr-1 h-3.5 w-3.5" /> Copy
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-blue-500/10 hover:text-blue-600" onClick={handleDownloadChildDetailsQuery} disabled={childDetailsSOQLBatches.length === 0}>
-                            <Download className="mr-1 h-3.5 w-3.5" /> SOQL
-                          </Button>
-                        </div>
-                      </div>
-                      <pre className="h-[155px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-slate-800 selection:bg-blue-500/20 selection:text-blue-900 dark:text-sky-200 dark:selection:text-blue-100">
-                        {childDetailsCurrentSOQLBatch || "Paste valid Component IDs to generate the Asset SOQL query"}
-                      </pre>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)]">
-                  <CardHeader className="p-4 pb-3 bg-transparent relative z-10">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="mb-1.5 flex items-center gap-2">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500 text-xs font-black text-white shadow-inner">2</span>
-                          <CardTitle className="text-sm font-black leading-tight text-foreground">Paste Salesforce Result</CardTitle>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500">Validate export rows before CSV.</p>
-                      </div>
-                      <Badge className={cn("shrink-0 border px-2 py-1 text-[10px] font-black shadow-sm", childDetailsVisibleResult?.missingHeaders.length ? "bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/20" : childDetailsVisibleResult ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 border-emerald-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700")}>
-                        {childDetailsVisibleResult?.missingHeaders.length ? "FIX" : childDetailsVisibleResult ? "VALID" : "WAIT"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 space-y-3 relative z-10">
-                    <Textarea
-                      placeholder={`"_","Id","Component_Id__c","Parent.AccountId"\n"[Asset]","02iNy00000CKkhCIAT","2400895187","001Ny00001iPnOgIAK"`}
-                      className="h-[210px] min-h-[210px] resize-none rounded-xl border border-transparent bg-slate-100/40 p-3 font-mono text-[11px] leading-relaxed shadow-none focus-visible:border-indigo-500 focus-visible:ring-indigo-500/40 dark:bg-black/20 dark:border dark:border-white/[0.05]"
-                      value={childDetailsSOQLResult}
-                      onChange={(event) => setChildDetailsSOQLResult(event.target.value)}
-                    />
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {[
-                        { label: "Rows", value: childDetailsVisibleResult?.sourceRows ?? 0 },
-                        { label: "Ready", value: childDetailsVisibleResult?.generatedRows ?? 0 },
-                        { label: "Columns", value: childDetailsVisibleResult?.missingHeaders.length ?? 0 },
-                        { label: "Skipped", value: childDetailsVisibleResult?.skippedRows ?? 0 },
-                      ].map((item) => (
-                        <div key={item.label} className="rounded-xl border border-slate-200/60 bg-white/45 px-2 py-2 text-slate-600 shadow-inner dark:border-slate-700/60 dark:bg-white/[0.03] dark:border-white/[0.05] dark:text-slate-300">
-                          <div className="text-base font-black leading-none tabular-nums">{item.value}</div>
-                          <div className="mt-1 text-[8px] font-black uppercase leading-tight text-slate-400">{item.label}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className={cn("h-[90px] overflow-auto rounded-xl border px-3 py-2.5", !childDetailsVisibleResult ? "border-slate-200/70 bg-slate-50/70 text-slate-500 dark:border-slate-700/60 dark:bg-white/[0.03] dark:border-white/[0.05]" : childDetailsValidationIssues.some((issue) => issue.tone === "danger") ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-200" : childDetailsValidationIssues.length > 0 ? "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-200" : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200")}>
-                      <div className="flex items-start gap-2">
-                        {!childDetailsVisibleResult ? (
-                          <Filter className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                        ) : childDetailsValidationIssues.length > 0 ? (
-                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        ) : (
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[10px] font-black uppercase">
-                            {!childDetailsVisibleResult ? "Validation" : childDetailsValidationIssues.length > 0 ? "Review" : "Ready"}
-                          </div>
-                          <div className="mt-1 space-y-1 text-[11px] font-semibold leading-relaxed">
-                            {!childDetailsVisibleResult ? (
-                              <p>Paste export to validate columns and rows.</p>
-                            ) : childDetailsValidationIssues.length > 0 ? (
-                              childDetailsValidationIssues.map((issue) => <p key={issue.label}>{issue.label}</p>)
-                            ) : (
-                              <p>Required columns are present and rows are import-ready.</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)]">
-                  <CardHeader className="p-4 pb-3 bg-transparent relative z-10">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="mb-1.5 flex items-center gap-2">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-xs font-black text-white shadow-inner">3</span>
-                          <CardTitle className="text-sm font-black leading-tight text-foreground">Generate Parent CSV</CardTitle>
-                        </div>
-                        <p className="text-[11px] font-semibold text-slate-500">Fixed RecordTypeId and blank ParentId.</p>
-                      </div>
-                      <Badge className="shrink-0 border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-black text-emerald-600 shadow-sm dark:text-emerald-300">CSV</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0 space-y-3 relative z-10">
-                    <Button className="h-9 w-full gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-[12px] font-black text-white shadow-md shadow-emerald-500/20 transition-all hover:-translate-y-0.5 hover:from-emerald-500 hover:to-teal-500" onClick={handleProcessChildDetailsToParent}>
-                      <FileSpreadsheet className="h-4 w-4" /> Generate Parent Asset CSV
-                    </Button>
-
-                    <div className="overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50/60 shadow-inner dark:border-slate-700/60 dark:bg-white/[0.03] dark:border-white/[0.05]">
-                      <div className="flex items-center justify-between gap-2 border-b border-slate-200/60 px-3 py-2 dark:border-slate-700/60">
-                        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-500">
-                          <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" /> Output CSV
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-emerald-500/10 hover:text-emerald-600" onClick={() => handleCopy(childDetailsOutput)} disabled={!childDetailsOutput}>
-                            <Copy className="mr-1 h-3.5 w-3.5" /> Copy
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 rounded-lg px-2 text-[11px] font-bold text-slate-500 hover:bg-emerald-500/10 hover:text-emerald-600" onClick={handleDownloadChildDetailsToParent} disabled={!childDetailsOutput}>
-                            <Download className="mr-1 h-3.5 w-3.5" /> CSV
-                          </Button>
-                        </div>
-                      </div>
-                      <pre className="h-[145px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-relaxed text-slate-800 selection:bg-emerald-500/20 selection:text-emerald-900 dark:text-emerald-200 dark:selection:text-emerald-100">
-                        {childDetailsOutput || `"_","Id","RecordTypeId","ParentId","AccountId"\n"[Asset]","02iNy00000CKkhCIAT","${CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID}","","001Ny00001iPnOgIAK"`}
-                      </pre>
-                    </div>
-
-                    {childDetailsTransformResult && (
-                      <div className={cn("rounded-xl border px-3 py-2 text-[11px] font-bold leading-relaxed", childDetailsTransformResult.generatedRows > 0 ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200" : "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-200")}>
-                        {childDetailsTransformResult.generatedRows > 0 ? `${childDetailsTransformResult.generatedRows} row${childDetailsTransformResult.generatedRows === 1 ? "" : "s"} generated for Data Loader.` : "No rows generated. Fix validation and try again."}
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {childDetailsSummaryStats.map((item) => (
-                        <div key={item.label} className={cn("rounded-xl border px-2 py-2 shadow-inner", item.tone === "blue" && "border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-300", item.tone === "slate" && "border-slate-200/70 bg-slate-50/70 text-slate-600 dark:border-slate-700/60 dark:bg-white/[0.03] dark:border-white/[0.05] dark:text-slate-300", item.tone === "emerald" && "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300", item.tone === "amber" && "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300", item.tone === "rose" && "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300")}>
-                          <div className="text-sm font-black leading-none tabular-nums">{item.value}</div>
-                          <div className="mt-1 text-[8px] font-black uppercase leading-tight opacity-75">{item.label}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {childDetailsVisibleResult?.missingComponentIds.length ? (
-                      <div className="max-h-[54px] overflow-auto rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-[11px] font-semibold leading-relaxed text-amber-700 dark:text-amber-200">
-                        Missing: {childDetailsVisibleResult.missingComponentIds.slice(0, 8).join(", ")}
-                        {childDetailsVisibleResult.missingComponentIds.length > 8 ? "..." : ""}
-                      </div>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
           )}
 
           {isAssetTransfer && (
             <>
-              {/* STEP 2 */}
               <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                     STEP 2
                   </span>
                 </div>
-                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                    <div className="flex flex-col gap-1 w-full relative">
-                      <div className="absolute top-0 right-0">
-                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(assetTransferComponentSOQL)} disabled={!assetTransferComponentSOQL}>
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </Button>
-                      </div>
-                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-[100px]">
-                        Component<br />SOQL Query
-                      </CardTitle>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                        Component Master Query
-                      </p>
-                    </div>
+                  <CardHeader className="pb-3 bg-transparent p-6 relative z-10">
+                    <div className="flex flex-col w-full relative mt-5 md:mt-6">
+                        <div className="absolute top-0 right-0 -mt-1">
+                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(assetTransferComponentSOQL)} disabled={!assetTransferComponentSOQL}>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </Button>
+                        </div>
+                        <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground pr-20">Component SOQL Query</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                    <pre className={`overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 ${!assetTransferComponentSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
+                    <div className="flex flex-col overflow-hidden bg-transparent">
+                    <pre className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 ${!assetTransferComponentSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
                       {assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"}
                     </pre>
                   </div>
@@ -3784,13 +3548,13 @@ export default function SOQLGeneratorPage() {
 
               {/* STEP 3 */}
               <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                     STEP 3
                   </span>
                 </div>
                 <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
+                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
                     <div className="flex flex-col gap-1 w-full relative">
                       <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white">
                         Asset SOQL<br />Result
@@ -3807,38 +3571,39 @@ export default function SOQLGeneratorPage() {
 "_"	"Component_Id__c"	"Id"	"Asset_Obligation__c"	"Account.Customer_ID__c"	"Record_Type__c"	"Parent.Id"`}
                     className="flex-1 min-h-[100px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-none p-4 resize-none"
                     value={assetSOQLResult}
-                    onChange={(event) => setAssetSOQLResult(event.target.value)}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      setAssetSOQLResult(val);
+                      if (!val.trim()) {
+                        setAccountSOQLResult("");
+                        setTransferOutput("");
+                        setTransferDebug("");
+                      }
+                    }}
                   />
                 </CardContent>
               </Card>
 
               {/* STEP 4 */}
               <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                     STEP 4
                   </span>
                 </div>
-                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                    <div className="flex flex-col gap-1 w-full relative">
-                      <div className="absolute top-0 right-0">
-                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(assetTransferAccountSOQL)} disabled={!assetTransferAccountSOQL}>
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </Button>
-                      </div>
-                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-[100px]">
-                        Account<br />SOQL Query
-                      </CardTitle>
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                        Account Master Query
-                      </p>
-                    </div>
+                  <CardHeader className="pb-3 bg-transparent p-6 relative z-10">
+                    <div className="flex flex-col w-full relative mt-5 md:mt-6">
+                        <div className="absolute top-0 right-0 -mt-1">
+                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(assetTransferAccountSOQL)} disabled={!assetTransferAccountSOQL}>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </Button>
+                        </div>
+                        <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground pr-20">Account SOQL Query</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                    <pre className={`overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100 ${!assetTransferAccountSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
+                    <div className="flex flex-col overflow-hidden bg-transparent">
+                    <pre className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100 ${!assetTransferAccountSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
                       {assetTransferAccountSOQL || "Paste component pairs to generate Account SOQL"}
                     </pre>
                   </div>
@@ -3847,13 +3612,13 @@ export default function SOQLGeneratorPage() {
 
               {/* STEP 5 */}
               <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                     STEP 5
                   </span>
                 </div>
                 <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
+                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
                     <div className="flex flex-col gap-1 w-full relative">
                       <div className="absolute top-0 right-0">
                         <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold gap-2 h-8 px-4 rounded-lg text-[10px] shadow-md shadow-fuchsia-500/20 transition-all hover:-translate-y-0.5" onClick={handleProcessTransfer} disabled={!assetSOQLResult || !accountSOQLResult}>
@@ -3880,7 +3645,14 @@ export default function SOQLGeneratorPage() {
 "_"	"Customer_ID__c"	"Id"`}
                     className="flex-1 min-h-[100px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-fuchsia-500/40 focus-visible:border-fuchsia-500 shadow-none p-4 resize-none"
                     value={accountSOQLResult}
-                    onChange={(event) => setAccountSOQLResult(event.target.value)}
+                    onChange={(event) => {
+                      const val = event.target.value;
+                      setAccountSOQLResult(val);
+                      if (!val.trim()) {
+                        setTransferOutput("");
+                        setTransferDebug("");
+                      }
+                    }}
                   />
                 </CardContent>
               </Card>
@@ -3888,13 +3660,13 @@ export default function SOQLGeneratorPage() {
               {/* STEP 6 */}
               {transferOutput && (
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                       RESULT
                     </span>
                   </div>
                   <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
+                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
                       <div className="flex flex-col gap-1 w-full relative">
                         <div className="absolute top-0 right-0">
                           <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(transferOutput)}>
@@ -3911,8 +3683,8 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                      <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-emerald-200 max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100">
+                    <div className="flex flex-col overflow-hidden bg-transparent">
+                        <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-emerald-200 max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100">
                         {transferOutput}
                       </pre>
                     </div>
@@ -3923,13 +3695,13 @@ export default function SOQLGeneratorPage() {
               {/* STEP 7 */}
               {transferDebug && (
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                       DEBUG
                     </span>
                   </div>
                   <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
+                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
                       <div className="flex flex-col gap-1 w-full relative">
                         <div className="absolute top-0 right-0">
                           <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(transferDebug)}>
@@ -3946,8 +3718,8 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                      <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[320px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
+                    <div className="flex flex-col overflow-hidden bg-transparent">
+                        <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[320px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
                         {transferDebug}
                       </pre>
                     </div>
@@ -3957,39 +3729,34 @@ export default function SOQLGeneratorPage() {
             </>
           )}
 
-                    {isCancellation && (() => {
-            const extractedFailedTickets = Array.from(new Set(cancellationFailedInput.match(/[BISXCAD]\d{14,}/gi) || [])).join('\n');
-            const cancellationEmailText = `Hello,\nCancellation has been done successfully.\nExcept: \n${extractedFailedTickets}\n\nTotal count: ${parsedTickets.length}\nRegards`;
-            const cancellationPostText = `@tag_user Cancellation has been done successfully.\nExcept: \n${extractedFailedTickets}\n\nTotal count: ${parsedTickets.length}`;
-            return (
-              <>
-                {/* STEP 2 */}
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+          {isCancellation && (
+            <>
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                       STEP 2
                     </span>
                   </div>
-                  <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                      <div className="flex flex-col gap-1 w-full relative">
-                        <div className="absolute top-0 right-0">
-                          <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                            {cancellationQueryBatches.length} batch{cancellationQueryBatches.length === 1 ? "" : "es"}
-                          </Badge>
+                  <CardHeader className="pb-3 bg-transparent p-6 relative z-10">
+                      <div className="flex flex-col w-full relative mt-5 md:mt-6">
+                        <div className="absolute top-0 right-0 -mt-1">
+                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] || "")} disabled={!cancellationQueryBatches.length}>
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </Button>
                         </div>
-                        <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
-                          Cancellation<br />SOQL Batches
-                        </CardTitle>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          Status not completed, {cancellationBatchSize} tickets per query
-                        </p>
+                        <div className="flex items-center justify-between gap-4 pr-[80px]">
+                          <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                            Cancellation SOQL Batches
+                          </CardTitle>
+                          <span className="font-black uppercase tracking-widest whitespace-nowrap text-[10px] text-slate-500 dark:text-slate-400">
+                            {cancellationQueryBatches.length} BATCH{cancellationQueryBatches.length === 1 ? "" : "ES"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  </CardHeader>
+                    </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                      <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100 text-slate-800 dark:text-sky-200">
+                    <div className="flex flex-col overflow-hidden bg-transparent">
+                        <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100 text-slate-800 dark:text-sky-200">
                         {cancellationQueryBatches[cancellationExecutionBatchIndex]}
                       </pre>
                     </div>
@@ -4005,7 +3772,7 @@ export default function SOQLGeneratorPage() {
                           <ChevronLeft className="h-3.5 w-3.5" />
                           Prev
                         </Button>
-                        <span className="rounded-full border border-slate-200/70 bg-slate-100/60 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                           Batch {cancellationExecutionBatchIndex + 1} of {cancellationQueryBatches.length}
                         </span>
                         <Button
@@ -4020,167 +3787,214 @@ export default function SOQLGeneratorPage() {
                         </Button>
                       </div>
                     )}
-                    <div className="flex items-end justify-between mt-5">
-                        {parsedTickets.length > 0 ? (
-                          <div className="relative z-10 w-full max-w-[220px]">
-                            <div className="flex justify-between items-center text-[10px] font-black text-slate-400 dark:text-slate-500 mb-3 px-0.5">
-                              <span>100</span>
-                              <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 dark:bg-blue-500/20 px-2 py-1 rounded-md tracking-wider uppercase shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)] border border-blue-500/10 dark:border-blue-400/10">
-                                {cancellationBatchSize} TICKETS
-                              </span>
-                              <span>1000</span>
-                            </div>
-                            
-                            <div className="relative w-full h-1.5 rounded-full bg-slate-200/80 dark:bg-slate-800/80 flex items-center shadow-inner">
-                              {/* Filled Track Segment */}
-                              <div 
-                                className="absolute left-0 top-0 h-full rounded-l-full bg-gradient-to-r from-blue-600 to-blue-400 dark:from-indigo-900 dark:via-blue-700 dark:to-blue-400 transition-all duration-150"
-                                style={{ width: `${((cancellationBatchSize - 100) / 900) * 100}%` }}
-                              />
-                              <input 
-                                type="range" 
-                                min="100" 
-                                max="1000" 
-                                step="50"
-                                value={cancellationBatchSize} 
-                                onChange={(e) => setCancellationBatchSize(Number(e.target.value))}
-                                className={cn(
-                                  "absolute inset-0 w-full h-full appearance-none cursor-pointer outline-none bg-transparent transition-all",
-                                  "[&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[14px] [&::-webkit-slider-thumb]:h-[14px]",
-                                  "[&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:shadow-[0_0_0_4px_rgba(59,130,246,0.15)]",
-                                  "hover:[&::-webkit-slider-thumb]:shadow-[0_0_0_6px_rgba(59,130,246,0.25)] hover:[&::-webkit-slider-thumb]:scale-110",
-                                  "[&::-webkit-slider-thumb]:transition-all [&::-webkit-slider-thumb]:duration-150 [&::-webkit-slider-thumb]:ease-out",
-                                  "[&::-moz-range-thumb]:w-[14px] [&::-moz-range-thumb]:h-[14px] [&::-moz-range-thumb]:border-0",
-                                  "[&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:shadow-[0_0_0_4px_rgba(59,130,246,0.15)]",
-                                  "hover:[&::-moz-range-thumb]:shadow-[0_0_0_6px_rgba(59,130,246,0.25)] hover:[&::-moz-range-thumb]:scale-110",
-                                  "[&::-moz-range-thumb]:transition-all [&::-moz-range-thumb]:duration-150 [&::-moz-range-thumb]:ease-out"
-                                )}
-                              />
-                            </div>
+                    
+                  </CardContent>
+                </Card>
+
+
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+          <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+            <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+              STEP 3
+            </span>
+          </div>
+<CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                    <div className="flex items-center justify-between gap-4">
+                      <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                        Paste SOQL Result Batch
+                      </CardTitle>
+                      <span className="font-black uppercase tracking-widest whitespace-nowrap mt-5 md:mt-6 text-[10px] text-slate-500 dark:text-slate-400">
+                        {cancellationResultBatchCount} BATCH{cancellationResultBatchCount === 1 ? "" : "ES"}
+                      </span>
+                    </div>
+                  </CardHeader>
+
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
+                  <Textarea
+                    placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "Cancellation Requested"`}
+                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y"
+                    value={cancellationExecutionInput}
+                    onPaste={handleCancellationResultPaste}
+                    onChange={(event) => handleCancellationResultInputChange(event.target.value)}
+                  />
+
+                  <div className="flex flex-wrap items-center gap-2.5 pt-2 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      <span>Pasted tickets: {parsedTickets.length}</span>
+                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                      <span>Parsed: {cancellationExecutionRows.length}</span>
+                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                      <span>Stored: {uniqueExecutableCancellationRows.length}</span>
+                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                      <span>Remaining: {cancellationRemainingTicketCount}</span>
+                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                      <span>Matched: {cancellationMatchedTicketCount}</span>
+                      {cancellationUnexpectedResultCount > 0 && (
+                        <>
+                          <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                          <span>Outside: {cancellationUnexpectedResultCount}</span>
+                        </>
+                      )}
+                    </div>
+                </CardContent>
+              </Card>
+
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col 2xl:col-span-1 transition-all duration-300 group relative">
+        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+            STEP 4
+          </span>
+        </div>
+<CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+<div className="flex items-center gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex items-center gap-4">
+                            <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">All Records</CardTitle>
                           </div>
-                        ) : (
-                          <div></div>
-                        )}
-                        <Button variant="outline" size="sm" className="h-9 px-4 gap-2 text-[11px] font-extrabold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all border-slate-200 dark:border-slate-700 rounded-xl shadow-sm bg-white/50 dark:bg-slate-900/50" onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] || "")} disabled={!cancellationQueryBatches.length}>
-                          <Copy className="h-3.5 w-3.5" /> Copy Query
-                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* STEP 3 */}
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                      STEP 3
-                    </span>
-                  </div>
-                  <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                      <div className="flex flex-col gap-1 w-full relative">
-                        <div className="absolute top-0 right-0">
-                          <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                            {cancellationResultBatchCount} stored batch{cancellationResultBatchCount === 1 ? "" : "es"}
-                          </Badge>
                         </div>
-                        <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
-                          Paste SOQL<br />Result Batch
-                        </CardTitle>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          Each paste is stored and converted to Canceled
-                        </p>
+                        
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col min-h-0 relative z-10">
-                    <Textarea
-                      placeholder={`Paste batch SOQL result here...
-"_"  "Ticket_Number_Read_Only__c"  "Status"
-...`}
-                      className="flex-1 min-h-[100px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500 shadow-none p-4 resize-none"
-                      value={cancellationExecutionInput}
-                      onChange={(e) => handleCancellationResultInputChange(e.target.value)}
-                      onPaste={handleCancellationResultPaste}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* STEP 4 */}
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                      STEP 4
-                    </span>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="outline" size="sm" className="h-9 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationCanceledOutput)} disabled={uniqueExecutableCancellationRows.length === 0}>
+                        <Copy className="h-3.5 w-3.5" /> Copy All
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-9 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={handleDownloadCancellationOutput} disabled={uniqueExecutableCancellationRows.length === 0}>
+                        <Download className="h-3.5 w-3.5" /> TSV
+                      </Button>
+                    </div>
                   </div>
-                  <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                      <div className="flex flex-col gap-1 w-full relative">
-                        <div className="absolute top-0 right-0 flex gap-2">
-                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationCanceledOutput)} disabled={uniqueExecutableCancellationRows.length === 0}>
-                            <Copy className="h-3.5 w-3.5" /> Copy All
+                </CardHeader>
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
+                  <div className="flex flex-wrap items-center gap-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                      <span>Pasted: {parsedTickets.length}</span>
+                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                      <span>Rows: {uniqueExecutableCancellationRows.length}</span>
+                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                      <span>Status: Canceled</span>
+                    </div>
+                  <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
+                    <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
+                      {uniqueExecutableCancellationRows.length > 0
+                        ? cancellationCanceledOutput
+                        : "\"_\"   \"Id\"   \"Ticket_Number_Read_Only__c\"   \"Status\"\n\"[WorkOrder]\"   \"0WONy000008eHgfOAE\"   \"B25031925463529\"   \"Canceled\""}
+                    </pre>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col 2xl:col-span-1 transition-all duration-300 group relative">
+        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+            STEP 5
+          </span>
+        </div>
+<CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+<div className="flex flex-1 items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-4">
+                            <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                              Paste Failed Results
+                            </CardTitle>
+                          </div>
+                      </div>
+                      
+                    </div>
+                    <span className="font-black uppercase tracking-widest mt-1 shrink-0 text-[10px] text-slate-500 dark:text-slate-400">OPTIONAL</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
+                  <Textarea
+                    placeholder={`Paste Salesforce SOQL result of FAILED tickets here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "Cancellation Requested"`}
+                    className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y"
+                    value={cancellationFailedInput}
+                    onChange={(event) => setCancellationFailedInput(event.target.value)}
+                  />
+                </CardContent>
+              </Card>
+
+              {(() => {
+                const cancellationTotalTickets = parsedTickets.length;
+                const hasFailedInput = cancellationFailedInput.trim().length > 0;
+                
+                // Extract tickets using regex: first a letter, then numbers
+                const cancellationFailedTickets = Array.from(new Set(cancellationFailedInput.match(/[a-zA-Z]\d{5,20}/g) || []));
+                
+                const cancellationFailedCount = hasFailedInput ? cancellationFailedTickets.length : "(Pending)";
+                const cancellationSuccessCount = hasFailedInput ? Math.max(0, cancellationTotalTickets - cancellationFailedTickets.length) : "(Pending)";
+
+                const mailTemplateText = `Dear,\nCancellation has been done successfully.\n\n` +
+                  (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
+                  `Total Tickets: ${cancellationTotalTickets}\n` +
+                  `Cancelled Tickets: ${cancellationSuccessCount}\n` +
+                  `Failed Tickets: ${cancellationFailedCount}`;
+
+                const postTemplateText = `@taguser \nCancellation has been done successfully.\n\n` +
+                  (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
+                  `Total Tickets: ${cancellationTotalTickets}\n` +
+                  `Cancelled Tickets: ${cancellationSuccessCount}\n` +
+                  `Failed Tickets: ${cancellationFailedCount}`;
+
+                return (
+                  <>
+                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+          <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+            <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+              FOR EMAIL
+            </span>
+          </div>
+<CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+<div className="flex items-center justify-between gap-3">
+<div className="flex items-center gap-3">
+<CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Email Template Output</CardTitle>
+                          </div>
+                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(mailTemplateText)}>
+                            <Copy className="h-3.5 w-3.5" /> Copy
                           </Button>
-                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={handleDownloadCancellationOutput} disabled={uniqueExecutableCancellationRows.length === 0}>
-                            <Download className="h-3.5 w-3.5" /> TSV
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                        <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
+                          <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
+                            {mailTemplateText}
+                          </pre>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                        {/* WATERMARK */}
+                        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                            FOR POST
+                          </span>
+                        </div>
+                        <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Post Template Output</CardTitle>
+                          </div>
+                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-indigo-500/10 hover:text-indigo-600 hover:border-indigo-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText)}>
+                            <Copy className="h-3.5 w-3.5" /> Copy
                           </Button>
                         </div>
-                        <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-[180px]">
-                          All Records
-                        </CardTitle>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          Copy table when done
-                        </p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                      <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 text-slate-800 dark:text-sky-200">
-                        {cancellationCanceledOutput || "No parsed batch data yet. Paste batch results above."}
-                      </pre>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* STEP 5 */}
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                      STEP 5
-                    </span>
-                  </div>
-                  <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
-                      <div className="flex flex-col gap-1 w-full relative">
-                        <div className="absolute top-0 right-0">
-                          <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
-                            OPTIONAL
-                          </Badge>
+                      </CardHeader>
+                      <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                        <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
+                          <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
+                            {postTemplateText}
+                          </pre>
                         </div>
-                        <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
-                          Paste Failed<br />Results
-                        </CardTitle>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                          Paste failed tickets to generate stats
-                        </p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col min-h-0 relative z-10">
-                    <Textarea
-                      placeholder={`Paste failed tickets here...
-"TKT-123"
-"TKT-456"
-...`}
-                      className="flex-1 min-h-[100px] font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-amber-500/40 focus-visible:border-amber-500 shadow-none p-4 resize-none"
-                      value={cancellationFailedInput}
-                      onChange={(e) => setCancellationFailedInput(e.target.value)}
-                    />
-                  </CardContent>
-                </Card>
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
 
               {cancellationUpdateDebug && (
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
-                  <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col xl:col-span-2 transition-all duration-300 group relative">
+                  <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/10 text-slate-600 dark:text-slate-400 shadow-inner">
@@ -4194,106 +4008,33 @@ export default function SOQLGeneratorPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
-                    <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                      <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 max-h-[280px] min-h-0 selection:bg-slate-500/20 selection:text-slate-900 dark:selection:text-slate-100">
+                    <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
+                      <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 max-h-[280px] min-h-0 selection:bg-slate-500/20 selection:text-slate-900 dark:selection:text-slate-100">
                         {cancellationUpdateDebug}
                       </pre>
                     </div>
-                                    </CardContent>
+                  </CardContent>
                 </Card>
               )}
-
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                {/* Massive Watermark FOR EMAIL */}
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                    FOR EMAIL
-                  </span>
-                </div>
-
-                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
-                    <div className="flex flex-col gap-1 w-full relative">
-                      <div className="absolute top-0 right-0">
-                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationEmailText)}>
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </Button>
-                      </div>
-                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
-                        Email Template<br />Output
-                      </CardTitle>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                    <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
-                      <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
-                        STANDARD EMAIL FORMAT
-                      </span>
-                    </div>
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
-                      {cancellationEmailText}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
-                {/* Massive Watermark FOR POST */}
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
-                    FOR POST
-                  </span>
-                </div>
-
-                <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
-                    <div className="flex flex-col gap-1 w-full relative">
-                      <div className="absolute top-0 right-0">
-                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationPostText)}>
-                          <Copy className="h-3.5 w-3.5" /> Copy
-                        </Button>
-                      </div>
-                      <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
-                        Chatter / Post<br />Template
-                      </CardTitle>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                    <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 px-4 py-2.5">
-                      <span className="text-[10px] font-mono font-black tracking-widest text-slate-400 uppercase">
-                        CHATTER POST FORMAT
-                      </span>
-                    </div>
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-5 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 max-h-[220px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
-                      {cancellationPostText}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
             </>
-          );
-          })()}
+          )}
 
           {isCaseAssign && (
-            <div className="space-y-6 w-full col-span-1 2xl:col-span-2 flex flex-col">
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-6 items-stretch w-full">
+            <div className="space-y-6 w-full col-span-1 2xl:col-span-2 flex flex-col h-full min-h-0">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch w-full flex-1 min-h-0">
                 {/* === COLUMN 1: WORKBENCH === */}
               <div className="space-y-4 flex flex-col h-full min-h-0">
                 {/* Assignment Mode & Quick Execute Control Box */}
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 relative group">
                                   {/* Massive Watermark Step 2 */}
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                     STEP 2
                   </span>
                 </div>
 
                 <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
+                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
                     <div className="flex flex-col gap-1 w-full relative">
                       <div className="absolute top-0 right-0">
                         <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 shadow-sm">Randomized</span>
@@ -4301,12 +4042,13 @@ export default function SOQLGeneratorPage() {
                       <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-20">
                         Assignment Mode<br />&amp; Execution
                       </CardTitle>
-                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                        <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">{caseAssignmentRows.length} valid IDs</Badge>
-                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">Open status</Badge>
-                        <Badge variant={caseOwnerLoadState === "error" ? "danger" : "outline"} className={cn("text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm", caseOwnerLoadState === "error" ? "bg-rose-500/10 text-rose-600 border-rose-500/20" : "bg-emerald-500/10 text-emerald-600 border-emerald-500/20")}>
-                          {caseOwnerLoadState === "loading" ? "Roster syncing" : caseOwnerLoadState === "error" ? "Roster offline" : `${activeCaseOwners.length} active owners`}
-                        </Badge>
+                      <div className="mt-2 flex flex-wrap items-center gap-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        <span>{caseAssignmentRows.length} valid IDs</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span>Open status</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span className={caseOwnerLoadState === "error" ? "text-rose-500" : ""}>
+                          {caseOwnerLoadState === "loading" ? "Roster syncing" : caseOwnerLoadState === "error" ? "Roster offline" : activeCaseOwners.length + " active owners"}\n                        </span>
                       </div>
                     </div>
                   </div>
@@ -4432,11 +4174,16 @@ export default function SOQLGeneratorPage() {
 
                 {/* 2. Paste Manually (Case Assign Mode) */}
                 <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col flex-1 min-h-0 transition-all duration-300 relative group">
+                  {/* Massive Watermark */}
+                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                    <span className="text-[25px] md:text-[35px] lg:text-[45px] leading-[0.9] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent flex flex-col">
+                      <span>ADD</span>
+                      <span>MANUALLY</span>
+                    </span>
+                  </div>
+
                   <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
-                    <div className="flex items-center gap-3 w-full">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-                        <Terminal className="h-4.5 w-4.5" />
-                      </div>
+                    <div className="flex items-center gap-3 w-full mt-8 md:mt-12">
                       <CardTitle className="text-sm font-black tracking-tight text-foreground flex-1">Or Paste Manually</CardTitle>
                     </div>
                   </CardHeader>
@@ -4457,12 +4204,12 @@ export default function SOQLGeneratorPage() {
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                      <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
                         {parsedCaseIds.length === 0 ? "No case ids" : `${parsedCaseIds.length} case id${parsedCaseIds.length === 1 ? "" : "s"}`}
-                      </Badge>
-                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2.5 py-1 tracking-widest shadow-sm">
+                      </span>
+                      <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
                         Open by default
-                      </Badge>
+                      </span>
                       <div className="flex-1" />
                       <Button variant="outline" size="sm" className="gap-2 h-10 px-4 rounded-xl text-xs hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 transition-all font-bold border-slate-200 dark:border-slate-700" onClick={handleClear}>
                         <Trash2 className="h-4 w-4" /> Clear
@@ -4475,16 +4222,16 @@ export default function SOQLGeneratorPage() {
               {/* === COLUMN 2: RESULTS === */}
               <div className="space-y-4 flex flex-col h-full min-h-0">
                 {/* 1. Assignment Output Box (Right at the Top so you see results without scrolling!) */}
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col flex-1 min-h-0 transition-all duration-300 relative group">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 relative group shrink-0">
                                   {/* Massive Watermark Step 3 */}
-                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90">
-                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
                     STEP 3
                   </span>
                 </div>
 
                 <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-6 md:mt-8">
+                  <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
                     <div className="flex flex-col gap-1 w-full relative">
                       <div className="absolute top-0 right-0 flex gap-2">
                         <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput}>
@@ -4501,21 +4248,20 @@ export default function SOQLGeneratorPage() {
                         Ready for Data Loader
                       </p>
                       {caseAssignmentResult && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm">
-                            {caseAssignmentResult.assignedCount} assigned
-                          </Badge>
-                          <Badge className={cn("text-[10px] font-black uppercase px-2 py-0.5 tracking-widest shadow-sm border", caseAssignmentResult.unassignedCaseIds.length ? "bg-amber-500/10 text-amber-600 dark:text-amber-300 border-amber-500/20" : "bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700")}>
-                            {caseAssignmentResult.unassignedCaseIds.length} unassigned
-                          </Badge>
-                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                            <span>{caseAssignmentResult.assignedCount} assigned</span>
+                            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                            <span className={caseAssignmentResult.unassignedCaseIds.length ? "text-amber-500" : ""}>
+                              {caseAssignmentResult.unassignedCaseIds.length} unassigned
+                            </span>
+                          </div>
                       )}
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-5 pt-0 relative z-10 flex-1 flex flex-col min-h-0">
-                  <div className="rounded-xl bg-slate-100/35 text-foreground flex flex-col min-h-0 flex-1 overflow-hidden dark:bg-black/20 dark:border dark:border-white/[0.05]">
-                    <Textarea
+                <CardContent className="p-5 pt-0 relative z-10 flex flex-col">
+                  <div className="flex flex-col overflow-hidden bg-transparent">
+                      <Textarea
                       readOnly
                       value={caseAssignOutput}
                       placeholder="Click Generate to assign owners..."
@@ -4524,18 +4270,20 @@ export default function SOQLGeneratorPage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
 
             {/* === COLUMN 3: ROSTER === */}
-            <div className="space-y-4 flex flex-col h-full min-h-0">
               {/* Owner Roster Box */}
-              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col flex-1 min-h-0 transition-all duration-300 relative group">
+              <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 relative group flex-1 min-h-0">
+                  {/* Massive Watermark */}
+                  <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                    <span className="text-[25px] md:text-[35px] lg:text-[45px] leading-[0.9] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent flex flex-col">
+                      <span>OWNER</span>
+                      <span>LIST</span>
+                    </span>
+                  </div>
                 <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 shadow-inner">
-                        <Users className="h-4.5 w-4.5" />
-                      </div>
+                    <div className="flex items-center gap-3 flex-1 mt-8 md:mt-12">
                       <CardTitle className="text-sm font-black tracking-tight text-foreground flex-1">Owner Management ({caseOwners.length})</CardTitle>
                     </div>
                     <div className="flex flex-wrap sm:flex-nowrap items-center gap-1 bg-slate-50/50 dark:bg-white/[0.03] dark:border-white/[0.05] p-1 rounded-xl border border-slate-200/50 dark:border-slate-700/50 shadow-inner shrink-0">
@@ -4608,8 +4356,8 @@ export default function SOQLGeneratorPage() {
                               <span className={cn("h-2 w-2 rounded-full", owner.isActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-400")} />
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-xs font-black text-foreground whitespace-nowrap">{owner.name}</span>
-                              <span className="text-[10px] font-mono text-slate-400">{owner.ownerId}</span>
+                              <span className="text-xs font-black text-foreground whitespace-normal break-words">{owner.name}</span>
+                              <span className="text-[10px] font-mono text-slate-400 break-all">{owner.ownerId}</span>
                             </div>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
@@ -4672,11 +4420,9 @@ export default function SOQLGeneratorPage() {
                       {caseAssignmentResult.extraOwners && caseAssignmentResult.extraOwners.length > 0 && (
                         <div className="pt-2">
                           <span className="text-[10px] font-bold uppercase text-slate-500">Extra Case Owners:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {caseAssignmentResult.extraOwners.map(o => (
-                              <Badge key={o.id} className="bg-purple-500/10 text-purple-600 border border-purple-500/20 text-[9px] px-1.5 py-0">{o.name}</Badge>
-                            ))}
-                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1 text-[10px] font-black text-slate-500 dark:text-slate-400">
+                              {caseAssignmentResult.extraOwners.map(o => o.name).join(', ')}
+                            </div>
                         </div>
                       )}
                     </div>
@@ -4783,7 +4529,7 @@ export default function SOQLGeneratorPage() {
             <QueryPreviewCard
               title={activeTemplate?.name ?? "Query Preview"}
               subtitle={`${activeTemplate?.category ?? ""} query preview`}
-              batches={otherPreview} isExample={parsedTickets.length === 0}
+              batches={otherPreview}
               batchIndex={otherBatchIndex}
               setBatchIndex={setOtherBatchIndex}
               onCopy={handleCopy}

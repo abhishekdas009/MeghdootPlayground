@@ -359,7 +359,7 @@ export default function HelpPage() {
       </motion.div>
 
       <motion.section
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, delay: 0.08, ease: "easeOut" }}
         className="group relative overflow-hidden rounded-[2rem] border border-white/40 dark:border-white/10 bg-gradient-to-br from-slate-100/80 via-white/90 to-slate-50/80 dark:from-slate-900/90 dark:via-slate-950/90 dark:to-slate-900/90 px-[clamp(1.5rem,4vw,2.5rem)] py-[clamp(1.5rem,3.5vw,2.25rem)] shadow-2xl shadow-blue-900/5 backdrop-blur-2xl transition-all duration-500 hover:shadow-blue-900/10 dark:shadow-black/50"

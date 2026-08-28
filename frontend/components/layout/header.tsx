@@ -7,8 +7,6 @@ import {
   Search,
   Command,
   Menu,
-  Sun,
-  Moon,
   BellRing,
   Clock,
   Check,
@@ -122,16 +120,14 @@ export function Header() {
     const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
     const root = document.documentElement;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const transitionDocument = document as ViewTransitionDocument;
 
-    if (!prefersReducedMotion && transitionDocument.startViewTransition) {
-      transitionDocument.startViewTransition(() => applyTheme(nextTheme));
-      return;
+    if (!prefersReducedMotion) {
+      root.classList.add("theme-transition");
     }
-
-    root.classList.add("theme-transition");
     applyTheme(nextTheme);
-    window.setTimeout(() => root.classList.remove("theme-transition"), 480);
+    if (!prefersReducedMotion) {
+      window.setTimeout(() => root.classList.remove("theme-transition"), 480);
+    }
   };
 
   const unreadActivityIds = React.useMemo(() => {
@@ -303,56 +299,91 @@ export function Header() {
 
           {/* Theme rail + activity updates */}
           <div className="hidden md:flex items-center gap-2">
-            <button
+              <button
                 type="button"
                 role="switch"
                 aria-checked={theme === "dark"}
                 onClick={toggleTheme}
-                className="group relative flex h-[38px] w-[76px] shrink-0 items-center overflow-hidden rounded-full border border-slate-200/50 bg-white/60 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-slate-300 dark:border-white/10 dark:bg-slate-900/40 dark:hover:border-white/20"
-                aria-label={theme === "dark" ? "Dark theme active. Switch to light theme" : "Light theme active. Switch to dark theme"}
+                className={cn(
+                  "relative flex h-[34px] w-[70px] shrink-0 items-center overflow-hidden rounded-full transition-colors duration-500 ease-in-out shadow-inner",
+                  theme === "dark" ? "bg-[#5a56c6]" : "bg-[#48b5f2]"
+                )}
+                aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
                 title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
               >
-                {/* Track Gradient Background */}
-                <span className={cn("pointer-events-none absolute inset-0 transition-opacity duration-500", theme === "light" ? "bg-gradient-to-r from-amber-500/5 to-blue-500/15 opacity-100" : "bg-gradient-to-r from-blue-500/20 to-indigo-500/10 opacity-100")} />
+                {/* Dark Mode Decor: Stars */}
+                <div
+                  className={cn(
+                    "absolute inset-0 transition-opacity duration-500",
+                    theme === "dark" ? "opacity-100" : "opacity-0"
+                  )}
+                >
+                  <svg width="100%" height="100%" viewBox="0 0 70 34" className="absolute inset-0 pointer-events-none">
+                    <g transform="translate(45, 8) scale(0.6)">
+                      <path d="M 5 0 L 6.5 3.5 L 10 3.5 L 7 5.5 L 8.5 9 L 5 7 L 1.5 9 L 3 5.5 L 0 3.5 L 3.5 3.5 Z" fill="white" opacity="0.9" />
+                    </g>
+                    <g transform="translate(56, 17) scale(0.4)">
+                      <path d="M 5 0 L 6.5 3.5 L 10 3.5 L 7 5.5 L 8.5 9 L 5 7 L 1.5 9 L 3 5.5 L 0 3.5 L 3.5 3.5 Z" fill="white" opacity="0.6" />
+                    </g>
+                    <g transform="translate(41, 21) scale(0.5)">
+                      <path d="M 5 0 L 6.5 3.5 L 10 3.5 L 7 5.5 L 8.5 9 L 5 7 L 1.5 9 L 3 5.5 L 0 3.5 L 3.5 3.5 Z" fill="white" opacity="0.4" />
+                    </g>
+                  </svg>
+                </div>
 
-                {/* Left Icon (Sun) - sits in background when dark */}
-                <Sun className={cn("pointer-events-none absolute left-[12px] h-[15px] w-[15px] transition-all duration-300", theme === "light" ? "text-amber-500 opacity-0 scale-75" : "text-amber-500/70 opacity-100 scale-100")} />
+                {/* Light Mode Decor: Clouds */}
+                <div
+                  className={cn(
+                    "absolute inset-0 transition-opacity duration-500",
+                    theme === "light" ? "opacity-100" : "opacity-0"
+                  )}
+                >
+                  <svg width="100%" height="100%" viewBox="0 0 70 34" className="absolute inset-0 pointer-events-none">
+                    <rect x="10" y="10" width="12" height="4" rx="2" fill="white" opacity="0.95" />
+                    <rect x="14" y="8" width="6" height="4" rx="2" fill="white" opacity="0.95" />
 
-                {/* Right Icon (Moon) - sits in background when light */}
-                <Moon className={cn("pointer-events-none absolute right-[12px] h-[15px] w-[15px] transition-all duration-300", theme === "dark" ? "text-blue-400 opacity-0 scale-75" : "text-blue-500/70 opacity-100 scale-100")} />
+                    <rect x="18" y="22" width="14" height="4" rx="2" fill="white" opacity="0.8" />
+                    <rect x="22" y="20" width="8" height="4" rx="2" fill="white" opacity="0.8" />
+                    
+                    <rect x="6" y="20" width="8" height="3" rx="1.5" fill="white" opacity="0.6" />
+                  </svg>
+                </div>
 
                 {/* Thumb */}
                 <motion.span
                   aria-hidden="true"
-                  animate={{ x: theme === "dark" ? 38 : 2 }}
-                  transition={{ type: "spring", stiffness: 450, damping: 30 }}
-                  className="absolute flex h-[32px] w-[32px] items-center justify-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] ring-1 ring-black/5 dark:bg-slate-800 dark:shadow-[0_2px_8px_rgba(0,0,0,0.2)] dark:ring-white/10"
+                  animate={{ x: theme === "dark" ? 3 : 39 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  className="absolute flex h-[28px] w-[28px] items-center justify-center rounded-full shadow-sm"
                 >
-                  <AnimatePresence mode="wait" initial={false}>
-                    {theme === "dark" ? (
-                      <motion.span
-                        key="dark"
-                        initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
-                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                        exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="flex"
-                      >
-                        <Moon className="h-[15px] w-[15px] text-blue-400" />
-                      </motion.span>
-                    ) : (
-                      <motion.span
-                        key="light"
-                        initial={{ opacity: 0, rotate: -45, scale: 0.7 }}
-                        animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                        exit={{ opacity: 0, rotate: 45, scale: 0.7 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="flex"
-                      >
-                        <Sun className="h-[15px] w-[15px] text-amber-500" />
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
+                    {/* Moon */}
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        opacity: theme === "dark" ? 1 : 0,
+                        rotate: theme === "dark" ? 0 : -90,
+                        scale: theme === "dark" ? 1 : 0.5
+                      }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className="absolute inset-0 rounded-full bg-[#dcdcdc] overflow-hidden"
+                    >
+                        {/* Craters */}
+                        <div className="absolute left-[4px] top-[6px] h-[6px] w-[6px] rounded-full bg-[#bebebe]" />
+                        <div className="absolute left-[6px] bottom-[5px] h-[8px] w-[8px] rounded-full bg-[#bebebe]" />
+                        <div className="absolute right-[8px] top-[12px] h-[5px] w-[5px] rounded-full bg-[#bebebe]" />
+                    </motion.div>
+
+                    {/* Sun */}
+                    <motion.div
+                      initial={false}
+                      animate={{
+                        opacity: theme === "light" ? 1 : 0,
+                        rotate: theme === "light" ? 0 : 90,
+                        scale: theme === "light" ? 1 : 0.5
+                      }}
+                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      className="absolute inset-0 rounded-full bg-[#f8c844] border-[3px] border-[#d8a127]"
+                    />
                 </motion.span>
               </button>
 
