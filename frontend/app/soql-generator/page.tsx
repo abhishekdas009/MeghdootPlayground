@@ -3095,7 +3095,7 @@ export default function SOQLGeneratorPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-1.5 mb-6 relative z-10">
           {(() => {
             const baseShortcuts = [
-              { id: "14", name: "CANCELLATION EXCEPTION", icon: "FileWarning" },
+              { id: "19", name: "CANCELLATION REQUESTED", icon: "FileWarning" },
               { id: "3", name: "ASSET TRANSFER", icon: "ArrowRightLeft" },
               { id: "4", name: "CASE ASSIGN", icon: "Users" },
               { id: "20", name: "PRODUCT RECORD TYPE UPDATE", icon: "Database" },
