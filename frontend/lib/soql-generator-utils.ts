@@ -134,7 +134,11 @@ export const defaultTemplates: Template[] = [
     id: "19",
     name: "Cancellation Requested",
     category: "WorkOrder",
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nAND Status = 'Cancellation Requested'`,
+    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status
+FROM WorkOrder
+WHERE Ticket_Number_Read_Only__c IN (
+{{tickets}}
+)`,
     favourite: false,
   },
   {
