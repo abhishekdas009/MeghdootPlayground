@@ -56,6 +56,7 @@ import {
     FileWarning,
     CalendarClock,
     Database,
+  CornerRightUp,
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -207,13 +208,6 @@ AND Ticket_Number_Read_Only__c IN (
     type: "asset-transfer",
   },
   {
-    id: "13",
-    name: "CANCELLATION TICKETS",
-    category: "WorkOrder",
-    soql: CANCELLATION_QUERY_TEMPLATE,
-    favourite: false,
-  },
-  {
     id: "19",
     name: "Cancellation Requested",
     category: "WorkOrder",
@@ -221,31 +215,10 @@ AND Ticket_Number_Read_Only__c IN (
     favourite: false,
   },
   {
-    id: "14",
-    name: "Case Cancellation",
-    category: "WorkOrder",
-    soql: `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
-    favourite: false,
-  },
-  {
     id: "20",
-    name: "Product Record Type update",
-    category: "Product",
-    soql: "SELECT Id,ProductCode, Product2.Name,Product2.RecordType.Name,Product2.Product_Family__r.Name,Product2.Product_Sub_Family__r.Name FROM Product2 WHERE ProductCode IN (\n{{tickets}}\n)",
-    favourite: false,
-    type: "product-record-type-update",
-  },
-  {
-    id: "2",
-    name: "Extract SA Details",
-    category: "ServiceAppointment",
-    soql: `SELECT Id, Status
-FROM ServiceAppointment
-WHERE Work_Order__r.Status NOT IN (\'Completed\',\'Canceled\',\'Cancellation Requested\')
-AND Work_Order__r.ParentWorkOrderId = null
-AND Ticket_Numbers__c IN (
-{{tickets}}
-)`,
+    name: "CHILD TO PARENT UPDATED",
+    category: "Asset",
+    soql: "SELECT Id, Component_Id__c, Parent.AccountId, ParentId, RecordTypeId FROM Asset WHERE Component_Id__c IN (\n{{tickets}}\n)",
     favourite: false,
   },
   {
@@ -277,13 +250,6 @@ AND Ticket_Numbers__c IN (
     favourite: false,
   },
   {
-    id: "8",
-    name: "TS (Open Tickets Only)",
-    category: "WorkOrder",
-    soql: `SELECT Id, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nAND Status NOT IN ('Completed','Canceled','Bundled')`,
-    favourite: false,
-  },
-  {
     id: "9",
     name: "Account ID Fetch",
     category: "Account",
@@ -310,14 +276,6 @@ AND Ticket_Numbers__c IN (
     category: "Asset",
     soql: `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n{{tickets}}\n)`,
     favourite: false,
-  },
-  {
-    id: "15",
-    name: "Child Details to Parent",
-    category: "Asset",
-    soql: `SELECT Id,\nComponent_Id__c,\nParent.AccountId,\nParentId,\nRecordTypeId\nFROM Asset\nWHERE Component_Id__c IN (\n{{tickets}}\n)`,
-    favourite: false,
-    type: "child-details-to-parent",
   },
   {
     id: "16",
@@ -1178,24 +1136,24 @@ function PasteResultCard({
         </div>
       )}
       <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-        <div className={`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${step ? "mt-5 md:mt-6" : ""}`}>
-          <div>
+        <div className={`flex flex-row flex-wrap gap-4 items-start justify-between`}>
+          <div className="flex-1 min-w-[200px]">
             <div className="flex items-center gap-3">
-              <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">{title}</CardTitle>
+              <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1">{title}</CardTitle>
             </div>
             <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">{subtitle}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6">
             <Button
               variant="outline"
               size="sm"
-              className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm"
+              className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-md"
               onClick={() => { onChange(""); }}
             >
               <Trash2 className="h-3.5 w-3.5" /> Clear
             </Button>
             <MagneticButton
-              className="h-8 px-3 gap-2 text-xs font-bold bg-emerald-500/10 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg shadow-sm"
+              className="h-8 px-3 gap-2 text-xs font-bold bg-emerald-50 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:text-emerald-300 border border-emerald-500/20 hover:border-emerald-500/40 rounded-lg shadow-sm backdrop-blur-md"
               onClick={() => onCopy(transformedValue)}
               glowColor="rgba(16, 185, 129, 0.15)"
             >
@@ -1204,15 +1162,15 @@ function PasteResultCard({
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-4 pt-0 flex-1 flex flex-col gap-4 relative z-10 overflow-hidden">
+      <CardContent className="p-4 pt-0 flex-1 flex flex-col min-h-0 gap-4 relative z-10 overflow-hidden">
         <textarea
-          className="flex-1 w-full rounded-2xl border border-slate-200/50 bg-white/50 dark:bg-white/[0.02] dark:border-white/5 p-4 text-[13px] font-mono leading-relaxed text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-none transition-all shadow-inner custom-scrollbar"
+          className="flex-1 min-h-0 w-full rounded-2xl border border-slate-200/50 bg-white/50 dark:bg-white/[0.02] dark:border-white/5 p-4 text-[13px] font-mono leading-relaxed text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 resize-none transition-all shadow-inner custom-scrollbar"
           placeholder="Paste CSV from Salesforce Inspector here..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
         {value.trim() && (
-          <div className="flex-1 w-full rounded-2xl border border-indigo-200/50 bg-indigo-50/30 dark:bg-indigo-900/10 dark:border-indigo-500/20 p-4 overflow-auto shadow-inner relative">
+          <div className="flex-1 min-h-0 w-full rounded-2xl border border-indigo-200/50 bg-indigo-50/30 dark:bg-indigo-900/10 dark:border-indigo-500/20 p-4 overflow-auto shadow-inner relative">
             <div className="absolute top-2 right-3">
               <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/70 dark:text-indigo-400/50">OUTPUT</span>
             </div>
@@ -1261,14 +1219,14 @@ function QueryPreviewCard({
       )}
 
       <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
-        <div className={`flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between ${step ? "mt-5 md:mt-6" : ""}`}>
-          <div>
+        <div className={`flex flex-row flex-wrap gap-4 items-start justify-between`}>
+          <div className="flex-1 min-w-[200px]">
             <div className="flex items-center gap-3">
-              <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">{title}</CardTitle>
+              <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1">{title}</CardTitle>
             </div>
             <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">{subtitle}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6">
             <span className="font-black uppercase tracking-widest text-[10px] text-slate-500 dark:text-slate-400">
               {batches.length} batch{batches.length === 1 ? "" : "es"}
             </span>
@@ -1305,7 +1263,7 @@ function QueryPreviewCard({
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm"
+                className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-md"
                 onClick={() => onCopy(currentBatch)}
               >
                 <Copy className="h-3.5 w-3.5" /> Copy
@@ -1325,7 +1283,7 @@ function QueryPreviewCard({
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+      <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
         {batches.length > 0 ? (
           <div className="rounded-2xl text-foreground flex flex-col min-h-0 flex-1 overflow-hidden relative bg-transparent border-transparent shadow-none transition-all duration-300 group/glass">
             <div className="relative flex-1 min-h-0">
@@ -1507,7 +1465,7 @@ function TemplatePicker({
           {isLibraryTemplate ? <Bookmark className="h-3.5 w-3.5" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-bold leading-tight">{template.name}</span>
+          <span className="block text-[11px] md:text-xs font-bold leading-tight whitespace-normal pr-1">{template.name}</span>
           <span className={cn("mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em]", isSelected ? "text-blue-600 dark:text-sky-200/80" : "text-slate-500 group-hover:text-blue-500 dark:group-hover:text-sky-200/70")}>
             {template.category}
           </span>
@@ -1532,17 +1490,17 @@ function TemplatePicker({
         onClick={() => (isOpen ? closeMenu() : openMenu())}
         onKeyDown={handleKeyDown}
         className={cn(
-          "group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-200",
+          "group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition-all duration-300 backdrop-blur-md",
           isOpen
-            ? "border-blue-400/60 bg-white/90 text-slate-950 ring-2 ring-blue-400/20 dark:bg-slate-900 dark:text-white"
-            : "border-slate-200/80 bg-white/75 text-slate-900 hover:border-sky-400/45 hover:bg-white dark:border-slate-700/80 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-900"
+            ? "border-white/30 bg-white/20 text-slate-900 ring-2 ring-white/20 dark:bg-black/40 dark:border-white/20 dark:text-white"
+            : "border-slate-300/40 bg-white/10 text-slate-900 hover:border-white/60 hover:bg-white/20 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-100 dark:hover:bg-white/[0.08]"
         )}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-600 dark:border-blue-400/20 dark:text-blue-300">
           {selectedTemplate?.source === "library" ? <Bookmark className="h-4 w-4" /> : <FileSpreadsheet className="h-4 w-4" />}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-bold leading-tight">{selectedTemplate?.name ?? "Select a template"}</span>
+          <span className="block text-xs font-bold leading-tight whitespace-normal">{selectedTemplate?.name ?? "Select a template"}</span>
           <span className="mt-1 block truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             {selectedTemplate?.source === "library" ? "Saved template" : selectedTemplate?.category ?? "Choose a query type"}
           </span>
@@ -1557,7 +1515,7 @@ function TemplatePicker({
             className="fixed z-[100] overflow-hidden rounded-2xl border border-slate-200/90 bg-white/[0.98] p-1.5 text-slate-900 shadow-[0_20px_60px_rgba(15,23,42,0.16),0_0_0_1px_rgba(1,118,211,0.08)] backdrop-blur-2xl dark:border-slate-600/80 dark:bg-[#071426]/[0.98] dark:text-slate-100 dark:shadow-[0_20px_60px_rgba(0,0,0,0.5),0_0_0_1px_rgba(96,182,255,0.08)]"
             style={{
               left: menuPosition.left,
-              width: menuPosition.width,
+              minWidth: menuPosition.width, maxWidth: 'calc(100vw - 24px)', width: 'max-content',
               top: menuPosition.top,
               bottom: menuPosition.bottom,
               maxHeight: menuPosition.maxHeight,
@@ -1610,6 +1568,60 @@ export default function SOQLGeneratorPage() {
   const [assetTransferInput, setAssetTransferInput] = React.useState("");
   const [assetSOQLResult, setAssetSOQLResult] = React.useState("");
   const [accountSOQLResult, setAccountSOQLResult] = React.useState("");
+
+  const [childDetailsInput, setChildDetailsInput] = React.useState("");
+  const customChildDetailsProcessor = React.useMemo(() => {
+    if (!childDetailsInput.trim()) return { output: "", count: 0, skipped: 0, debug: "" };
+    
+    const lines = childDetailsInput.trim().split("\n");
+    const outputLines = [];
+    outputLines.push(`"_"	"Id"	"AccountId"	"ParentId"	"RecordTypeId"`);
+    
+    let count = 0;
+    let skipped = 0;
+    let debug = "";
+    
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line || !line.trim()) continue;
+      
+      const cols = line.split("\t");
+      if (cols.length < 6) {
+        skipped++;
+        debug += `❌ Line ${i + 1}: Expected 6 columns, found ${cols.length}\n`;
+        continue;
+      }
+      
+      const underscore = cols[0] || "";
+      const id = cols[1] || "";
+      const accountId = cols[3] || "";
+      
+      if (underscore.includes("_") && id.includes("Id")) {
+        continue;
+      }
+      
+      if (!underscore.toLowerCase().includes("asset")) {
+        skipped++;
+        debug += `❌ Line ${i + 1}: Validation Error - Not an Asset record (Found: ${underscore})\n`;
+        continue;
+      }
+      
+      const parentId = '""';
+      const recordTypeId = '"012Ny0000003SvrIAE"';
+      outputLines.push(`${underscore}\t${id}\t${accountId}\t${parentId}\t${recordTypeId}`);
+      
+      count++;
+      debug += `✅ Mapped: ${id} -> ${accountId}\n`;
+    }
+    
+    return { 
+      output: outputLines.join("\n"), 
+      count, 
+      skipped, 
+      debug: debug || "Processing completed." 
+    };
+  }, [childDetailsInput]);
+
   const [transferOutput, setTransferOutput] = React.useState("");
   const [transferDebug, setTransferDebug] = React.useState("");
 
@@ -1622,6 +1634,7 @@ export default function SOQLGeneratorPage() {
 
   const [cancellationExecutionInput, setCancellationExecutionInput] = React.useState("");
   const [cancellationFailedInput, setCancellationFailedInput] = React.useState("");
+  const [cancellationType, setCancellationType] = React.useState<"CCO" | "NAMO" | "NON NAMO" | "CASE">("CCO");
   const [cancellationStoredRows, setCancellationStoredRows] = React.useState<CancellationExecutionRow[]>([]);
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
 
@@ -1645,7 +1658,7 @@ export default function SOQLGeneratorPage() {
   const [missingCases, setMissingCases] = React.useState<string[]>([]);
   const [autoRunPending, setAutoRunPending] = React.useState(false);
 
-  const savedTicketsRef = React.useRef("");
+  
   const dragCounterRef = React.useRef(0);
 
   const activeTemplate = templates.find((template) => template.id === selectedTemplate);
@@ -1661,7 +1674,7 @@ export default function SOQLGeneratorPage() {
   const isSA = selectedTemplate === "2";
   const isAssetTransfer = selectedTemplate === "3" || (activeTemplate?.source !== "library" && (activeTemplate?.name?.toLowerCase()?.includes("transfer") ?? false)) || (activeTemplate?.type === "asset-transfer");
   const isChildDetailsToParent =
-    selectedTemplate === "15" || activeTemplate?.type === "child-details-to-parent";
+    selectedTemplate === "20" || activeTemplate?.type === "child-details-to-parent";
   const isCaseAssign = selectedTemplate === "4";
   const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19" || (activeTemplate?.name?.toLowerCase()?.includes("cancellation") ?? false) || (activeTemplate?.name?.toLowerCase()?.includes("cancel") ?? false);
 
@@ -1910,18 +1923,30 @@ export default function SOQLGeneratorPage() {
 
   const buildPreviewBatches = React.useCallback(
     (templateId: string) => {
-      const template = templates.find((item) => item.id === templateId);
-      if (!template) return [];
+      let templateSoql = "";
+      if (templateId === "2") {
+        templateSoql = `SELECT Id, Status
+FROM ServiceAppointment
+WHERE Work_Order__r.Status NOT IN ('Completed','Canceled','Cancellation Requested')
+AND Work_Order__r.ParentWorkOrderId = null
+AND Ticket_Numbers__c IN (
+{{tickets}}
+)`;
+      } else {
+        const template = templates.find((item) => item.id === templateId);
+        if (!template) return [];
+        templateSoql = template.soql;
+      }
 
       if (parsedTickets.length === 0) {
-        return [template.soql.replace("{{tickets}}", "")];
+        return [templateSoql.replace("{{tickets}}", "")];
       }
 
       const batches: string[] = [];
       for (let index = 0; index < parsedTickets.length; index += SOQL_BATCH_SIZE) {
         const chunk = parsedTickets.slice(index, index + SOQL_BATCH_SIZE);
         const formatted = formatTicketsForSOQL(chunk);
-        const query = template.soql.replace("{{tickets}}", formatted);
+        const query = templateSoql.replace("{{tickets}}", formatted);
         batches.push(query);
       }
 
@@ -1934,19 +1959,25 @@ export default function SOQLGeneratorPage() {
   const serviceAppointmentPreview = React.useMemo(() => buildPreviewBatches("2"), [buildPreviewBatches]);
   const otherPreview = React.useMemo(() => buildPreviewBatches(selectedTemplate), [buildPreviewBatches, selectedTemplate]);
   const cancellationQueryBatches = React.useMemo(() => {
-    if (parsedTickets.length === 0) {
-      if (!activeTemplate?.soql?.includes("{{tickets}}") && activeTemplate?.soql) {
-        return [activeTemplate.soql];
-      }
-      return [];
+    let templateSoql = "";
+    if (cancellationType === "CCO") {
+      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+    } else if (cancellationType === "NAMO") {
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+    } else if (cancellationType === "NON NAMO") {
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+    } else if (cancellationType === "CASE") {
+      templateSoql = `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     }
 
-    const templateSoql = activeTemplate?.soql || CANCELLATION_QUERY_TEMPLATE;
+    if (parsedTickets.length === 0) {
+      return [templateSoql.replace("{{tickets}}", "")];
+    }
 
     return chunkArray(parsedTickets, CANCELLATION_BATCH_SIZE).map((tickets) =>
       templateSoql.replace("{{tickets}}", formatTicketsForSOQL(tickets))
     );
-  }, [formatTicketsForSOQL, parsedTickets, activeTemplate]);
+  }, [formatTicketsForSOQL, parsedTickets, cancellationType]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
@@ -2759,9 +2790,7 @@ export default function SOQLGeneratorPage() {
   }, [cancellationQueryBatches.length]);
 
   const handleTemplateChange = (value: string) => {
-    if (selectedTemplate === "1" && ticketsInput.trim()) {
-      savedTicketsRef.current = ticketsInput;
-    }
+    
 
     setTicketsInput("");
     setAssetTransferInput("");
@@ -2770,6 +2799,7 @@ export default function SOQLGeneratorPage() {
     setTransferOutput("");
     setTransferDebug("");
     setChildDetailsComponentInput("");
+    setChildDetailsInput("");
     setChildDetailsSOQLResult("");
     setChildDetailsOutput("");
     setChildDetailsTransformResult(null);
@@ -2782,9 +2812,7 @@ export default function SOQLGeneratorPage() {
     resetCaseOwnerSelectionState();
     setSelectedTemplate(value);
 
-    if (value === "1" && savedTicketsRef.current.trim()) {
-      setTicketsInput(savedTicketsRef.current);
-    }
+    
 
     const selected = templates.find((template) => template.id === value);
     if (selected?.source === "library") {
@@ -2816,12 +2844,14 @@ export default function SOQLGeneratorPage() {
     setTransferOutput("");
     setTransferDebug("");
     setChildDetailsComponentInput("");
+    setChildDetailsInput("");
     setChildDetailsSOQLResult("");
     setChildDetailsOutput("");
     setChildDetailsTransformResult(null);
     setChildDetailsBatchIndex(0);
     setCancellationExecutionInput("");
     setCancellationFailedInput("");
+      setCancellationType("CCO");
     setCancellationStoredRows([]);
     setCaseAssignOutput("");
     setCaseAssignmentResult(null);
@@ -3061,7 +3091,7 @@ export default function SOQLGeneratorPage() {
         </div>
       </motion.div>
 
-      {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && (
+      {showStats && !isAssetTransfer && !isCaseAssign && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}
           animate={{ opacity: 1, y: 0 }}
@@ -3098,7 +3128,7 @@ export default function SOQLGeneratorPage() {
               { id: "19", name: "CANCELLATION REQUESTED", icon: "FileWarning" },
               { id: "3", name: "ASSET TRANSFER", icon: "ArrowRightLeft" },
               { id: "4", name: "CASE ASSIGN", icon: "Users" },
-              { id: "20", name: "PRODUCT RECORD TYPE UPDATE", icon: "Database" },
+              { id: "20", name: "CHILD TO PARENT UPDATED", icon: "CornerRightUp" },
               { id: "1", name: "UPDATE ACCEPTED & NONE", icon: "CheckCircle2" }
             ];
             
@@ -3112,24 +3142,31 @@ export default function SOQLGeneratorPage() {
               }
             }
             return dynamicShortcuts;
-          })().map((shortcut) => (
+          })().map((shortcut) => {
+            const isActive = selectedTemplate === shortcut.id;
+            return (
             <button
               key={shortcut.id}
               onClick={() => handleTemplateChange(shortcut.id)}
-              className="group p-2.5 rounded-2xl flex flex-col items-center justify-between h-full gap-2 transition-all duration-300 border backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 border-white/20 bg-white/40 dark:bg-slate-900/40 dark:border-white/10 dark:hover:bg-slate-800/60"
+              className={cn(
+                "group p-2.5 rounded-2xl flex flex-col items-center justify-between h-full gap-2 transition-all duration-300 border backdrop-blur-md shadow-sm",
+                isActive 
+                  ? "bg-white/60 dark:bg-white/[0.15] border-white/80 dark:border-white/30 shadow-[0_8px_32px_rgba(31,38,135,0.15)] scale-[1.02] -translate-y-0.5" 
+                  : "hover:shadow-md hover:-translate-y-0.5 border-white/20 bg-white/40 dark:bg-slate-900/40 dark:border-white/10 dark:hover:bg-slate-800/60"
+              )}
             >
               {shortcut.icon === "FileWarning" && <FileWarning className="h-7 w-7 text-amber-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]" />}
               {shortcut.icon === "ArrowRightLeft" && <ArrowRightLeft className="h-7 w-7 text-blue-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(59,130,246,0.6)]" />}
               {shortcut.icon === "CalendarClock" && <CalendarClock className="h-7 w-7 text-emerald-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(16,185,129,0.6)]" />}
               {shortcut.icon === "Users" && <Users className="h-7 w-7 text-purple-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(168,85,247,0.6)]" />}
-              {shortcut.icon === "Database" && <Database className="h-7 w-7 text-indigo-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(99,102,241,0.6)]" />}
+              {shortcut.icon === "CornerRightUp" && <CornerRightUp className="h-7 w-7 text-indigo-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:-rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(99,102,241,0.6)]" />}
               {shortcut.icon === "CheckCircle2" && <CheckCircle2 className="h-7 w-7 text-rose-500 transition-all duration-500 ease-out group-hover:scale-110 group-hover:rotate-3 group-hover:drop-shadow-[0_0_10px_rgba(244,63,94,0.6)]" />}
               {shortcut.icon === "Star" && <Star className="h-7 w-7 text-amber-400 fill-amber-400/20 transition-all duration-500 ease-out group-hover:scale-125 group-hover:-rotate-12 group-hover:drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]" />}
-              <span className="text-[9px] font-black uppercase tracking-widest text-center leading-tight text-slate-700 dark:text-slate-300">
+              <span className={cn("text-[9px] font-black uppercase tracking-widest text-center leading-tight", isActive ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300")}>
               {shortcut.name}
             </span>
           </button>
-        ))}
+        )})}
       </div>
       <div className="grid gap-6 grid-cols-1 xl:grid-cols-12 lg:gap-8">
         <motion.div
@@ -3163,112 +3200,59 @@ export default function SOQLGeneratorPage() {
             </CardHeader>
 
             <CardContent className="space-y-4 p-6 pt-5 relative z-10">
-              <TemplatePicker
-                templates={templates}
-                value={selectedTemplate}
-                onChange={handleTemplateChange}
-              />
-
-              <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-950/50 px-4 py-3 border border-slate-200/50 dark:border-slate-800/50 shadow-inner">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="font-black uppercase tracking-widest shrink-0 text-[10px] text-slate-500 dark:text-slate-400">
-                    {activeTemplate?.category || "SOQL"}
-                  </span>
-                  {activeTemplate?.source === "library" && activeTemplate.usageCount !== undefined && (
-                    <span className="text-[11px] font-bold text-slate-400 truncate">
-                      Used {activeTemplate.usageCount} time{activeTemplate.usageCount === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleFav(selectedTemplate)}
-                  className="flex items-center gap-2 shrink-0 px-3 py-1.5 rounded-lg hover:bg-white dark:hover:bg-slate-800 transition-all shadow-sm border border-transparent hover:border-slate-200 dark:hover:border-slate-700 text-xs font-bold"
-                  aria-label={`Toggle favourite for ${activeTemplate?.name ?? ""}`}
-                  title={activeTemplate?.favourite || favourites.has(selectedTemplate) ? "Remove Bookmark" : "Bookmark Template"}
-                >
-                  <Star
-                    className={`h-4.5 w-4.5 transition-all duration-500 ease-out hover:scale-125 hover:-rotate-12 ${
-                      activeTemplate?.source === "library"
-                        ? activeTemplate.favourite
+                <div className="flex items-stretch gap-2 w-full">
+                  <div className="flex-1 min-w-0">
+                    <TemplatePicker
+                      templates={templates}
+                      value={selectedTemplate}
+                      onChange={handleTemplateChange}
+                    />
+                  </div>
+                  <button type="button" onClick={() => toggleFav(selectedTemplate)} className="flex-shrink-0 flex items-center justify-center p-2 rounded-full hover:bg-white/10 dark:hover:bg-white/[0.05] transition-all"
+                    aria-label={`Toggle favourite for ${activeTemplate?.name ?? ""}`}
+                    title={activeTemplate?.favourite || favourites.has(selectedTemplate) ? "Remove Bookmark" : "Bookmark Template"}
+                  >
+                    <Star
+                      className={`h-[18px] w-[18px] transition-all duration-500 ease-out hover:scale-125 hover:-rotate-12 ${
+                        activeTemplate?.source === "library"
+                          ? activeTemplate.favourite
+                            ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
+                            : "text-slate-400 hover:text-amber-500"
+                          : favourites.has(selectedTemplate)
                           ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
                           : "text-slate-400 hover:text-amber-500"
-                        : favourites.has(selectedTemplate)
-                        ? "fill-amber-400 text-amber-500 drop-shadow-[0_0_8px_rgba(251,191,36,0.5)]"
-                        : "text-slate-400 hover:text-amber-500"
-                    }`}
-                  />
-                  <span className="text-[11px] font-black text-slate-500">
-                    {activeTemplate?.source === "library"
-                      ? activeTemplate.favourite
-                        ? "Saved"
-                        : "Favorite"
-                      : favourites.has(selectedTemplate)
-                      ? "Saved"
-                      : "Favorite"}
-                  </span>
-                </button>
-              </div>
-            </CardContent>
-          </Card>
+                      }`}
+                    />
+                  </button>
+                </div>
 
-          {showStats && !isAssetTransfer && !isChildDetailsToParent && !isCaseAssign && (
-              <Card className="rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl 
-dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
-              <CardHeader className="pb-4 bg-transparent p-6">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                {isCancellation && (
+                  <div className="flex flex-wrap items-center gap-4 w-full pt-3 pb-2 px-2">
+                    {["CCO", "NAMO", "NON NAMO", "CASE"].map((type) => {
+                      const isSelected = cancellationType === type;
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setCancellationType(type as any)}
+                          className={cn(
+                            "px-4 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 flex-1 min-w-fit text-center backdrop-blur-md border",
+                            isSelected
+                              ? "bg-white/30 dark:bg-white/[0.15] border-white/60 dark:border-white/30 shadow-[0_8px_32px_rgba(31,38,135,0.15)] text-blue-700 dark:text-sky-300 scale-105"
+                              : "bg-white/10 dark:bg-white/[0.03] border-slate-300/40 dark:border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] text-slate-600 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-white/[0.08] hover:text-slate-800 dark:hover:text-slate-200"
+                          )}
+                        >
+                          {type}
+                        </button>
+                      );
+                    })}
                   </div>
-                  <CardTitle className="text-base font-black tracking-tight">Category Breakdown</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 p-6 pt-5">
-                <div className="space-y-3">
-                  {statEntries.map(([code, count]) => {
-                    const info = CATEGORY_MAP[code];
-                    const pct = Math.round((count / ticketStats.total) * 100);
-
-                    return (
-                      <div key={code} className="flex items-center gap-3 text-sm">
-                        <span className={`inline-block h-2 w-2 shrink-0 rounded-full ring-2 ring-white dark:ring-slate-900 shadow-sm ${info?.color ?? "bg-slate-400"}`} />
-                        <span className="font-bold text-slate-500 w-28 truncate transition-colors group-hover:text-foreground">{info?.label ?? code}</span>
-                        <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden ring-1 ring-black/5 dark:ring-white/10 shadow-inner">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 shadow-sm ${info?.color ?? "bg-slate-400"}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="font-black text-foreground w-10 text-right tabular-nums">{count}</span>
-                        <span className="text-xs font-bold text-slate-400 w-8 text-right tabular-nums">{pct}%</span>
-                      </div>
-                    );
-                  })}
-
-                  {ticketStats.unknown > 0 && (
-                    <div className="flex items-center gap-3 text-sm pt-3 border-t border-slate-200/50 dark:border-slate-700/50 mt-3">
-                      <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-slate-400 ring-2 ring-white dark:ring-slate-900 shadow-sm" />
-                      <span className="font-bold text-slate-500 w-28 truncate transition-colors group-hover:text-foreground">Other / Uncategorized</span>
-                      <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden ring-1 ring-black/5 dark:ring-white/10 shadow-inner">
-                        <div
-                          className="h-full rounded-full bg-slate-400 transition-all duration-500 shadow-sm"
-                          style={{ width: `${Math.round((ticketStats.unknown / ticketStats.total) * 100)}%` }}
-                        />
-                      </div>
-                      <span className="font-black text-foreground w-10 text-right tabular-nums">{ticketStats.unknown}</span>
-                      <span className="text-xs font-bold text-slate-400 w-8 text-right tabular-nums">
-                        {Math.round((ticketStats.unknown / ticketStats.total) * 100)}%
-                      </span>
-                    </div>
-                  )}
-                </div>
+                )}
               </CardContent>
             </Card>
-          )}
 
 
 
-          {!isAssetTransfer && !isChildDetailsToParent && (
+          {!isAssetTransfer && (
             <Card className="flex flex-col flex-1 min-h-0 rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
         <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
           <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
@@ -3279,12 +3263,12 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                 <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2">
                     
                     <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight flex-1">
-                      {isCancellation ? "Paste Your Tickets" : isCaseAssign ? "Upload or Paste Case IDs" : "Paste Ticket Numbers"}
+                      {isCancellation ? "Paste Your Tickets" : isCaseAssign ? "Upload or Paste Case IDs" : activeTemplate?.category === "Asset" ? "Paste Component IDs" : "Paste Ticket Numbers"}
                     </CardTitle>
                   </div>
               </CardHeader>
 
-              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
+              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col min-h-0 relative z-10">
                 {isCaseAssign && (
                       <div className="flex flex-col space-y-4 flex-1 min-h-0 h-full">
                     <div 
@@ -3293,14 +3277,48 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                       onDragLeave={handleDragLeave}
                       onDrop={handleFileUpload}
                       className={cn(
-                        "relative flex flex-col flex-1 items-center justify-center rounded-2xl border-2 border-dashed p-10 min-h-[200px] text-center transition-all duration-200 overflow-hidden w-full mx-auto",
-                        uploadState === "reading" || uploadState === "scanning" || uploadState === "validating" 
-                          ? "border-blue-400/50 bg-blue-50/50 dark:bg-blue-900/10" 
-                          : isDragging 
-                            ? "border-[#0176d3] bg-[#0176d3]/10 scale-[1.02] shadow-sm"
-                            : "border-slate-300 dark:border-slate-700 hover:border-blue-500/50 hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                        "relative flex flex-col flex-1 items-center justify-center rounded-2xl p-10 min-h-[200px] text-center transition-all duration-200 overflow-hidden w-full mx-auto group",
+                        uploadState === "reading" || uploadState === "scanning" || uploadState === "validating"
+                          ? "bg-blue-50/50 dark:bg-blue-900/10"
+                          : isDragging
+                            ? "bg-[#0176d3]/10 scale-[1.02] shadow-sm"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-900/50"
                       )}
                     >
+                      {/* Animated SVG Border */}
+                      <svg className={cn(
+                        "absolute inset-0 h-full w-full pointer-events-none rounded-2xl transition-colors duration-300",
+                        uploadState === "reading" || uploadState === "scanning" || uploadState === "validating"
+                          ? "text-blue-400/80 animate-[dash_1s_linear_infinite]"
+                          : isDragging
+                            ? "animate-[dash_0.5s_linear_infinite]"
+                            : "text-slate-300 dark:text-slate-700 group-hover:text-blue-500/80 group-hover:animate-[dash_2s_linear_infinite]"
+                      )} xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <linearGradient id="shimmerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#0176d3" />
+                            <stop offset="50%" stopColor="#8b5cf6" />
+                            <stop offset="100%" stopColor="#0176d3" />
+                          </linearGradient>
+                        </defs>
+                        <rect
+                          width="100%"
+                          height="100%"
+                          fill="none"
+                          rx="16"
+                          ry="16"
+                          stroke={isDragging ? "url(#shimmerGradient)" : "currentColor"}
+                          strokeWidth="2"
+                          strokeDasharray="10 10"
+                        />
+                      </svg>
+                      <style>{`
+                        @keyframes dash {
+                          to {
+                            stroke-dashoffset: -20;
+                          }
+                        }
+                      `}</style>
                       {/* Transparent overlay when dragging to prevent flickering from child drag events */}
                       {isDragging && <div className="absolute inset-0 z-50 pointer-events-none" />}
                       
@@ -3373,19 +3391,50 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                 {!isCaseAssign && (
                   <>
                     <div className="flex-1 flex flex-col space-y-2">
+                      <div className="relative flex-1 flex flex-col group min-h-[320px] rounded-2xl overflow-hidden bg-slate-50/10 dark:bg-slate-900/10">
+                      {/* Animated SVG Border */}
+                      <svg className={cn(
+                        "absolute inset-0 h-full w-full pointer-events-none rounded-2xl transition-colors duration-300",
+                        "animate-[dash_3s_linear_infinite] group-hover:animate-[dash_1.5s_linear_infinite] group-focus-within:animate-[dash_0.75s_linear_infinite]"
+                      )} xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                          <linearGradient id="shimmerGradientText" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#3b82f6" />
+                            <stop offset="50%" stopColor="#8b5cf6" />
+                            <stop offset="100%" stopColor="#3b82f6" />
+                          </linearGradient>
+                        </defs>
+                        <rect
+                          width="100%"
+                          height="100%"
+                          fill="none"
+                          rx="16"
+                          ry="16"
+                          stroke="url(#shimmerGradientText)"
+                          strokeWidth="2"
+                          strokeDasharray="10 10"
+                        />
+                      </svg>
                       <Textarea
-                        placeholder={`Paste ticket numbers here...\nA26060134750678\nA26060134750476\nA26060134750619`}
-                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y min-h-[320px]"
+                        placeholder={activeTemplate?.category === "Asset" ? `Paste component IDs here...
+CMP-00123
+CMP-00124
+CMP-00125` : `Paste ticket numbers here...
+A26060134750678
+A26060134750476
+A26060134750619`}
+                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y relative z-10"
                         value={ticketsInput}
                         onChange={(event) => {
                           const value = event.target.value;
                           setTicketsInput(value);
                           setGeneratedAtLeastOnce(false);
                           if (selectedTemplate !== "1" && value.trim()) {
-                            savedTicketsRef.current = "";
+
                           }
                         }}
                       />
+                    </div>
                       <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
                         Supports spaces, commas, tabs, or newlines. Values are automatically chunked into {inputBatchSize}-value batches for Salesforce-safe SOQL.
                       </p>
@@ -3427,24 +3476,39 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                     <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Asset Transfer Data</CardTitle>
                   </div>
               </CardHeader>
-              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col relative z-10">
+              <CardContent className="p-6 pt-5 space-y-5 flex-1 flex flex-col min-h-0 relative z-10">
                 <div className="flex-1 flex flex-col space-y-2">
                   <label className="text-xs font-black text-slate-500 block uppercase tracking-widest pl-1">Component & New CID Pairs</label>
-                  <Textarea
-                    placeholder={`COMPONENT        NEW CID\nBSL34933847      CID-2025004\nBSL29709797      CID-4206214\nBSL22295338      CID-6074821`}
-                    className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y"
-                    value={assetTransferInput}
-                    onChange={(event) => {
-                      const val = event.target.value;
-                      setAssetTransferInput(val);
-                      if (!val.trim()) {
-                        setAssetSOQLResult("");
-                        setAccountSOQLResult("");
-                        setTransferOutput("");
-                        setTransferDebug("");
-                      }
-                    }}
-                  />
+                  <div className="relative flex-1 flex flex-col group min-h-[220px] rounded-2xl overflow-hidden bg-slate-50/10 dark:bg-slate-900/10">
+                    {/* Animated SVG Border */}
+                    <svg className={cn(
+                      "absolute inset-0 h-full w-full pointer-events-none rounded-2xl transition-colors duration-300",
+                      "animate-[dash_3s_linear_infinite] group-hover:animate-[dash_1.5s_linear_infinite] group-focus-within:animate-[dash_0.75s_linear_infinite]"
+                    )} xmlns="http://www.w3.org/2000/svg">
+                      <rect
+                        width="100%"
+                        height="100%"
+                        fill="none"
+                        rx="16"
+                        ry="16"
+                        stroke="url(#shimmerGradientText)"
+                        strokeWidth="2"
+                        strokeDasharray="10 10"
+                      />
+                    </svg>
+                    <Textarea
+                      placeholder={`COMPONENT        NEW CID
+BSL34933847      CID-2025004
+BSL29709797      CID-4206214
+BSL22295338      CID-6074821`}
+                      className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y relative z-10"
+                      value={assetTransferInput}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setAssetTransferInput(value);
+                      }}
+                    />
+                  </div>
                   <p className="border-l-2 border-blue-400/40 py-1 pl-3 text-xs font-medium leading-relaxed text-muted-foreground">
                     Paste component ID and new CID pairs. Tab or space separated. One pair per line.
                   </p>
@@ -3471,10 +3535,10 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.25 }}
-          className={`2xl:col-span-9 xl:col-span-8 grid grid-cols-1 2xl:grid-cols-2 gap-6 min-w-0 ${isTS ? "2xl:grid-rows-2 h-full" : ""}`}
+          className={`2xl:col-span-9 xl:col-span-8 min-w-0 ${(!isTS && !isChildDetailsToParent) ? "grid grid-cols-1 2xl:grid-cols-2 gap-6" : "2xl:relative h-full"}`}
         >
           {isTS && (
-            <>
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 h-full 2xl:absolute 2xl:inset-0 2xl:grid-rows-2">
               <QueryPreviewCard
                 step="STEP 2"
                 title="TS (Ticket Status)"
@@ -3486,7 +3550,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                   onCopy={handleCopy}
               />
               <PasteResultCard
-                step="PASTE HERE"
+                step="PASTE"
                 title="Paste Ticket result"
                 subtitle="Transform Status to Accepted"
                 value={tsResultPaste}
@@ -3507,7 +3571,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
               />
 
               <PasteResultCard
-                step="PASTE HERE"
+                step="PASTE"
                 title="Paste Service Appointment result"
                 subtitle="Transform Status to None"
                 value={saResultPaste}
@@ -3516,7 +3580,116 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                 className="h-[350px] 2xl:h-full min-h-[320px]"
                   onCopy={handleCopy}
               />
-            </>
+            </div>
+          )}
+
+          {isChildDetailsToParent && (
+            <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 h-full 2xl:absolute 2xl:inset-0 2xl:grid-rows-2">
+              <QueryPreviewCard
+                step="STEP 2"
+                title={activeTemplate?.name ?? "Query Preview"}
+                subtitle={`${activeTemplate?.category ?? ""} query preview`}
+                batches={otherPreview}
+                batchIndex={otherBatchIndex}
+                setBatchIndex={setOtherBatchIndex}
+                className="h-[350px] 2xl:h-full min-h-[320px]"
+                onCopy={handleCopy}
+              />
+              
+              <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+                <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                    STEP 3
+                  </span>
+                </div>
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10 flex flex-row items-start justify-between">
+                  <div className="flex-1 min-w-[200px]">
+                    <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Paste Salesforce Result</CardTitle>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-md"
+                      onClick={() => setChildDetailsInput("")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Clear
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5 pt-0 space-y-4 relative z-10 flex-1 flex flex-col min-h-0">
+                  <Textarea
+                    placeholder={`_\tId\tParent\tParent.AccountId\tParentId\tRecordTypeId\n[Asset]\t02iNy00000CKkhCIAT\t[Asset]\t001Ny00001iPnOgIAK\t02iNy00000CWXGQIA5\t012Ny0000003SvsIAE`}
+                    className="flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-none p-4 resize-none h-full min-h-0"
+                    value={childDetailsInput}
+                    onChange={(e) => setChildDetailsInput(e.target.value)}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+                <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                    STEP 4
+                  </span>
+                </div>
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10 flex flex-row items-start justify-between">
+                  <div className="flex-1 min-w-[200px]">
+                    <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">CHILD TO ASSET</CardTitle>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6">
+                    {customChildDetailsProcessor.output && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm"
+                        onClick={() => handleCopy(customChildDetailsProcessor.output)}
+                      >
+                        <Copy className="h-3.5 w-3.5" /> Copy TSV
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="p-5 pt-0 space-y-4 relative z-10 flex-1 flex flex-col min-h-0">
+                  <Textarea
+                    readOnly
+                    value={customChildDetailsProcessor.output}
+                    placeholder={`_\tId\tAccountId\tParentId\tRecordTypeId\n[Asset]\t02iNy00000CKkhCIAT\t001Ny00001iPnOgIAK\t\t012Ny0000003SvrIAE\n[Asset]\t02iNy00000CLDskIAH\t001Ny00000bp44EIAQ\t\t012Ny0000003SvrIAE`}
+                    className="flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] focus-visible:ring-emerald-500/40 focus-visible:border-emerald-500 shadow-none p-4 resize-none h-full min-h-0"
+                  />
+                </CardContent>
+              </Card>
+            
+              <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+                <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                    DEBUG
+                  </span>
+                </div>
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                  <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1 flex items-center justify-between">
+                    <span>Processing Status</span>
+                    <div className="flex gap-3 text-xs">
+                      <span className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-md">
+                        Valid: {customChildDetailsProcessor.count}
+                      </span>
+                      {customChildDetailsProcessor.skipped > 0 && (
+                        <span className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 px-2 py-1 rounded-md">
+                          Skipped: {customChildDetailsProcessor.skipped}
+                        </span>
+                      )}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 pt-0 space-y-4 relative z-10 flex-1 flex flex-col min-h-0">
+                  <Textarea
+                    readOnly
+                    value={customChildDetailsProcessor.debug || "No errors. Ready."}
+                    className={`flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] shadow-none p-4 resize-none h-full min-h-0 ${customChildDetailsProcessor.skipped > 0 ? "text-red-500 focus-visible:ring-red-500/40 focus-visible:border-red-500" : "text-slate-500 focus-visible:ring-slate-500/40 focus-visible:border-slate-500"}`}
+                  />
+                </CardContent>
+              </Card>
+</div>
           )}
 
           {isAssetTransfer && (
@@ -3537,7 +3710,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                         <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground pr-20">Component SOQL Query</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
                     <pre className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 ${!assetTransferComponentSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
                       {assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"}
@@ -3601,7 +3774,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                         <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground pr-20">Account SOQL Query</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
                     <pre className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100 ${!assetTransferAccountSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
                       {assetTransferAccountSOQL || "Paste component pairs to generate Account SOQL"}
@@ -3682,7 +3855,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                  <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
                         <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-emerald-200 max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100">
                         {transferOutput}
@@ -3717,7 +3890,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                  <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
                         <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[320px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
                         {transferDebug}
@@ -3754,7 +3927,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                         </div>
                       </div>
                     </CardHeader>
-                  <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                  <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
                         <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100 text-slate-800 dark:text-sky-200">
                         {cancellationQueryBatches[cancellationExecutionBatchIndex]}
@@ -3915,11 +4088,12 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
               </Card>
 
               {(() => {
-                const cancellationTotalTickets = parsedTickets.length;
+                const cancellationTotalTickets = uniqueExecutableCancellationRows.length;
                 const hasFailedInput = cancellationFailedInput.trim().length > 0;
                 
                 // Extract tickets using regex: first a letter, then numbers
-                const cancellationFailedTickets = Array.from(new Set(cancellationFailedInput.match(/[a-zA-Z]\d{5,20}/g) || []));
+                const cancellationFailedTicketsRows = parseCancellationExecutionRows(cancellationFailedInput);
+                  const cancellationFailedTickets = Array.from(new Set(cancellationFailedTicketsRows.map(r => r.ticket)));
                 
                 const cancellationFailedCount = hasFailedInput ? cancellationFailedTickets.length : "(Pending)";
                 const cancellationSuccessCount = hasFailedInput ? Math.max(0, cancellationTotalTickets - cancellationFailedTickets.length) : "(Pending)";
@@ -3954,7 +4128,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                           </Button>
                         </div>
                       </CardHeader>
-                      <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                      <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                         <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
                           <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
                             {mailTemplateText}
@@ -3980,7 +4154,7 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                           </Button>
                         </div>
                       </CardHeader>
-                      <CardContent className="p-6 pt-5 flex-1 flex flex-col relative z-10">
+                      <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                         <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
                           <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
                             {postTemplateText}
@@ -4518,7 +4692,37 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
                     </div>
                   </CardContent>
                 </Card>
-              </div>
+              
+              <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+                <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                  <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                    DEBUG
+                  </span>
+                </div>
+                <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
+                  <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1 flex items-center justify-between">
+                    <span>Processing Status</span>
+                    <div className="flex gap-3 text-xs">
+                      <span className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-md">
+                        Valid: {customChildDetailsProcessor.count}
+                      </span>
+                      {customChildDetailsProcessor.skipped > 0 && (
+                        <span className="bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-400 px-2 py-1 rounded-md">
+                          Skipped: {customChildDetailsProcessor.skipped}
+                        </span>
+                      )}
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 pt-0 space-y-4 relative z-10 flex-1 flex flex-col min-h-0">
+                  <Textarea
+                    readOnly
+                    value={customChildDetailsProcessor.debug || "No errors. Ready."}
+                    className={`flex-1 font-mono text-xs leading-relaxed rounded-xl border border-transparent bg-slate-100/40 dark:bg-black/20 dark:border dark:border-white/[0.05] shadow-none p-4 resize-none h-full min-h-0 ${customChildDetailsProcessor.skipped > 0 ? "text-red-500 focus-visible:ring-red-500/40 focus-visible:border-red-500" : "text-slate-500 focus-visible:ring-slate-500/40 focus-visible:border-slate-500"}`}
+                  />
+                </CardContent>
+              </Card>
+</div>
             )}
             
           </div>
@@ -4535,6 +4739,8 @@ dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group">
               onCopy={handleCopy}
             />
           )}
+
+          
         </motion.div>
       </div>
     </div>
