@@ -218,7 +218,7 @@ AND Ticket_Number_Read_Only__c IN (
     id: "20",
     name: "CHILD TO PARENT UPDATED",
     category: "Asset",
-    soql: "SELECT Id, Component_Id__c, Parent.AccountId, ParentId, RecordTypeId FROM Asset WHERE Component_Id__c IN (\n{{tickets}}\n)",
+    soql: "SELECT Id, Component_Id__c, Parent.AccountId, ParentId, RecordTypeId FROM Asset WHERE RecordType.Name = 'Component' and Component_Id__c IN (\n{{tickets}}\n)",
     favourite: false,
   },
   {
@@ -587,7 +587,7 @@ function buildChildDetailsParentSOQL(componentIds: string[]): string {
     "ParentId,",
     "RecordTypeId",
     "FROM Asset",
-    "WHERE Component_Id__c IN (",
+    "WHERE RecordType.Name = 'Component' and Component_Id__c IN (",
     formatSOQLValues(componentIds),
     ")",
   ].join("\n");
@@ -735,7 +735,7 @@ function transformChildDetailsToParent(
 
   const processedComponentKeys = new Set<string>();
   const outputRows = [
-    buildCSVRow(["_", "Id", "RecordTypeId", "ParentId", "AccountId"]),
+    buildCSVRow(["_", "Id", "AccountId", "ParentId", "RecordTypeId"]),
   ];
 
   for (const componentId of componentIds) {
@@ -749,9 +749,9 @@ function transformChildDetailsToParent(
         buildCSVRow([
           "[Asset]",
           candidate.assetId,
-          CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID,
-          "",
           candidate.parentAccountId,
+          "",
+          CHILD_DETAILS_PARENT_TARGET_RECORD_TYPE_ID,
         ])
       );
       result.generatedRows += 1;
@@ -1594,7 +1594,7 @@ export default function SOQLGeneratorPage() {
       
       const underscore = cols[0] || "";
       const id = cols[1] || "";
-      const accountId = cols[3] || "";
+      const accountId = cols[4] || "";
       
       if (underscore.includes("_") && id.includes("Id")) {
         continue;
@@ -1984,7 +1984,7 @@ AND Ticket_Numbers__c IN (
     const componentIds = assetPairs.map((pair) => pair.componentId);
     const formatted = formatTicketsForSOQL(componentIds);
 
-    return `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE Component_Id__c IN (\n${formatted}\n)`;
+    return `SELECT Component_Id__c, Id, Account.Customer_ID__c, Record_Type__c, Parent.Id, Parent.Account.Id\nFROM Asset\nWHERE status != 'Draft' and Asset_Obligation__c != 'AMC' and Component_Id__c IN (\n${formatted}\n)`;
   }, [assetPairs, formatTicketsForSOQL]);
 
   const assetTransferAccountSOQL = React.useMemo(() => {
