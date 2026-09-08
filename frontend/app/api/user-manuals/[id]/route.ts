@@ -26,8 +26,12 @@ export async function DELETE(
 
     // Delete file
     const filePath = path.join(process.cwd(), "public", manual.fileUrl.replace(/^\//, ""));
-    if (existsSync(filePath)) {
-      await unlink(filePath);
+    try {
+      if (existsSync(filePath)) {
+        await unlink(filePath);
+      }
+    } catch (fsError) {
+      console.warn("Could not delete file from filesystem (might be on read-only Vercel environment):", fsError);
     }
 
     await prisma.userManualLibrary.delete({
