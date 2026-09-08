@@ -10,6 +10,17 @@ export async function GET() {
   try {
     const manuals = await prisma.userManualLibrary.findMany({
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        version: true,
+        fileName: true,
+        fileUrl: true,
+        fileSize: true,
+        createdAt: true,
+        updatedAt: true
+      }
     });
     return NextResponse.json({ manuals });
   } catch (error) {
@@ -39,31 +50,26 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Save file locally to public/manuals
-    const manualsDir = path.join(process.cwd(), "public", "manuals");
-    if (!existsSync(manualsDir)) {
-      await mkdir(manualsDir, { recursive: true });
-    }
-
-    // Ensure unique filename
-    const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const filePath = path.join(manualsDir, fileName);
-    await writeFile(filePath, buffer);
-
-    const fileUrl = `/manuals/${fileName}`;
-
     const manual = await prisma.userManualLibrary.create({
       data: {
         title,
         description,
         version,
         fileName: file.name,
-        fileUrl,
+        fileUrl: "", // Will update below
         fileSize: file.size,
+        fileData: buffer,
       },
     });
 
-    return NextResponse.json({ manual }, { status: 201 });
+    // Update with dynamic API route URL
+    const fileUrl = `/api/user-manuals/file/${manual.id}`;
+    await prisma.userManualLibrary.update({
+      where: { id: manual.id },
+      data: { fileUrl }
+    });
+
+    return NextResponse.json({ manual: { ...manual, fileUrl, fileData: undefined } }, { status: 201 });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: String(error) }, { status: 500 });

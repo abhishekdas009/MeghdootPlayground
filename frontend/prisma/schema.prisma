@@ -101,6 +101,7 @@ model UserManualLibrary {
   fileUrl     String
   fileName    String
   fileSize    Int
+  fileData    Bytes?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
