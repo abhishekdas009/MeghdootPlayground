@@ -419,8 +419,8 @@ const quickActions = [
 export default function DashboardPage() {
   const soqlGeneratedCount = useDashboardStore((s) => s.soqlGeneratedCount);
   const soqlGeneratedCountTotal = useDashboardStore((s) => s.soqlGeneratedCountTotal);
-  const excelOperationCount = useDashboardStore((s) => s.excelOperationCount);
-  const excelOperationCountTotal = useDashboardStore((s) => s.excelOperationCountTotal);
+  const warrantyCheckCount = useDashboardStore((s) => s.warrantyCheckCount);
+  const warrantyCheckCountTotal = useDashboardStore((s) => s.warrantyCheckCountTotal);
   const ticketCancellationCount = useDashboardStore((s) => s.ticketCancellationCount);
   const ticketCancellationCountTotal = useDashboardStore((s) => s.ticketCancellationCountTotal);
   const assetTransferCount = useDashboardStore((s) => s.assetTransferCount);
@@ -444,8 +444,8 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  const row1Values = [soqlGeneratedCount, excelOperationCount, ticketCancellationCount, assetTransferCount];
-  const row1TotalValues = [soqlGeneratedCountTotal, excelOperationCountTotal, ticketCancellationCountTotal, assetTransferCountTotal];
+  const row1Values = [soqlGeneratedCount, warrantyCheckCount, ticketCancellationCount, assetTransferCount];
+  const row1TotalValues = [soqlGeneratedCountTotal, warrantyCheckCountTotal, ticketCancellationCountTotal, assetTransferCountTotal];
   const row2Values = [caseAssignmentCount, templatesCreatedCount, activity.length, favouritesCount];
   const row2TotalValues = [caseAssignmentCountTotal, templatesCreatedCountTotal, activity.length, favouritesCount]; // No total for activity/favorites
 

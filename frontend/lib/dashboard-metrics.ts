@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export const METRIC_DEFINITIONS: Record<string, { label: string; category: string }> = {
   soql_generated: { label: "Queries Generated", category: "soql" },
+  warranty_checks: { label: "Warranty Checks", category: "warranty" },
   excel_operations: { label: "Excel Operations", category: "excel" },
   tickets_formatted: { label: "Tickets Formatted", category: "ticket" },
   ticket_cancellation: { label: "Ticket Cancellations", category: "ticket" },

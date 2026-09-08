@@ -32,6 +32,7 @@ const FORMATS: FormatOption[] = [
   { id: "sql-in", label: "SQL IN", wrap: (t: string) => `'${t}'`, join: ", ", prefix: "IN (", suffix: ")" },
   { id: "soql-in", label: "SOQL IN", wrap: (t: string) => `'${t}'`, join: ",\n  ", prefix: "IN (\n  ", suffix: "\n)" },
   { id: "csv", label: "CSV", wrap: (t: string) => t, join: "\n" },
+  { id: "clean-spaces", label: "Remove All Spaces", wrap: (t: string) => t.replace(/[\s\u00A0]+/g, ""), join: "\n" },
 ];
 
 const BATCH_SIZE = 500;
@@ -208,12 +209,27 @@ export default function TicketFormatterPage() {
             </CardHeader>
             
             <CardContent className="p-8 relative z-10 h-[calc(100%-80px)] flex flex-col">
-              <Textarea
-                placeholder={`Paste ticket numbers here...\n\nA260182314123\nA260182314124\nA260182314125`}
-                className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-100 focus-visible:ring-0 focus-visible:outline-none p-6 shadow-none transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-              />
+              <div className="relative flex-1 flex flex-col group min-h-[350px] rounded-2xl overflow-hidden bg-slate-50/10 dark:bg-slate-900/10">
+                <svg className={cn(
+                  "absolute inset-0 h-full w-full pointer-events-none rounded-2xl transition-colors duration-300 z-0",
+                  "animate-[dash_3s_linear_infinite] group-hover:animate-[dash_1.5s_linear_infinite] group-focus-within:animate-[dash_0.75s_linear_infinite]"
+                )} xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="shimmerGradientInput" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3b82f6" />
+                      <stop offset="50%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#3b82f6" />
+                    </linearGradient>
+                  </defs>
+                  <rect width="100%" height="100%" fill="none" rx="16" ry="16" stroke="url(#shimmerGradientInput)" strokeWidth="2" strokeDasharray="20, 20" strokeLinecap="round" className="opacity-50 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" />
+                </svg>
+                <Textarea
+                  placeholder={`Paste ticket numbers here...\n\nA260182314123\nA260182314124\nA260182314125`}
+                  className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-100 focus-visible:ring-0 focus-visible:outline-none p-6 shadow-none transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500 relative z-10"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                />
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-5 flex items-center gap-2 font-medium bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
                 <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Values are automatically chunked into 500-ticket batches for optimal query performance.
@@ -243,10 +259,10 @@ export default function TicketFormatterPage() {
                       key={f.id}
                       onClick={() => setSelectedFormat(f.id)}
                       className={cn(
-                        "flex items-center justify-center min-h-[48px] rounded-xl border px-3 py-2 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 shadow-sm",
+                        "flex items-center justify-center min-h-[48px] rounded-xl border px-3 py-2 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 relative overflow-hidden group backdrop-blur-md shadow-sm",
                         selectedFormat === f.id
-                          ? "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30"
-                          : "border-slate-200 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-foreground hover:border-slate-300 dark:hover:border-slate-600"
+                          ? "border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30"
+                          : "border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20"
                       )}
                     >
                       {f.label}
@@ -334,14 +350,26 @@ export default function TicketFormatterPage() {
                   </motion.div>
                 )}
                 
-                <div className="flex-1 relative group h-full">
+                <div className="relative flex-1 flex flex-col group min-h-[250px] rounded-2xl overflow-hidden bg-slate-50/10 dark:bg-slate-900/10 h-full">
+                  <svg className={cn(
+                    "absolute inset-0 h-full w-full pointer-events-none rounded-2xl transition-colors duration-300 z-0",
+                    "animate-[dash_3s_linear_infinite] group-hover:animate-[dash_1.5s_linear_infinite] group-focus-within:animate-[dash_0.75s_linear_infinite]"
+                  )} xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="shimmerGradientOutput" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#10b981" />
+                        <stop offset="50%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#10b981" />
+                      </linearGradient>
+                    </defs>
+                    <rect width="100%" height="100%" fill="none" rx="16" ry="16" stroke="url(#shimmerGradientOutput)" strokeWidth="2" strokeDasharray="20, 20" strokeLinecap="round" className="opacity-50 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" />
+                  </svg>
                   <Textarea
                     readOnly
                     value={currentOutput}
-                    className="h-full min-h-[250px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-200 p-6 shadow-none transition-all resize-none custom-scrollbar focus-visible:ring-0 focus-visible:outline-none"
+                    className="h-full min-h-[250px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-200 p-6 shadow-none transition-all resize-none custom-scrollbar focus-visible:ring-0 focus-visible:outline-none relative z-10"
                   />
-                  {/* Glowing Overlay effect on hover for the terminal block */}
-                  <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/5 pointer-events-none group-hover:ring-blue-500/20 transition-all duration-300" />
+                  <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/5 pointer-events-none group-hover:ring-emerald-500/20 transition-all duration-300 z-20" />
                 </div>
               </CardContent>
             </Card>

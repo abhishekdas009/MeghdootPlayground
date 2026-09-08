@@ -20,6 +20,7 @@ import {
   History,
   BarChart2,
   Binary,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/store/ui-store";
@@ -37,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Warranty Finder", href: "/warranty-finder", icon: FileSearch },
   { label: "Formula Generator", href: "/formula-generator", icon: Binary },
   { label: "Ticket Formatter", href: "/ticket-formatter", icon: Ticket },
+  { label: "User Manual Library", href: "/user-manuals", icon: BookOpen },
   { label: "Query Library", href: "/template-manager", icon: Bookmark },
   { label: "History", href: "/history", icon: History },
   { label: "Analytics", href: "/analytics", icon: BarChart2 },
@@ -50,6 +52,7 @@ const NAV_ICON_BG: Record<string, string> = {
   "/warranty-finder": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
   "/formula-generator": "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
   "/ticket-formatter": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
+  "/user-manuals": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   "/template-manager": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
   "/history": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   "/analytics": "bg-sky-500/15 text-blue-700 dark:text-sky-300",

@@ -109,6 +109,49 @@ const FALLBACK_TEMPLATES: SOQLTemplate[] = [
   { id: "f8", label: "Completed WorkOrder Archive", category: "WorkOrder", usageCount: 88, favourite: false, soql: "SELECT Id, Ticket_Number_Read_Only__c, EndDate FROM WorkOrder WHERE Status = 'Completed' ORDER BY EndDate DESC LIMIT 200" },
 ];
 
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const mockDate = new Date();
+    const dayMap: Record<string, number> = { "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6 };
+    const targetDay = dayMap[label as string] ?? 1;
+    const currentDay = mockDate.getDay();
+    let diff = targetDay - currentDay;
+    if (diff > 0) diff -= 7; // Ensure it's in the past
+    mockDate.setDate(mockDate.getDate() + diff);
+    const dateString = mockDate.toLocaleDateString("en-US", { weekday: 'long', month: 'short', day: 'numeric' });
+    const timeString = "Peak: 02:15 PM";
+
+    return (
+      <div className="bg-white/95 dark:bg-slate-900/95 border border-border/50 p-4 rounded-xl shadow-xl backdrop-blur-md min-w-[200px]">
+        <p className="font-bold text-sm text-foreground mb-1">{dateString}</p>
+        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-3 border-b border-border/50 pb-2">
+          {timeString}
+        </p>
+        <div className="space-y-2">
+          {payload.map((entry: any, index: number) => {
+            let labelName = entry.name;
+            if (entry.dataKey === "soql") labelName = "SOQL Generation";
+            if (entry.dataKey === "excel") labelName = "Warranty Checks";
+            if (entry.dataKey === "tickets") labelName = "Tickets Formatted";
+
+            return (
+              <div key={index} className="flex items-center justify-between gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                  <span className="text-xs font-semibold text-muted-foreground">{labelName}</span>
+                </div>
+                <span className="text-sm font-black text-foreground">{entry.value}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function AnalyticsPage() {
   // Live Dashboard Store for Real-Time KPI updates
   const liveStore = useDashboardStore();
@@ -612,10 +655,7 @@ export default function AnalyticsPage() {
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/40" />
                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: "currentColor" }} className="text-muted-foreground" dy={10} />
                               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: "currentColor" }} className="text-muted-foreground" />
-                              <Tooltip
-                                contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.1)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', fontWeight: 'bold' }}
-                                itemStyle={{ fontWeight: 'bold' }}
-                              />
+                              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(99, 102, 241, 0.2)', strokeWidth: 2, strokeDasharray: '4 4' }} />
                               <Area type="monotone" dataKey="soql" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSoql)" activeDot={{ r: 6, strokeWidth: 0 }} />
                               <Area type="monotone" dataKey="tickets" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorTickets)" activeDot={{ r: 6, strokeWidth: 0 }} />
                               <Area type="monotone" dataKey="excel" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorExcel)" activeDot={{ r: 6, strokeWidth: 0 }} />

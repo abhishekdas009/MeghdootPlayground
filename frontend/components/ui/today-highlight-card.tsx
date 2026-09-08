@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -86,8 +86,8 @@ export function TodayHighlightCard({ className }: { className?: string }) {
             <div className="flex items-start gap-3 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 p-4 border border-indigo-100/50 dark:border-indigo-900/30">
               <Quote className="h-5 w-5 text-indigo-500 mt-0.5 shrink-0" />
               <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-500 mb-1 block">Today's Line</span>
-                <p className="text-sm font-semibold italic text-indigo-900 dark:text-indigo-200">"{highlight.quote}"</p>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-500 mb-1 block">Today&apos;s Line</span>
+                <p className="text-sm font-semibold italic text-indigo-900 dark:text-indigo-200">&quot;{highlight.quote}&quot;</p>
               </div>
             </div>
           )}

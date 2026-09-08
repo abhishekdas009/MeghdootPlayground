@@ -52,6 +52,8 @@ interface DashboardState {
   soqlGeneratedCountTotal: number;
   excelOperationCount: number;
   excelOperationCountTotal: number;
+  warrantyCheckCount: number;
+  warrantyCheckCountTotal: number;
   ticketsProcessedCount: number;
   ticketsProcessedCountTotal: number;
   ticketCancellationCount: number;
@@ -122,6 +124,7 @@ function pushActivity(
 const METRIC_KEY_TO_FIELD: Record<string, keyof DashboardState> = {
   soql_generated: "soqlGeneratedCount",
   excel_operations: "excelOperationCount",
+  warranty_checks: "warrantyCheckCount",
   tickets_formatted: "ticketsProcessedCount",
   ticket_cancellation: "ticketCancellationCount",
   asset_transfer: "assetTransferCount",
@@ -134,6 +137,8 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   soqlGeneratedCountTotal: 0,
   excelOperationCount: 0,
   excelOperationCountTotal: 0,
+  warrantyCheckCount: 0,
+  warrantyCheckCountTotal: 0,
   ticketsProcessedCount: 0,
   ticketsProcessedCountTotal: 0,
   ticketCancellationCount: 0,
@@ -286,6 +291,7 @@ export const useDashboardStore = create<DashboardState>((set) => ({
     set({
       soqlGeneratedCount: 0,
       excelOperationCount: 0,
+      warrantyCheckCount: 0,
       ticketsProcessedCount: 0,
       ticketCancellationCount: 0,
       assetTransferCount: 0,

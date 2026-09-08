@@ -1,7 +1,8 @@
 ﻿with open("frontend/app/soql-generator/page.tsx", "r", encoding="utf-8") as f:
-    lines = f.readlines()
-for i, line in enumerate(lines):
-    if "childDetailsVisibleResult.output" in line or "childDetailsTransformResult.output" in line:
-        for j in range(max(0, i-2), i+5):
-            print(f"Line {j}: {lines[j].rstrip()}")
-        print("---")
+    content = f.read()
+import re
+match = re.search(r'<div className="relative isolate flex-1.*?</svg>', content, re.DOTALL)
+if match:
+    print(match.group(0))
+else:
+    print("Not found")

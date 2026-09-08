@@ -1,5 +1,5 @@
-﻿with open("frontend/app/soql-generator/page.tsx", "r", encoding="utf-8") as f:
-    lines = f.readlines()
-for i, line in enumerate(lines):
-    if "isChildDetailsToParent" in line:
-        print(f"Line {i}: {line.strip()}")
+﻿with open("frontend/app/ticket-formatter/page.tsx", "r", encoding="utf-8") as f:
+    content = f.read()
+
+import re
+# First, let's just use git checkout to restore the file

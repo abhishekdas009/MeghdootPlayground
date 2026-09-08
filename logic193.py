@@ -1,6 +1,4 @@
-﻿with open("frontend/app/soql-generator/page.tsx", "r", encoding="utf-8") as f:
+﻿with open("frontend/app/ticket-formatter/page.tsx", "r", encoding="utf-8") as f:
     lines = f.readlines()
-for i, line in enumerate(lines):
-    if 'selectedTemplate === "20"' in line or '=== "20"' in line:
-        for j in range(max(0, i-2), i+3):
-            print(f"Line {j}: {lines[j].strip()}")
+for j in range(20, 40):
+    print(f"Line {j}: {lines[j].rstrip()}")

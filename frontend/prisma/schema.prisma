@@ -1,12 +1,10 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
 }
-
 model CaseOwner {
   id        String   @id @default(cuid())
   name      String
@@ -93,4 +91,19 @@ model WarrantyCondition {
 
   @@index([installationFrom, installationTo])
   @@map("Warranty_Conditions__c")
+}
+
+model UserManualLibrary {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  version     String   @default("New Version")
+  fileUrl     String
+  fileName    String
+  fileSize    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([title])
+  @@map("user_manual_library")
 }

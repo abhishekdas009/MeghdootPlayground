@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { SOQLHighlighter } from "@/components/ui/soql-highlighter";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -316,8 +317,7 @@ const POST_TEMPLATE = `@tag_user Your service ticket status has been updated to 
 
 const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?)(?![\p{L}\p{N}])/gu;
 const SALESFORCE_TICKET_REGEX = /(?:^|[^A-Za-z0-9])([BISXCAD]\d{14,})(?![A-Za-z0-9])/gi;
-const SOQL_BATCH_SIZE = 400;
-const CANCELLATION_BATCH_SIZE = 400;
+
 
 interface TicketStats {
   total: number;
@@ -1174,9 +1174,7 @@ function PasteResultCard({
             <div className="absolute top-2 right-3">
               <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/70 dark:text-indigo-400/50">OUTPUT</span>
             </div>
-            <pre className="font-mono text-[13px] leading-relaxed text-slate-800 dark:text-sky-200/90 custom-scrollbar whitespace-pre-wrap break-words">
-              {transformedValue}
-            </pre>
+            <SOQLHighlighter query={transformedValue} className="font-mono text-[13px] leading-relaxed text-slate-800 dark:text-sky-200/90 custom-scrollbar whitespace-pre-wrap break-words" />
           </div>
         )}
       </CardContent>
@@ -1287,9 +1285,7 @@ function QueryPreviewCard({
         {batches.length > 0 ? (
           <div className="rounded-2xl text-foreground flex flex-col min-h-0 flex-1 overflow-hidden relative bg-transparent border-transparent shadow-none transition-all duration-300 group/glass">
             <div className="relative flex-1 min-h-0">
-              <pre className="h-full overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-[13px] leading-relaxed text-slate-700 selection:bg-indigo-500/20 selection:text-indigo-900 dark:text-sky-200/90 dark:selection:text-indigo-100 custom-scrollbar">
-                {currentBatch}
-              </pre>
+                    <SOQLHighlighter query={currentBatch} className="h-full overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-[13px] leading-relaxed text-slate-700 selection:bg-indigo-500/20 selection:text-indigo-900 dark:text-sky-200/90 dark:selection:text-indigo-100 custom-scrollbar" />
             </div>
           </div>
         ) : (
@@ -1635,6 +1631,7 @@ export default function SOQLGeneratorPage() {
   const [cancellationExecutionInput, setCancellationExecutionInput] = React.useState("");
   const [cancellationFailedInput, setCancellationFailedInput] = React.useState("");
   const [cancellationType, setCancellationType] = React.useState<"CCO" | "NAMO" | "NON NAMO" | "CASE">("CCO");
+  const [batchSize, setBatchSize] = React.useState(400);
   const [cancellationStoredRows, setCancellationStoredRows] = React.useState<CancellationExecutionRow[]>([]);
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
 
@@ -1677,6 +1674,7 @@ export default function SOQLGeneratorPage() {
     selectedTemplate === "20" || activeTemplate?.type === "child-details-to-parent";
   const isCaseAssign = selectedTemplate === "4";
   const isCancellation = selectedTemplate === "13" || selectedTemplate === "14" || selectedTemplate === "19" || (activeTemplate?.name?.toLowerCase()?.includes("cancellation") ?? false) || (activeTemplate?.name?.toLowerCase()?.includes("cancel") ?? false);
+  const isUpdateAcceptedAndNone = selectedTemplate === "1" || (activeTemplate?.name?.toLowerCase()?.includes("update accepted and none") ?? false);
 
   const refreshCaseOwners = React.useCallback(async () => {
     setCaseOwnerLoadState("loading");
@@ -1802,7 +1800,7 @@ export default function SOQLGeneratorPage() {
     () => (isCaseAssign ? parsedCaseIds : parseTickets(ticketsInput)),
     [isCaseAssign, parseTickets, parsedCaseIds, ticketsInput]
   );
-  const inputBatchSize = isCancellation ? CANCELLATION_BATCH_SIZE : SOQL_BATCH_SIZE;
+  const inputBatchSize = batchSize;
   const inputBatchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / inputBatchSize) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
   const assetPairs = React.useMemo(() => parseAssetTransferPairs(assetTransferInput), [assetTransferInput]);
@@ -1866,7 +1864,7 @@ export default function SOQLGeneratorPage() {
 
   const cancellationResultBatchCount =
     uniqueExecutableCancellationRows.length > 0
-      ? Math.ceil(uniqueExecutableCancellationRows.length / CANCELLATION_BATCH_SIZE)
+      ? Math.ceil(uniqueExecutableCancellationRows.length / batchSize)
       : 0;
 
   const cancellationUpdateDebug = React.useMemo(() => {
@@ -1943,8 +1941,8 @@ AND Ticket_Numbers__c IN (
       }
 
       const batches: string[] = [];
-      for (let index = 0; index < parsedTickets.length; index += SOQL_BATCH_SIZE) {
-        const chunk = parsedTickets.slice(index, index + SOQL_BATCH_SIZE);
+      for (let index = 0; index < parsedTickets.length; index += batchSize) {
+        const chunk = parsedTickets.slice(index, index + batchSize);
         const formatted = formatTicketsForSOQL(chunk);
         const query = templateSoql.replace("{{tickets}}", formatted);
         batches.push(query);
@@ -1952,7 +1950,7 @@ AND Ticket_Numbers__c IN (
 
       return batches;
     },
-    [formatTicketsForSOQL, parsedTickets, templates]
+    [formatTicketsForSOQL, parsedTickets, templates, batchSize]
   );
 
   const workOrderPreview = React.useMemo(() => buildPreviewBatches("1"), [buildPreviewBatches]);
@@ -1974,10 +1972,10 @@ AND Ticket_Numbers__c IN (
       return [templateSoql.replace("{{tickets}}", "")];
     }
 
-    return chunkArray(parsedTickets, CANCELLATION_BATCH_SIZE).map((tickets) =>
+    return chunkArray(parsedTickets, batchSize).map((tickets) =>
       templateSoql.replace("{{tickets}}", formatTicketsForSOQL(tickets))
     );
-  }, [formatTicketsForSOQL, parsedTickets, cancellationType]);
+  }, [formatTicketsForSOQL, parsedTickets, cancellationType, batchSize]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
     if (assetPairs.length === 0) return "";
@@ -1997,10 +1995,10 @@ AND Ticket_Numbers__c IN (
 
   const childDetailsSOQLBatches = React.useMemo(
     () =>
-      chunkArray(childDetailsComponentIds, SOQL_BATCH_SIZE).map((componentIds) =>
+      chunkArray(childDetailsComponentIds, batchSize).map((componentIds) =>
         buildChildDetailsParentSOQL(componentIds)
       ),
-    [childDetailsComponentIds]
+    [childDetailsComponentIds, batchSize]
   );
   const childDetailsCurrentSOQLBatch =
     childDetailsSOQLBatches[childDetailsBatchIndex] ?? childDetailsSOQLBatches[0] ?? "";
@@ -3247,6 +3245,35 @@ AND Ticket_Numbers__c IN (
                     })}
                   </div>
                 )}
+                
+                {(isCancellation || isUpdateAcceptedAndNone) && (
+                  <div className="w-full pt-4 pb-2 px-3 border-t border-slate-200/50 dark:border-white/10 mt-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                        <Database className="h-3.5 w-3.5" />
+                        Batch Size Limit
+                      </span>
+                      <Badge variant="outline" className="text-xs font-black bg-blue-50/50 text-blue-600 border-blue-200/50 dark:bg-sky-900/20 dark:text-sky-400 dark:border-sky-800/30 shadow-sm">
+                        {batchSize} / BLOCK
+                      </Badge>
+                    </div>
+                    <div className="px-1">
+                      <input 
+                        type="range" 
+                        min="50" 
+                        max="2000" 
+                        step="50" 
+                        value={batchSize}
+                        onChange={(e) => setBatchSize(Number(e.target.value))}
+                        className="w-full h-1.5 bg-slate-200/80 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-sky-500 hover:accent-blue-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      />
+                      <div className="flex justify-between text-[9px] font-bold text-slate-400 mt-2 px-0.5">
+                        <span>50</span>
+                        <span>2000</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -3712,9 +3739,7 @@ BSL22295338      CID-6074821`}
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
-                    <pre className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 ${!assetTransferComponentSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
-                      {assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"}
-                    </pre>
+                    <SOQLHighlighter query={assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"} className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 ${!assetTransferComponentSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`} />
                   </div>
                 </CardContent>
               </Card>
@@ -3776,9 +3801,7 @@ BSL22295338      CID-6074821`}
                 </CardHeader>
                 <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
-                    <pre className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100 ${!assetTransferAccountSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`}>
-                      {assetTransferAccountSOQL || "Paste component pairs to generate Account SOQL"}
-                    </pre>
+                    <SOQLHighlighter query={assetTransferAccountSOQL || "Paste component pairs to generate Account SOQL"} className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100 ${!assetTransferAccountSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`} />
                   </div>
                 </CardContent>
               </Card>
@@ -3857,9 +3880,7 @@ BSL22295338      CID-6074821`}
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
-                        <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-emerald-200 max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100">
-                        {transferOutput}
-                      </pre>
+                    <SOQLHighlighter query={transferOutput} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-emerald-200 max-h-[320px] min-h-[100px] selection:bg-emerald-500/20 selection:text-emerald-900 dark:selection:text-emerald-100" />
                     </div>
                   </CardContent>
                 </Card>
@@ -3892,9 +3913,7 @@ BSL22295338      CID-6074821`}
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
-                        <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[320px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100">
-                        {transferDebug}
-                      </pre>
+                    <SOQLHighlighter query={transferDebug} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[320px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100" />
                     </div>
                   </CardContent>
                 </Card>
@@ -3929,9 +3948,7 @@ BSL22295338      CID-6074821`}
                     </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="flex flex-col overflow-hidden bg-transparent">
-                        <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100 text-slate-800 dark:text-sky-200">
-                        {cancellationQueryBatches[cancellationExecutionBatchIndex]}
-                      </pre>
+                    <SOQLHighlighter query={cancellationQueryBatches[cancellationExecutionBatchIndex]} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100 text-slate-800 dark:text-sky-200" />
                     </div>
                     {cancellationQueryBatches.length > 1 && (
                       <div className="flex items-center justify-between gap-3 mt-4">
@@ -4048,11 +4065,7 @@ BSL22295338      CID-6074821`}
                       <span>Status: Canceled</span>
                     </div>
                   <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
-                    <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
-                      {uniqueExecutableCancellationRows.length > 0
-                        ? cancellationCanceledOutput
-                        : "\"_\"   \"Id\"   \"Ticket_Number_Read_Only__c\"   \"Status\"\n\"[WorkOrder]\"   \"0WONy000008eHgfOAE\"   \"B25031925463529\"   \"Canceled\""}
-                    </pre>
+                    <SOQLHighlighter query={uniqueExecutableCancellationRows.length > 0 ? cancellationCanceledOutput : "\"_\"   \"Id\"   \"Ticket_Number_Read_Only__c\"   \"Status\"\n\"[WorkOrder]\"   \"0WONy000008eHgfOAE\"   \"B25031925463529\"   \"Canceled\""} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
                   </div>
                 </CardContent>
               </Card>
@@ -4130,9 +4143,7 @@ BSL22295338      CID-6074821`}
                       </CardHeader>
                       <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                         <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
-                          <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100">
-                            {mailTemplateText}
-                          </pre>
+                    <SOQLHighlighter query={mailTemplateText} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
                         </div>
                       </CardContent>
                     </Card>
@@ -4156,9 +4167,7 @@ BSL22295338      CID-6074821`}
                       </CardHeader>
                       <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                         <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
-                          <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100">
-                            {postTemplateText}
-                          </pre>
+                    <SOQLHighlighter query={postTemplateText} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100" />
                         </div>
                       </CardContent>
                     </Card>
@@ -4183,9 +4192,7 @@ BSL22295338      CID-6074821`}
                   </CardHeader>
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
                     <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
-                      <pre className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 max-h-[280px] min-h-0 selection:bg-slate-500/20 selection:text-slate-900 dark:selection:text-slate-100">
-                        {cancellationUpdateDebug}
-                      </pre>
+                    <SOQLHighlighter query={cancellationUpdateDebug} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 max-h-[280px] min-h-0 selection:bg-slate-500/20 selection:text-slate-900 dark:selection:text-slate-100" />
                     </div>
                   </CardContent>
                 </Card>

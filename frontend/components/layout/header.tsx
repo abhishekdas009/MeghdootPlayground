@@ -29,6 +29,8 @@ import { Input } from "@/components/ui/input";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GlobalSearchModal } from "@/components/layout/global-search-modal";
+import { ThemeCustomizer } from "@/components/layout/theme-customizer";
+import { EmptyActivityIllustration } from "@/components/ui/illustrations";
 
 type ThemeMode = "light" | "dark";
 
@@ -299,6 +301,7 @@ export function Header() {
 
           {/* Theme rail + activity updates */}
           <div className="hidden md:flex items-center gap-2">
+              <ThemeCustomizer />
               <button
                 type="button"
                 role="switch"
@@ -451,9 +454,7 @@ export function Header() {
 
                 {activity.length === 0 ? (
                   <div className="flex flex-col items-center justify-center px-6 py-9 text-center">
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/15 dark:bg-emerald-400/10 dark:text-emerald-300">
-                      <CheckCircle2 className="h-6 w-6" />
-                    </div>
+                    <EmptyActivityIllustration className="mb-3 text-emerald-500 dark:text-emerald-400 drop-shadow-sm" />
                     <p className="text-sm font-extrabold text-foreground">You&apos;re all caught up</p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">New workspace activity will appear here.</p>
                   </div>
