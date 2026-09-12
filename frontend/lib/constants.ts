@@ -5,6 +5,7 @@ export const NAV_ITEMS = [
   { label: "SOQL Generator", href: "/soql-generator", icon: "Terminal" },
   { label: "Excel Automation", href: "/excel-automation", icon: "Sheet" },
   { label: "Formula Generator", href: "/formula-generator", icon: "FunctionSquare" },
+  { label: "Ticket Validator", href: "/ticket-validator", icon: "ShieldCheck" },
   { label: "Ticket Formatter", href: "/ticket-formatter", icon: "Ticket" },
   { label: "Query Library", href: "/template-manager", icon: "LayoutTemplate" },
   { label: "History", href: "/history", icon: "History" },

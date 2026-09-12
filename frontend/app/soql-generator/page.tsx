@@ -1959,13 +1959,13 @@ AND Ticket_Numbers__c IN (
   const cancellationQueryBatches = React.useMemo(() => {
     let templateSoql = "";
     if (cancellationType === "CCO") {
-      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     } else if (cancellationType === "NAMO") {
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     } else if (cancellationType === "NON NAMO") {
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     } else if (cancellationType === "CASE") {
-      templateSoql = `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c\nFROM WorkOrder\nWHERE Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c\nFROM WorkOrder\nWHERE ParentWorkOrderId = null AND Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     }
 
     if (parsedTickets.length === 0) {

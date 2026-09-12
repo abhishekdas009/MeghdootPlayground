@@ -35,7 +35,7 @@ const FORMATS: FormatOption[] = [
   { id: "clean-spaces", label: "Remove All Spaces", wrap: (t: string) => t.replace(/[\s\u00A0]+/g, ""), join: "\n" },
 ];
 
-const BATCH_SIZE = 500;
+const DEFAULT_BATCH_SIZE = 500;
 
 // Framer Motion variants for staggered animations
 const containerVariants = {
@@ -55,6 +55,7 @@ export default function TicketFormatterPage() {
   const [input, setInput] = React.useState("");
   const [selectedFormat, setSelectedFormat] = React.useState<string>("soql-in");
   const [batchIndex, setBatchIndex] = React.useState(0);
+  const [batchSize, setBatchSize] = React.useState(DEFAULT_BATCH_SIZE);
 
   const tickets = React.useMemo(() => {
     return input
@@ -65,11 +66,11 @@ export default function TicketFormatterPage() {
 
   const batches = React.useMemo(() => {
     const chunks: string[][] = [];
-    for (let i = 0; i < tickets.length; i += BATCH_SIZE) {
-      chunks.push(tickets.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < tickets.length; i += batchSize) {
+      chunks.push(tickets.slice(i, i + batchSize));
     }
     return chunks;
-  }, [tickets]);
+  }, [tickets, batchSize]);
 
   const batchCount = batches.length;
 
@@ -232,7 +233,7 @@ export default function TicketFormatterPage() {
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-5 flex items-center gap-2 font-medium bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
                 <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                Values are automatically chunked into 500-ticket batches for optimal query performance.
+                Values are automatically chunked into {batchSize}-ticket batches for optimal query performance.
               </p>
             </CardContent>
           </Card>
@@ -244,12 +245,42 @@ export default function TicketFormatterPage() {
           {/* Format Options */}
           <motion.div initial="hidden" animate="show" variants={containerVariants}>
             <Card className="border border-white/10 shadow-xl bg-white/5 dark:bg-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden">
-              <CardHeader className="bg-white/10 dark:bg-white/10 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 backdrop-blur-md">
+              <CardHeader className="bg-transparent px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <CardTitle className="text-sm font-black tracking-widest uppercase text-slate-600 dark:text-slate-400">
                   Select Output Format
                 </CardTitle>
+                <div className="flex flex-col gap-1.5 w-full sm:w-[160px] ml-auto">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="text-[9px] font-black tracking-widest uppercase text-slate-500 dark:text-slate-400">
+                      Batch Size
+                    </span>
+                    <span className="text-[10px] font-bold text-blue-500 tracking-wide">
+                      {batchSize} tickets
+                    </span>
+                  </div>
+                  <div className="relative flex items-center h-1 w-full bg-black/10 dark:bg-slate-800/50 rounded-full overflow-visible">
+                    <div 
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-white/30 via-white to-white/30 animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+                      style={{ width: `${(batchSize / 2000) * 100}%` }} 
+                    />
+                    <input
+                      type="range"
+                      min="10"
+                      max="2000"
+                      step="10"
+                      value={batchSize}
+                      onChange={(e) => setBatchSize(Number(e.target.value))}
+                      className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(59,130,246,0.8)] [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-none"
+                    />
+                  </div>
+                  <div className="flex justify-between text-[8px] font-bold text-slate-400 leading-none mt-1">
+                    <span>10</span>
+                    <span>1000</span>
+                    <span>2000</span>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-6 max-h-[220px] overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
                   {FORMATS.map((f) => (
                     <motion.button
@@ -259,13 +290,21 @@ export default function TicketFormatterPage() {
                       key={f.id}
                       onClick={() => setSelectedFormat(f.id)}
                       className={cn(
-                        "flex items-center justify-center min-h-[48px] rounded-xl border px-3 py-2 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 relative overflow-hidden group backdrop-blur-md shadow-sm",
+                        "flex items-center justify-center min-h-[48px] rounded-xl border px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 relative group backdrop-blur-md shadow-sm",
                         selectedFormat === f.id
-                          ? "border-transparent bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30"
-                          : "border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20"
+                          ? "border-transparent text-white"
+                          : "border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20 overflow-hidden"
                       )}
                     >
-                      {f.label}
+                      {selectedFormat === f.id && (
+                        <motion.div
+                          layoutId="formatter-type-slider"
+                          className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 rounded-xl"
+                          initial={false}
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      <span className="relative z-10">{f.label}</span>
                     </motion.button>
                   ))}
                 </div>
