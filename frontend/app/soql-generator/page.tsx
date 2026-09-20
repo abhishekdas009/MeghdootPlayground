@@ -110,6 +110,7 @@ interface CaseAssignmentRow {
   id: string;
   status: "Open";
   category?: string;
+  openedDate?: number;
 }
 
 interface CaseAssignmentResult {
@@ -824,16 +825,42 @@ function buildCancellationCanceledOutput(rows: CancellationExecutionRow[]): stri
   return outputRows.join("\n");
 }
 
-function buildCaseAssignmentRows(caseIds: string[]): CaseAssignmentRow[] {
-  return caseIds.map((val) => {
-    const pipeIndex = val.indexOf("|");
-    if (pipeIndex > 0) {
-      const id = val.slice(0, pipeIndex).trim();
-      const category = val.slice(pipeIndex + 1).trim();
-      return { id, category, status: "Open" };
+function buildCaseAssignmentRows(input: string): CaseAssignmentRow[] {
+  if (!input || !input.trim()) return [];
+
+  const rows: CaseAssignmentRow[] = [];
+  const seen = new Set<string>();
+  
+  const lines = input.split('\n');
+  for (const line of lines) {
+    for (const match of line.matchAll(CASE_ID_REGEX)) {
+      const caseId = match[1];
+      const recordKey = caseId?.slice(0, 15);
+      if (!caseId || !recordKey || seen.has(recordKey)) continue;
+      seen.add(recordKey);
+
+      let openedDate: number | undefined = undefined;
+      // Extract date: DD/MM/YYYY or YYYY-MM-DD
+      const dateMatch = line.match(/\b(\d{1,2})[\/\.-](\d{1,2})[\/\.-](\d{4})\b/);
+      if (dateMatch) {
+        const day = parseInt(dateMatch[1]!, 10);
+        const month = parseInt(dateMatch[2]!, 10) - 1;
+        const year = parseInt(dateMatch[3]!, 10);
+        openedDate = new Date(year, month, day).getTime();
+      } else {
+        const isoMatch = line.match(/\b(\d{4})[\/\.-](\d{1,2})[\/\.-](\d{1,2})\b/);
+        if (isoMatch) {
+          const year = parseInt(isoMatch[1]!, 10);
+          const month = parseInt(isoMatch[2]!, 10) - 1;
+          const day = parseInt(isoMatch[3]!, 10);
+          openedDate = new Date(year, month, day).getTime();
+        }
+      }
+      
+      rows.push({ id: caseId, status: "Open", openedDate });
     }
-    return { id: val, status: "Open" };
-  });
+  }
+  return rows;
 }
 
 function chunkArray<T>(items: T[], size: number): T[][] {
@@ -917,7 +944,12 @@ function buildBalancedAssignments(
     return a.localeCompare(b);
   });
   for (const cat of categories) {
-    shuffledRows.push(...shuffleItems(groups.get(cat)!));
+    const sortedGroup = [...groups.get(cat)!].sort((a, b) => {
+      const aDate = a.openedDate ?? Infinity;
+      const bDate = b.openedDate ?? Infinity;
+      return aDate - bDate;
+    });
+    shuffledRows.push(...sortedGroup);
   }
   
   const shuffledOwners = isRoundRobin ? owners : shuffleItems(owners);
@@ -1014,7 +1046,12 @@ function buildQuantityWiseAssignments(
     return a.localeCompare(b);
   });
   for (const cat of categories) {
-    shuffledRows.push(...shuffleItems(groups.get(cat)!));
+    const sortedGroup = [...groups.get(cat)!].sort((a, b) => {
+      const aDate = a.openedDate ?? Infinity;
+      const bDate = b.openedDate ?? Infinity;
+      return aDate - bDate;
+    });
+    shuffledRows.push(...sortedGroup);
   }
 
   const assignments: Array<{ row: CaseAssignmentRow; owner: { ownerId: string } }> = [];
@@ -1890,7 +1927,7 @@ export default function SOQLGeneratorPage() {
     return lines.join("\n");
   }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows]);
 
-  const caseAssignmentRows = React.useMemo(() => buildCaseAssignmentRows(parsedCaseIds), [parsedCaseIds]);
+  const caseAssignmentRows = React.useMemo(() => buildCaseAssignmentRows(ticketsInput), [ticketsInput]);
 
   React.useEffect(() => {
     if (autoRunPending && ticketsInput && caseAssignmentRows.length > 0) {
@@ -2380,13 +2417,18 @@ AND Ticket_Numbers__c IN (
       let textContent = "";
 
       if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
-        const workbook = xlsx.read(buffer, { type: "array" });
-        workbook.SheetNames.forEach(sheetName => {
-          const sheet = workbook.Sheets[sheetName];
-          if (sheet) {
-            textContent += xlsx.utils.sheet_to_csv(sheet) + "\n";
-          }
-        });
+        try {
+          const workbook = xlsx.read(buffer, { type: "array" });
+          workbook.SheetNames.forEach(sheetName => {
+            const sheet = workbook.Sheets[sheetName];
+            if (sheet) {
+              textContent += xlsx.utils.sheet_to_csv(sheet) + "\n";
+            }
+          });
+        } catch (error) {
+          console.warn("Excel parsing failed, falling back to raw text extraction:", error);
+          textContent = await file.text();
+        }
       } else {
         textContent = await file.text();
       }
@@ -4252,7 +4294,7 @@ BSL22295338      CID-6074821`}
                       <div className="p-4 rounded-2xl bg-white/50 dark:bg-white/[0.03] dark:border-white/[0.05] border border-slate-200/60 dark:border-slate-700/60 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-start gap-3 shadow-inner backdrop-blur-sm">
                         <CheckCircle2 className="h-4.5 w-4.5 text-purple-500 shrink-0 mt-0.5" />
                         <span className="leading-relaxed">
-                          Securely shuffles Case IDs, then gives every active owner exactly {activeCaseOwners.length ? Math.floor(caseAssignmentRows.length / activeCaseOwners.length) : 0} case{activeCaseOwners.length && Math.floor(caseAssignmentRows.length / activeCaseOwners.length) === 1 ? "" : "s"}. {activeCaseOwners.length ? caseAssignmentRows.length % activeCaseOwners.length : caseAssignmentRows.length} remainder case{(activeCaseOwners.length ? caseAssignmentRows.length % activeCaseOwners.length : caseAssignmentRows.length) === 1 ? " is" : "s are"} left unassigned.
+                          Prioritizes oldest cases first based on opened date, then gives every active owner exactly {activeCaseOwners.length ? Math.floor(caseAssignmentRows.length / activeCaseOwners.length) : 0} case{activeCaseOwners.length && Math.floor(caseAssignmentRows.length / activeCaseOwners.length) === 1 ? "" : "s"}. {activeCaseOwners.length ? caseAssignmentRows.length % activeCaseOwners.length : caseAssignmentRows.length} remainder case{(activeCaseOwners.length ? caseAssignmentRows.length % activeCaseOwners.length : caseAssignmentRows.length) === 1 ? " is" : "s are"} left unassigned.
                         </span>
                       </div>
                     )}
@@ -4266,7 +4308,7 @@ BSL22295338      CID-6074821`}
                         <p className="text-[11px] leading-relaxed font-medium text-slate-500">
                           Selected owners receive an equal whole-number share. Any remainders are distributed 1-by-1 to ensure no cases are unassigned.
                         </p>
-                        <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto no-scrollbar pr-1">
+                        <div className="grid grid-cols-2 gap-2 max-h-[120px] overflow-y-auto pr-1">
                           {activeCaseOwners.map((owner) => {
                             const checked = selectedOwnerIds.includes(owner.ownerId);
                             return (
@@ -4297,9 +4339,9 @@ BSL22295338      CID-6074821`}
                           <span className="bg-purple-500/10 text-purple-600 border border-purple-500/20 px-2 py-0.5 rounded-md">Total: {quantitySelectedTotal} / {caseAssignmentRows.length}</span>
                         </div>
                         <p className="text-[11px] leading-relaxed font-medium text-slate-500">
-                          Set any whole-number quantity per owner. IDs are shuffled before assignment; any unallocated IDs remain unassigned.
+                          Set any whole-number quantity per owner. Older cases are assigned first; any unallocated new IDs remain unassigned.
                         </p>
-                        <div className="grid grid-cols-1 gap-2 max-h-[120px] overflow-y-auto no-scrollbar pr-1">
+                        <div className="grid grid-cols-1 gap-2 max-h-[120px] overflow-y-auto pr-1">
                           {quantityOwnerConfigs.map((owner, index) => (
                             <div key={owner.id} className={cn("flex items-center justify-between gap-3 rounded-xl border p-2 transition-all", owner.selected ? "bg-purple-500/5 border-purple-500/30 shadow-sm" : "bg-card border-slate-200 dark:border-slate-700")}>
                               <label className="flex items-center gap-2.5 cursor-pointer min-w-0">

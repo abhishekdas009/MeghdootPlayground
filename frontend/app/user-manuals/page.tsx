@@ -279,7 +279,7 @@ export default function UserManualsPage() {
           </div>
         </div>
         
-        <div className="flex items-center gap-3 w-full sm:w-auto">
+        <div className="flex items-center gap-3 w-full sm:w-auto" suppressHydrationWarning>
           <Select value={filterVersion} onValueChange={setFilterVersion}>
             <SelectTrigger className="w-[180px] h-10 bg-white/5 dark:bg-black/20 border-white/10 text-foreground focus:ring-indigo-500/50">
               <SelectValue placeholder="All Versions" />
@@ -366,7 +366,7 @@ export default function UserManualsPage() {
                   className="group relative flex flex-col h-full rounded-2xl border border-slate-200/50 dark:border-white/10 bg-white/45 dark:bg-slate-950/45 backdrop-blur-xl p-0 shadow-sm transition-shadow duration-300 hover:shadow-xl hover:shadow-black/10 dark:hover:shadow-black/30 overflow-hidden"
                 >
                   {/* Thumbnail Area */}
-                  <div className="w-full h-40 bg-white/20 dark:bg-black/20 overflow-hidden relative flex items-center justify-center border-b border-slate-200/50 dark:border-white/10">
+                  <div className="w-full aspect-video bg-white/20 dark:bg-black/20 overflow-hidden relative flex items-center justify-center border-b border-slate-200/50 dark:border-white/10 shrink-0">
                     <ManualThumbnail manual={manual} />
                   </div>
 
@@ -405,7 +405,7 @@ export default function UserManualsPage() {
                   </div>
 
                   {/* Card Actions */}
-                  <div className="flex items-center justify-around border-t border-slate-200/50 dark:border-white/10 bg-white/40 dark:bg-black/20 p-2 relative z-10">
+                  <div className="flex items-center justify-around border-t border-slate-200/50 dark:border-white/10 bg-white/40 dark:bg-black/20 p-2 relative z-10 shrink-0">
                     <a
                       href={manual.fileUrl}
                       download

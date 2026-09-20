@@ -39,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Formula Generator", href: "/formula-generator", icon: Binary },
   { label: "Ticket Validator", href: "/ticket-validator", icon: ShieldCheck },
   { label: "Ticket Formatter", href: "/ticket-formatter", icon: Ticket },
+  { label: "Daily Report Generator", href: "/daily-report-generator", icon: FileSpreadsheet },
   { label: "User Manual Library", href: "/user-manuals", icon: BookOpen },
   { label: "Query Library", href: "/template-manager", icon: Bookmark },
   { label: "History", href: "/history", icon: History },
@@ -54,15 +55,14 @@ const NAV_ICON_BG: Record<string, string> = {
   "/formula-generator": "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
   "/ticket-validator": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   "/ticket-formatter": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
+  "/daily-report-generator": "bg-purple-500/15 text-purple-700 dark:text-purple-300",
   "/user-manuals": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   "/template-manager": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
   "/history": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   "/analytics": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
   "/help": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
 };
-
-const DIVIDERS_AFTER = new Set(["/ticket-formatter", "/analytics"]);
-
+const DIVIDERS_AFTER = new Set(["/daily-report-generator", "/analytics"]);
 export function Sidebar() {
   const pathname = usePathname();
   const {

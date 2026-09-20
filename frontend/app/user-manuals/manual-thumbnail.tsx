@@ -26,7 +26,7 @@ export default function ManualThumbnail({ manual }: { manual: any }) {
         <div className="absolute inset-0 z-10 bg-transparent" /> {/* Overlay to trap all clicks just in case */}
         <iframe 
           src={`${manual.fileUrl}#page=1&view=FitH&scrollbar=0&toolbar=0&navpanes=0`}
-          className="absolute -top-[10px] -left-[2.5%] w-[105%] h-[200%] border-none" 
+          className="absolute -top-[10px] left-[-24px] w-[calc(100%+48px)] h-[calc(100%+24px)] border-none" 
           tabIndex={-1}
           title={manual.title}
           scrolling="no"
