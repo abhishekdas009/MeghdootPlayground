@@ -1821,10 +1821,9 @@ export default function SOQLGeneratorPage() {
 
   const parseTickets = React.useCallback((input: string): string[] => {
     if (!input.trim()) return [];
-    const cleaned = input.replace(/'/g, "").replace(/,/g, " ").replace(/[\t\r\n]+/g, " ");
-    return cleaned
-      .split(/\s+/)
-      .map((ticket) => ticket.trim())
+    return input
+      .split(/[\n\r,\t]+/)
+      .map((ticket) => ticket.replace(/['\s\u00A0]+/g, ""))
       .filter((ticket) => ticket.length > 0);
   }, []);
 
@@ -2582,6 +2581,36 @@ AND Ticket_Numbers__c IN (
       ? ` ${result.unassignedCaseIds.length} case${result.unassignedCaseIds.length === 1 ? " was" : "s were"} left unassigned.`
       : "";
     toast.success(`Assigned ${result.assignedCount} case${result.assignedCount === 1 ? "" : "s"} across ${result.ownerCount} owner${result.ownerCount === 1 ? "" : "s"}.${remainderMessage}`);
+  };
+
+  const handleRevertAssignment = () => {
+    if (!ticketsInput.trim()) {
+      toast.error("Paste one or more Case IDs first");
+      return;
+    }
+
+    if (caseAssignmentRows.length === 0) {
+      toast.error("No valid Case IDs found. Paste 15- or 18-character Salesforce Case IDs beginning with 500.");
+      return;
+    }
+
+    const assignments = caseAssignmentRows.map(row => ({
+      row,
+      owner: { ownerId: "00GNy000009qbJFMAY" }
+    }));
+
+    const output = buildCaseAssignmentOutput(assignments);
+    
+    setCaseAssignOutput(output);
+    setCaseAssignmentResult({
+      output,
+      assignedCount: caseAssignmentRows.length,
+      unassignedCaseIds: [],
+      ownerCount: 1,
+      casesPerOwner: caseAssignmentRows.length,
+    });
+    
+    toast.success(`Generated revert assignment for ${caseAssignmentRows.length} case${caseAssignmentRows.length === 1 ? "" : "s"}`);
   };
 
   const handleDownloadCaseAssignment = () => {
@@ -4382,15 +4411,22 @@ BSL22295338      CID-6074821`}
 
                     {/* Quick Execution Action Bar */}
                     <div className="pt-4 flex items-center justify-between gap-3 flex-wrap">
-                      <Button size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs gap-2 h-10 px-4 sm:px-5 flex-[2] min-w-[180px] whitespace-nowrap shadow-md shadow-purple-500/20 rounded-xl transition-all hover:-translate-y-0.5" onClick={handleRunCaseAssignment}>
-                        <CheckCircle2 className="h-4.5 w-4.5" /> Generate Assignment
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-10 px-3 sm:px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput} title="Copy result">
-                        <Copy className="h-4 w-4 text-slate-400" /> <span className="hidden sm:inline">Copy</span>
-                      </Button>
-                      <Button variant="outline" size="sm" className="h-10 px-3 sm:px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput} title="Download CSV">
-                        <Download className="h-4 w-4 text-slate-400" /> <span className="hidden sm:inline">CSV</span>
-                      </Button>
+                      <div className="flex items-center gap-3 flex-[2] min-w-[280px]">
+                        <Button size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs gap-2 h-10 px-4 sm:px-5 flex-1 whitespace-nowrap shadow-md shadow-purple-500/20 rounded-xl transition-all hover:-translate-y-0.5" onClick={handleRunCaseAssignment}>
+                          <CheckCircle2 className="h-4.5 w-4.5" /> Generate Assignment
+                        </Button>
+                        <Button size="sm" className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-xs gap-2 h-10 px-4 sm:px-5 shadow-md shadow-red-500/20 rounded-xl transition-all hover:-translate-y-0.5" onClick={handleRevertAssignment}>
+                          <RotateCcw className="h-4.5 w-4.5" /> Revert
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-3 ml-auto">
+                        <Button variant="outline" size="sm" className="h-10 px-3 sm:px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput} title="Copy result">
+                          <Copy className="h-4 w-4 text-slate-400" /> <span className="hidden sm:inline">Copy</span>
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-10 px-3 sm:px-4 text-xs gap-2 font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 shadow-sm" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput} title="Download CSV">
+                          <Download className="h-4 w-4 text-slate-400" /> <span className="hidden sm:inline">CSV</span>
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

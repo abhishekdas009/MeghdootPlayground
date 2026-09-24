@@ -60,7 +60,7 @@ export default function TicketFormatterPage() {
   const tickets = React.useMemo(() => {
     return input
       .split(/[\n\r,\t]+/)
-      .map((t) => t.trim())
+      .map((t) => t.replace(/['\s\u00A0]+/g, ""))
       .filter((t) => t.length > 0);
   }, [input]);
 
