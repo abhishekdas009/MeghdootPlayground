@@ -1667,7 +1667,7 @@ export default function SOQLGeneratorPage() {
 
   const [cancellationExecutionInput, setCancellationExecutionInput] = React.useState("");
   const [cancellationFailedInput, setCancellationFailedInput] = React.useState("");
-  const [cancellationType, setCancellationType] = React.useState<"CCO" | "NAMO" | "NON NAMO" | "CASE">("CCO");
+  const [cancellationType, setCancellationType] = React.useState<"CCO" | "NAMO" | "NON NAMO" | "Account Check">("CCO");
   const [batchSize, setBatchSize] = React.useState(400);
   const [cancellationStoredRows, setCancellationStoredRows] = React.useState<CancellationExecutionRow[]>([]);
   const [cancellationExecutionBatchIndex, setCancellationExecutionBatchIndex] = React.useState(0);
@@ -2000,8 +2000,8 @@ AND Ticket_Numbers__c IN (
       templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     } else if (cancellationType === "NON NAMO") {
       templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
-    } else if (cancellationType === "CASE") {
-      templateSoql = `SELECT Id, Status, CaseId, Case.Status, Case.Cancellation_Reason__c, Cancellation_Reason__c\nFROM WorkOrder\nWHERE ParentWorkOrderId = null AND Status != 'Completed' AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+    } else if (cancellationType === "Account Check") {
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status,Account.Group__c from WorkOrder Where Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     }
 
     if (parsedTickets.length === 0) {
@@ -3297,7 +3297,7 @@ AND Ticket_Numbers__c IN (
 
                 {isCancellation && (
                   <div className="flex flex-wrap items-center gap-4 w-full pt-3 pb-2 px-2">
-                    {["CCO", "NAMO", "NON NAMO", "CASE"].map((type) => {
+                    {["CCO", "NAMO", "NON NAMO", "Account Check"].map((type) => {
                       const isSelected = cancellationType === type;
                       return (
                         <button
@@ -3306,7 +3306,9 @@ AND Ticket_Numbers__c IN (
                           className={cn(
                             "px-4 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-widest rounded-xl transition-all duration-300 flex-1 min-w-fit text-center backdrop-blur-md border",
                             isSelected
-                              ? "bg-white/30 dark:bg-white/[0.15] border-white/60 dark:border-white/30 shadow-[0_8px_32px_rgba(31,38,135,0.15)] text-blue-700 dark:text-sky-300 scale-105"
+                              ? type === "Account Check"
+                                ? "bg-red-500/20 dark:bg-red-500/30 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.6)] text-red-600 dark:text-red-400 scale-105 animate-pulse"
+                                : "bg-white/30 dark:bg-white/[0.15] border-white/60 dark:border-white/30 shadow-[0_8px_32px_rgba(31,38,135,0.15)] text-blue-700 dark:text-sky-300 scale-105"
                               : "bg-white/10 dark:bg-white/[0.03] border-slate-300/40 dark:border-white/10 shadow-[0_4px_30px_rgba(0,0,0,0.1)] text-slate-600 dark:text-slate-400 hover:bg-white/20 dark:hover:bg-white/[0.08] hover:text-slate-800 dark:hover:text-slate-200"
                           )}
                         >
