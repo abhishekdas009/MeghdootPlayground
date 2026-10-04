@@ -108,3 +108,16 @@ model UserManualLibrary {
   @@index([title])
   @@map("user_manual_library")
 }
+
+model ProductSubFamilyWarranty {
+  id                          String   @id @default(cuid())
+  sfId                        String?  @map("Id")
+  productSubFamily            String?  @map("Product_Sub_Family__c")
+  productSubFamilyOperator    String?  @map("Product_Sub_Family_Operator__c")
+  warrantyTermId              String?  @map("Warranty_Term__r")
+  warrantyTermName            String?  @map("WarrantyTermName")
+  createdAt                   DateTime @default(now())
+
+  @@index([productSubFamily])
+  @@map("product_sub_family_warranties")
+}

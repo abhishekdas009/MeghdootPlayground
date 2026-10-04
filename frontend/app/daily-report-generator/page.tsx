@@ -179,10 +179,17 @@ export default function DailyReportGeneratorPage() {
     }
     
     try {
+      const currentDate = new Date();
+      const day = String(currentDate.getDate()).padStart(2, '0');
+      const monthNames = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+      const month = monthNames[currentDate.getMonth()];
+      const year = currentDate.getFullYear();
+      const formattedDate = `${day}_${month}_${year}`;
+
       const wb = xlsx.utils.book_new();
       const ws = xlsx.utils.aoa_to_sheet(mergedData);
       xlsx.utils.book_append_sheet(wb, ws, "Merged Report");
-      xlsx.writeFile(wb, `Daily_Report_Merged_${reportDate}.xlsx`);
+      xlsx.writeFile(wb, `DailyReport_${formattedDate}.xlsx`);
       toast.success("Merged Excel file downloaded!");
     } catch (error) {
       console.error(error);

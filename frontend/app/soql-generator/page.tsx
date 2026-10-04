@@ -4181,20 +4181,20 @@ BSL22295338      CID-6074821`}
                 const cancellationFailedTicketsRows = parseCancellationExecutionRows(cancellationFailedInput);
                   const cancellationFailedTickets = Array.from(new Set(cancellationFailedTicketsRows.map(r => r.ticket)));
                 
-                const cancellationFailedCount = hasFailedInput ? cancellationFailedTickets.length : "(Pending)";
-                const cancellationSuccessCount = hasFailedInput ? Math.max(0, cancellationTotalTickets - cancellationFailedTickets.length) : "(Pending)";
+                const cancellationFailedCount = cancellationFailedTickets.length;
+                const cancellationSuccessCount = Math.max(0, cancellationTotalTickets - cancellationFailedTickets.length);
+
+                const statsText = hasFailedInput
+                  ? `Total Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\nFailed Tickets: ${cancellationFailedCount}`
+                  : `Total Tickets: ${cancellationTotalTickets}`;
 
                 const mailTemplateText = `Dear,\nCancellation has been done successfully.\n\n` +
                   (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
-                  `Total Tickets: ${cancellationTotalTickets}\n` +
-                  `Cancelled Tickets: ${cancellationSuccessCount}\n` +
-                  `Failed Tickets: ${cancellationFailedCount}`;
+                  statsText;
 
                 const postTemplateText = `@taguser \nCancellation has been done successfully.\n\n` +
                   (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
-                  `Total Tickets: ${cancellationTotalTickets}\n` +
-                  `Cancelled Tickets: ${cancellationSuccessCount}\n` +
-                  `Failed Tickets: ${cancellationFailedCount}`;
+                  statsText;
 
                 return (
                   <>

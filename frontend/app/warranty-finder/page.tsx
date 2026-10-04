@@ -178,7 +178,10 @@ export default function WarrantyFinderPage() {
   const [modelNumber, setModelNumber] = useState("");
   const [installationDate, setInstallationDate] = useState("");
   const [branch, setBranch] = useState("");
+  const [activeTab, setActiveTab] = useState<'model' | 'subfamily'>('model');
+  const [subFamily, setSubFamily] = useState("");
   const [dbModels, setDbModels] = useState<string[]>([]);
+  const [dbSubFamilies, setDbSubFamilies] = useState<string[]>([]);
   const [searchResult, setSearchResult] = useState<any[] | null>(null);
   const [searchError, setSearchError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -191,8 +194,10 @@ export default function WarrantyFinderPage() {
   }>({});
   const [showQueryModal, setShowQueryModal] = useState(false);
   const [copied, setCopied] = useState(false);
-  const soqlQuery =
-    "SELECT Warranty_Term__r.WarrantyTermName, Installation_From__c, Installation_To__c, Warranty_Term__r.WarrantyDuration, Warranty_Term__r.WarrantyUnitOfTime, Branch_Operator__c, Branch__c, Modals__c FROM Warranty_Conditions__c WHERE Warranty_Term__r.IsActive = true";
+  const soqlQuery = activeTab === 'model'
+    ? "SELECT Warranty_Term__r.WarrantyTermName, Installation_From__c, Installation_To__c, Warranty_Term__r.WarrantyDuration, Warranty_Term__r.WarrantyUnitOfTime, Branch_Operator__c, Branch__c, Modals__c FROM Warranty_Conditions__c WHERE Warranty_Term__r.IsActive = true"
+    : "SELECT Id, Product_Sub_Family__c, Product_Sub_Family_Operator__c, Warranty_Term__r.WarrantyTermName FROM Warranty_Conditions__c WHERE Warranty_Term__r.IsActive = true";
+
   useEffect(() => {
     fetch("/api/warranty-finder/models")
       .then((res) => res.json())
@@ -203,6 +208,17 @@ export default function WarrantyFinderPage() {
       })
       .catch((err) =>
         console.error("Failed to load models for autocomplete", err),
+      );
+
+    fetch("/api/warranty-finder/sub-families")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.subFamilies) {
+          setDbSubFamilies(data.subFamilies);
+        }
+      })
+      .catch((err) =>
+        console.error("Failed to load sub-families for autocomplete", err),
       );
   }, []);
   useEffect(() => {
@@ -259,6 +275,41 @@ export default function WarrantyFinderPage() {
       setIsSearching(false);
     }
   };
+
+  const handleSubFamilySearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSearching(true);
+    setSearchError("");
+    setSearchResult(null);
+    try {
+      const res = await fetch("/api/warranty-finder/search-sub-family", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productSubFamily: subFamily }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSearchResult(data.conditions);
+        trackDashboardEvent({
+          metricKey: "warranty_checks",
+          incrementBy: 1,
+          event: {
+            type: "warranty-check",
+            label: "Warranty check by sub-family",
+            meta: subFamily,
+            module: "warranty-finder",
+          }
+        });
+      } else {
+        setSearchError(data.message || "No matching warranty term found.");
+      }
+    } catch (err) {
+      setSearchError("Network error while searching.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleUpload = async (content: string | File) => {
     setIsUploading(true);
     setUploadStatus({ message: "Uploading and syncing database..." });
@@ -269,6 +320,7 @@ export default function WarrantyFinderPage() {
       } else {
         formData.append("csvFile", content);
       }
+      formData.append("type", activeTab);
       const res = await fetch("/api/warranty-finder/upload", {
         method: "POST",
         body: formData,
@@ -339,74 +391,100 @@ export default function WarrantyFinderPage() {
             or branch to find the exact matching term.{" "}
           </p>{" "}
         </motion.div>{" "}
-        {/* Search Bar - Unified Block */}{" "}
+        {/* Search Mode Toggle */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05, ease: "easeOut" }}
+          className="flex justify-center mb-8 relative z-50"
+        >
+          <div className="bg-black/5 dark:bg-white/5 backdrop-blur-md p-1.5 rounded-full inline-flex border border-white/10 shadow-inner">
+            <button
+              onClick={() => { setActiveTab('model'); setSearchError(""); setSearchResult(null); }}
+              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
+                activeTab === 'model'
+                  ? "bg-blue-500 text-white shadow-lg scale-105"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Search by Model
+            </button>
+            <button
+              onClick={() => { setActiveTab('subfamily'); setSearchError(""); setSearchResult(null); }}
+              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
+                activeTab === 'subfamily'
+                  ? "bg-blue-500 text-white shadow-lg scale-105"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Search by Sub Family
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Search Bar - Unified Block */}
         <motion.form
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
-          onSubmit={handleSearch}
+          onSubmit={activeTab === 'model' ? handleSearch : handleSubFamilySearch}
           className="mb-12 relative z-50"
         >
-          {" "}
           <div className="flex flex-col md:flex-row app-card !rounded-2xl md:!rounded-full p-2 shadow-2xl relative">
-            {" "}
-            <div className="flex-1 px-4 py-2 border-b md:border-b-0 md:border-r border-border">
-              {" "}
-              <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-8">
-                Model Number
-              </p>{" "}
-              <AutocompleteInput
-                icon={Box}
-                options={dbModels}
-                value={modelNumber}
-                onChange={setModelNumber}
-                placeholder="Ex: CNHW12GAFU"
-                required
-              />{" "}
-            </div>{" "}
-            <div className="flex-1 px-4 py-2 border-b md:border-b-0 md:border-r border-border">
-              {" "}
-              <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-8">
-                Installation Date
-              </p>{" "}
-              <div className="flex items-center gap-3">
-                {" "}
-                <CalendarDays className="h-5 w-5 text-muted-foreground shrink-0" />{" "}
-                <TranslucentDatePicker
-                  value={installationDate}
-                  onChange={setInstallationDate}
-                  className="w-full"
-                />{" "}
-              </div>{" "}
-            </div>{" "}
-            <div className="flex-1 px-4 py-2">
-              {" "}
-              <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-8">
-                Branch / City
-              </p>{" "}
-              <AutocompleteInput
-                icon={MapPin}
-                options={BRANCHES}
-                value={branch}
-                onChange={setBranch}
-                placeholder="Optional branch..."
-              />{" "}
-            </div>{" "}
+            {activeTab === 'model' ? (
+              <>
+                <div className="flex-1 px-4 py-2 border-b md:border-b-0 md:border-r border-border">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-8">Model Number</p>
+                  <AutocompleteInput
+                    icon={Box}
+                    options={dbModels}
+                    value={modelNumber}
+                    onChange={setModelNumber}
+                    placeholder="Ex: CNHW12GAFU"
+                    required
+                  />
+                </div>
+                <div className="flex-1 px-4 py-2 border-b md:border-b-0 md:border-r border-border">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-8">Installation Date</p>
+                  <div className="flex items-center gap-3">
+                    <CalendarDays className="h-5 w-5 text-muted-foreground shrink-0" />
+                    <TranslucentDatePicker value={installationDate} onChange={setInstallationDate} className="w-full" />
+                  </div>
+                </div>
+                <div className="flex-1 px-4 py-2">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-8">Branch / City</p>
+                  <AutocompleteInput
+                    icon={MapPin}
+                    options={BRANCHES}
+                    value={branch}
+                    onChange={setBranch}
+                    placeholder="Optional branch..."
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 px-4 py-2 w-full">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-8">Product Sub Family</p>
+                <AutocompleteInput
+                  icon={Box}
+                  options={dbSubFamilies}
+                  value={subFamily}
+                  onChange={setSubFamily}
+                  placeholder="Ex: F1201, F1210..."
+                  required
+                />
+              </div>
+            )}
             <button
               type="submit"
               disabled={isSearching}
               className="mt-4 md:mt-0 md:ml-2 bg-blue-600-white px-8 py-4 md:py-0 rounded-xl md:rounded-full font-bold flex items-center justify-center gap-2 transition-all disabled:opacity-50"
             >
-              {" "}
-              {isSearching ? (
-                <RefreshCw className="h-5 w-5 animate-spin" />
-              ) : (
-                <Search className="h-5 w-5" />
-              )}{" "}
-              <span>Search</span>{" "}
-            </button>{" "}
-          </div>{" "}
-        </motion.form>{" "}
+              {isSearching ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+              <span>Search</span>
+            </button>
+          </div>
+        </motion.form>
         {/* Results Section */}{" "}
         <AnimatePresence mode="wait">
           {" "}
@@ -488,76 +566,97 @@ export default function WarrantyFinderPage() {
                         </span>{" "}
                       </div>{" "}
                     </div>{" "}
-                    <div className="h-px w-full bg-white/5 mb-6" />{" "}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      {" "}
-                      <div>
-                        {" "}
-                        <div className="flex items-center gap-1.5 mb-1.5">
+                    {activeTab === 'model' ? (
+                      <>
+                        <div className="h-px w-full bg-white/5 mb-6" />{" "}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                           {" "}
-                          <Clock className="h-3.5 w-3.5 text-muted-foreground " />{" "}
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Duration
-                          </p>{" "}
+                          <div>
+                            {" "}
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              {" "}
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground " />{" "}
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                Duration
+                              </p>{" "}
+                            </div>{" "}
+                            <p className="text-sm font-semibold text-foreground ">
+                              {" "}
+                              {result.duration} {result.unitOfTime}{" "}
+                            </p>{" "}
+                          </div>{" "}
+                          <div>
+                            {" "}
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              {" "}
+                              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground " />{" "}
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                Valid From
+                              </p>{" "}
+                            </div>{" "}
+                            <p className="text-sm font-semibold text-foreground ">
+                              {" "}
+                              {result.installationFrom
+                                ? new Date(
+                                    result.installationFrom,
+                                  ).toLocaleDateString("en-GB")
+                                : "Anytime"}{" "}
+                            </p>{" "}
+                          </div>{" "}
+                          <div>
+                            {" "}
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              {" "}
+                              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground " />{" "}
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                Valid Until
+                              </p>{" "}
+                            </div>{" "}
+                            <p className="text-sm font-semibold text-foreground ">
+                              {" "}
+                              {result.installationTo
+                                ? new Date(
+                                    result.installationTo,
+                                  ).toLocaleDateString("en-GB")
+                                : "Anytime"}{" "}
+                            </p>{" "}
+                          </div>{" "}
+                          <div>
+                            {" "}
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              {" "}
+                              <Building2 className="h-3.5 w-3.5 text-muted-foreground " />{" "}
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                Branch
+                              </p>{" "}
+                            </div>{" "}
+                            <p className="text-sm font-semibold text-foreground ">
+                              {" "}
+                              {result.branchOperator
+                                ? `${result.branchOperator} ${result.branches ? "Specific" : ""}`
+                                : "All Branches"}{" "}
+                            </p>{" "}
+                          </div>{" "}
                         </div>{" "}
-                        <p className="text-sm font-semibold text-foreground ">
-                          {" "}
-                          {result.duration} {result.unitOfTime}{" "}
-                        </p>{" "}
-                      </div>{" "}
-                      <div>
-                        {" "}
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          {" "}
-                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground " />{" "}
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Valid From
-                          </p>{" "}
-                        </div>{" "}
-                        <p className="text-sm font-semibold text-foreground ">
-                          {" "}
-                          {result.installationFrom
-                            ? new Date(
-                                result.installationFrom,
-                              ).toLocaleDateString("en-GB")
-                            : "Anytime"}{" "}
-                        </p>{" "}
-                      </div>{" "}
-                      <div>
-                        {" "}
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          {" "}
-                          <CalendarDays className="h-3.5 w-3.5 text-muted-foreground " />{" "}
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Valid Until
-                          </p>{" "}
-                        </div>{" "}
-                        <p className="text-sm font-semibold text-foreground ">
-                          {" "}
-                          {result.installationTo
-                            ? new Date(
-                                result.installationTo,
-                              ).toLocaleDateString("en-GB")
-                            : "Anytime"}{" "}
-                        </p>{" "}
-                      </div>{" "}
-                      <div>
-                        {" "}
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          {" "}
-                          <Building2 className="h-3.5 w-3.5 text-muted-foreground " />{" "}
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Branch
-                          </p>{" "}
-                        </div>{" "}
-                        <p className="text-sm font-semibold text-foreground ">
-                          {" "}
-                          {result.branchOperator
-                            ? `${result.branchOperator} ${result.branches ? "Specific" : ""}`
-                            : "All Branches"}{" "}
-                        </p>{" "}
-                      </div>{" "}
-                    </div>{" "}
+                      </>
+                    ) : (
+                      <>
+                        <div className="h-px w-full bg-white/5 mb-6" />{" "}
+                        <div className="grid grid-cols-2 gap-6">
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <Box className="h-3.5 w-3.5 text-muted-foreground " />
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                Match Rule
+                              </p>
+                            </div>
+                            <p className="text-sm font-semibold text-foreground ">
+                              {result.operator || "Equals"}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </motion.div>
                 ))}{" "}
               </div>{" "}
