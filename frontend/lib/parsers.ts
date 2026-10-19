@@ -57,7 +57,10 @@ export function cleanHeader(value: string): string {
 }
 
 export function cleanValue(value: string): string {
-  return value.replace(/["\[\]]/g, '').trim();
+  return value
+    .replace(/^["'\s\u00A0\uFEFF]+|["'\s\u00A0\uFEFF]+$/g, '')
+    .replace(/["\[\]]/g, '')
+    .trim();
 }
 
 export function getRowValue(row: Record<string, string>, headers: readonly string[]): string {
@@ -97,6 +100,15 @@ export function parseCSVLine(line: string): string[] {
   let inQuotes = false;
   let i = 0;
 
+  // Pre-check for space-separated quotes e.g. "a"  "b" (Workbench export)
+  const spaceQuoteRegex = /"([^"]*)"(?:\s+|$)/g;
+  if (!line.includes(',') && !line.includes('\t') && line.includes('"') && /"[^"]*"\s+"[^"]*"/.test(line)) {
+    const matches = [...line.matchAll(spaceQuoteRegex)];
+    if (matches.length > 1) {
+      return matches.map((m) => m[1] ?? '');
+    }
+  }
+
   while (i < line.length) {
     const char = line[i];
     const nextChar = line[i + 1];
@@ -109,7 +121,7 @@ export function parseCSVLine(line: string): string[] {
         inQuotes = !inQuotes;
         i += 1;
       }
-    } else if ((char === ',' || char === '\t') && !inQuotes) {
+    } else if ((char === ',' || char === '\t' || char === '|') && !inQuotes) {
       values.push(current);
       current = '';
       i += 1;
@@ -120,6 +132,16 @@ export function parseCSVLine(line: string): string[] {
   }
 
   values.push(current);
+
+  // If we ended up with only 1 value, and line has multi-space separators without quotes
+  const firstVal = values[0];
+  if (values.length === 1 && firstVal && firstVal.includes('  ')) {
+    const spaceSplit = firstVal.split(/\s{2,}/).map((s) => s.trim()).filter(Boolean);
+    if (spaceSplit.length > 1) {
+      return spaceSplit;
+    }
+  }
+
   return values;
 }
 

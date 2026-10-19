@@ -307,120 +307,113 @@ export default function HelpPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
+        className="relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8 border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] shadow-sm"
       >
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl pointer-events-none dark:bg-white/10 dark:mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-indigo-400/10 blur-3xl pointer-events-none dark:bg-indigo-400/20 dark:mix-blend-screen" />
+        {/* Top Specular Rim */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+        <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl pointer-events-none dark:bg-sky-500/10" />
         
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between relative z-10">
-          <div className="space-y-4 max-w-3xl">
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-700 font-bold backdrop-blur-md shadow-lg border border-blue-500/20 dark:bg-white/20 dark:text-white dark:border-white/20">
-                <BookOpen className="h-7 w-7" />
+          <div className="space-y-3 max-w-3xl">
+            <div className="flex items-center gap-3.5 flex-wrap">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 font-bold border border-sky-200 dark:border-sky-500/20 shadow-sm">
+                <BookOpen className="h-6 w-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Badge className="bg-blue-500/10 text-blue-700 border border-blue-500/30 text-xs font-bold px-3 py-1 flex items-center gap-1.5 shadow-inner backdrop-blur-sm uppercase tracking-widest hover:bg-blue-500/15 transition-colors dark:bg-white/20 dark:text-white dark:border-white/30 dark:hover:bg-white/30">
+                  <Badge className="bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30 text-[10px] font-bold px-2.5 py-0.5 flex items-center gap-1.5 uppercase tracking-widest">
                     <Sparkles className="h-3 w-3" />
                     Lightning v2.4 Docs
                   </Badge>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
                   Knowledge Center &amp; Architecture Hub
                 </h1>
               </div>
             </div>
-            <p className="text-sm sm:text-base text-slate-600 dark:text-blue-100 font-medium leading-relaxed max-w-2xl">
-              Comprehensive operational guides, component specifications, database telemetry workflows, and best practices for every core utility in the MeghdootPlayground ecosystem.
+            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium leading-relaxed max-w-2xl">
+              Comprehensive operational guides, component specifications, database telemetry workflows, and production best practices for every core utility in the MeghdootPlayground ecosystem.
             </p>
           </div>
 
           {/* Global Search inside Help */}
           <div className="relative w-full md:w-80 shrink-0 group">
-            <div className="absolute inset-0 bg-blue-500/5 rounded-2xl blur group-hover:bg-blue-500/10 transition-colors dark:bg-white/5 dark:group-hover:bg-white/10" />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-blue-600 transition-colors z-10 dark:text-white/60 dark:group-focus-within:text-white" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-sky-500 transition-colors z-10" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search guides, FAQs..."
-              className="relative w-full h-14 pl-12 pr-12 rounded-2xl border border-slate-200 bg-white/65 backdrop-blur-md text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 shadow-inner transition-all dark:border-white/20 dark:bg-white/10 dark:text-white dark:placeholder:text-white/60 dark:focus:ring-white/40 dark:focus:border-white"
+              className="relative w-full h-11 pl-10 pr-10 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/70 dark:bg-[#06070a] text-sm font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 shadow-sm transition-all"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center h-6 w-6 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors z-10 dark:bg-white/20 dark:text-white dark:hover:bg-white/40"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-5 w-5 rounded-full bg-slate-200 dark:bg-white/[0.1] text-slate-500 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-white/[0.2] transition-colors z-10 text-xs"
               >
-                <Search className="h-3 w-3" />
+                ✕
               </button>
             )}
           </div>
         </div>
       </motion.div>
 
+      {/* Signature Card */}
       <motion.section
-        initial={{ opacity: 0, y: 20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.08, ease: "easeOut" }}
-        className="group relative overflow-hidden rounded-[2rem] border border-white/40 dark:border-white/10 bg-gradient-to-br from-slate-100/80 via-white/90 to-slate-50/80 dark:from-slate-900/90 dark:via-slate-950/90 dark:to-slate-900/90 px-[clamp(1.5rem,4vw,2.5rem)] py-[clamp(1.5rem,3.5vw,2.25rem)] shadow-2xl shadow-blue-900/5 backdrop-blur-2xl transition-all duration-500 hover:shadow-blue-900/10 dark:shadow-black/50"
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.08, ease: "easeOut" }}
+        className="group relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] px-6 py-6 sm:px-8 sm:py-6 shadow-sm transition-all duration-300 hover:border-sky-500/30"
       >
-        {/* Animated Glow Backgrounds */}
-        <div className="pointer-events-none absolute -inset-[100%] animate-[spin_20s_linear_infinite] opacity-30 mix-blend-soft-light" style={{ background: 'conic-gradient(from 0deg, transparent 0 340deg, rgba(59,130,246,0.4) 360deg)' }} />
-        <div className="pointer-events-none absolute right-0 top-0 h-[300px] w-[300px] -translate-y-1/2 translate-x-1/3 rounded-full bg-blue-500/10 blur-[80px] transition-all duration-700 group-hover:bg-blue-500/20 dark:bg-blue-500/20 dark:group-hover:bg-blue-500/30" />
-        <div className="pointer-events-none absolute bottom-0 left-0 h-[250px] w-[250px] -translate-x-1/3 translate-y-1/3 rounded-full bg-violet-500/10 blur-[80px] transition-all duration-700 group-hover:bg-violet-500/20 dark:bg-violet-500/20 dark:group-hover:bg-violet-500/30" />
-
-        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-sm shadow-orange-500/20">
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white dark:bg-slate-950">
-                  <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-                </div>
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
+        
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0 space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                <Star className="h-3 w-3 fill-amber-500" />
               </div>
-              <Badge className="bg-white/50 text-slate-800 border-slate-200/50 backdrop-blur-md px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest shadow-sm dark:bg-white/5 dark:text-slate-200 dark:border-white/10 group-hover:border-slate-300 dark:group-hover:border-white/20 transition-colors">
+              <Badge className="bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-slate-300 border-slate-200 dark:border-white/[0.08] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest">
                 Personal Trademark
               </Badge>
             </div>
             
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center relative z-10">
-              <h2 className="shrink-0 text-[clamp(1.5rem,3vw,2.25rem)] font-black leading-tight tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 drop-shadow-sm">
+              <h2 className="shrink-0 text-xl sm:text-2xl font-black leading-tight tracking-tight text-slate-900 dark:text-white">
                 Made by
               </h2>
-              <div className="relative h-[clamp(5rem,14vw,7.5rem)] w-full max-w-[min(100%,30rem)] transition-transform duration-500 group-hover:scale-[1.02] group-hover:-translate-y-1">
-                {/* Signature Glow */}
-                <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-500/20 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+              <div className="relative h-14 w-full max-w-[20rem] transition-transform duration-300 group-hover:scale-[1.02]">
                 <Image
                   src="/signature-black-cropped.png"
                   alt="Abhishek signature trademark"
                   fill
-                  sizes="(min-width: 1024px) 30rem, 100vw"
-                  className="object-contain object-left drop-shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:hidden relative z-10"
+                  sizes="(min-width: 1024px) 20rem, 100vw"
+                  className="object-contain object-left dark:hidden relative z-10"
                   priority
                 />
                 <Image
                   src="/signature-white-cropped.png"
                   alt="Abhishek signature trademark"
                   fill
-                  sizes="(min-width: 1024px) 30rem, 100vw"
-                  className="hidden object-contain object-left drop-shadow-[0_4px_12px_rgba(255,255,255,0.1)] dark:block relative z-10"
+                  sizes="(min-width: 1024px) 20rem, 100vw"
+                  className="hidden object-contain object-left dark:block relative z-10"
                   priority
                 />
               </div>
             </div>
             
-            <p className="max-w-2xl text-[clamp(0.85rem,1.5vw,1rem)] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-[#0176d3]" />
-              Built, tuned, and signed for fast CRM support workflows.
+            <p className="max-w-2xl text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-sky-500 shrink-0" />
+              Built, tuned, and signed for fast, reliable enterprise Salesforce operations.
             </p>
           </div>
 
-          <div className="relative hidden overflow-hidden rounded-2xl border border-white/50 bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 p-px shadow-lg shadow-slate-200/50 dark:border-slate-700/50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950 dark:shadow-black/50 lg:block transition-transform duration-500 hover:scale-105 group-hover:shadow-xl group-hover:shadow-blue-500/10">
-            <div className="absolute inset-0 translate-x-[-100%] animate-[shimmer_2.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/10" />
-            <div className="relative flex h-full w-full flex-col items-end justify-center rounded-2xl bg-white/40 px-6 py-5 backdrop-blur-sm dark:bg-black/20">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          <div className="relative hidden overflow-hidden rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/70 dark:bg-[#06070a] p-px lg:block transition-all duration-300">
+            <div className="relative flex h-full w-full flex-col items-end justify-center rounded-2xl px-5 py-4">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
                 Meghdoot Playground
               </div>
-              <div className="mt-1 flex items-center gap-1.5 text-base font-black tracking-tight text-slate-900 dark:text-white">
+              <div className="mt-1 flex items-center gap-1.5 text-sm font-black tracking-tight text-slate-900 dark:text-white">
                 Signature Edition
                 <div className="h-1.5 w-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)] animate-pulse" />
               </div>
@@ -430,24 +423,24 @@ export default function HelpPage() {
       </motion.section>
 
       {/* 2. INTERACTIVE NAVIGATION TABS */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar px-1">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar px-0.5">
         {[
           { id: "modules", label: "Module Guides (9)", icon: Layers, count: MODULE_GUIDES.length },
           { id: "faq", label: "Interactive FAQ", icon: MessageCircle, count: FAQS_LIST.length },
-          { id: "shortcuts", label: "Hotkeys", icon: Keyboard, count: SHORTCUTS_LIST.length },
+          { id: "shortcuts", label: "Hotkeys Reference", icon: Keyboard, count: SHORTCUTS_LIST.length },
           { id: "security", label: "Security & Database", icon: ShieldCheck, count: null },
         ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as HelpTab)}
             className={cn(
-              "flex items-center gap-2.5 px-5 py-3 rounded-2xl font-bold text-sm transition-all whitespace-nowrap shrink-0 shadow-sm border",
+              "flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all whitespace-nowrap shrink-0 border",
               activeTab === tab.id
-                ? "bg-[#0176d3] text-white border-[#0176d3] shadow-md shadow-[#0176d3]/20"
-                : "bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-foreground hover:shadow-md"
+                ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white border-sky-400/30 shadow-md shadow-sky-500/20 font-bold"
+                : "bg-white dark:bg-[#0b0c10] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-white/[0.15]"
             )}
           >
-            <tab.icon className={cn("h-4.5 w-4.5", activeTab === tab.id ? "text-white" : "text-slate-400")} />
+            <tab.icon className={cn("h-4 w-4", activeTab === tab.id ? "text-white" : "text-slate-400 dark:text-slate-500")} />
             <span>{tab.label}</span>
           </button>
         ))}
@@ -466,80 +459,79 @@ export default function HelpPage() {
             className="space-y-6"
           >
             {/* Category Filter Chips */}
-            <Card className="border-0 shadow-sm bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
-              <div className="p-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div className="border border-slate-200/80 dark:border-white/[0.08] shadow-sm bg-white dark:bg-[#0b0c10] rounded-2xl overflow-hidden p-2.5">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                 {categories.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     className={cn(
-                      "px-4 py-2 rounded-xl text-xs font-bold transition-all border shrink-0 uppercase tracking-widest",
+                      "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border shrink-0 uppercase tracking-widest",
                       selectedCategory === cat
-                        ? "bg-[#0176d3] text-white border-[#0176d3] shadow-md shadow-[#0176d3]/20"
-                        : "bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:text-foreground hover:bg-slate-50 dark:hover:bg-slate-700"
+                        ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white border-sky-400/30 shadow-sm shadow-sky-500/20"
+                        : "bg-slate-50/70 dark:bg-[#06070a] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.08] hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04]"
                     )}
                   >
                     {cat}
                   </button>
                 ))}
               </div>
-            </Card>
+            </div>
 
             {filteredModules.length === 0 ? (
-              <div className="flex min-h-[400px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl p-12 text-center shadow-inner">
-                <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-slate-100 dark:bg-slate-800 text-slate-400 shadow-inner">
-                  <Search className="h-10 w-10" />
+              <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 dark:border-white/[0.12] bg-slate-50/50 dark:bg-[#0b0c10]/40 p-10 text-center shadow-sm">
+                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20">
+                  <Search className="h-7 w-7" />
                 </div>
-                <h3 className="text-xl font-black text-foreground">No modules found</h3>
-                <p className="mt-2 text-sm text-slate-500 max-w-sm">Try clearing your search term or selecting a different category filter.</p>
-                <Button className="mt-6 font-bold" onClick={() => { setSearchQuery(""); setSelectedCategory("All"); }}>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">No modules found</h3>
+                <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 max-w-sm">Try clearing your search term or selecting a different category filter.</p>
+                <Button className="mt-5 text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white" onClick={() => { setSearchQuery(""); setSelectedCategory("All"); }}>
                   Reset Filters
                 </Button>
               </div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 items-stretch">
+              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 items-stretch">
                 {filteredModules.map((mod, idx) => (
                   <motion.div
                     key={mod.id}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 15 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: idx * 0.05 }}
+                    transition={{ duration: 0.35, delay: idx * 0.04 }}
                     className="h-full flex flex-col"
                   >
-                    <Card className="h-full border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group relative">
-                      <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-colors" />
+                    <div className="h-full app-card rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] shadow-sm hover:shadow-xl hover:border-sky-500/30 transition-all duration-300 flex flex-col group relative overflow-hidden">
+                      {/* Top Specular Rim */}
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent pointer-events-none" />
                       
-                      <CardHeader className="p-6 pb-5 border-b border-slate-200/50 dark:border-slate-700/50 bg-gradient-to-r from-slate-50/50 to-transparent dark:from-slate-800/50 flex flex-row items-start justify-between gap-4 relative z-10">
-                        <div className="flex items-start gap-4 min-w-0 w-full">
-                          <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl font-bold shadow-md transition-transform group-hover:scale-110", mod.color)}>
-                            <mod.icon className="h-6 w-6" />
-                          </div>
-                          <div className="min-w-0 flex-1 pt-1">
-                            <Badge className="mb-2 bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 text-[10px] font-bold px-2.5 py-0.5 uppercase tracking-widest shadow-sm">
-                              {mod.category}
-                            </Badge>
-                            <CardTitle className="text-lg font-black text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight">
-                              {mod.name}
-                            </CardTitle>
-                          </div>
+                      <div className="p-5 pb-4 border-b border-slate-100 dark:border-white/[0.06] bg-slate-50/50 dark:bg-[#06070a]/60 flex items-start gap-3.5 relative z-10">
+                        <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold shadow-sm transition-transform group-hover:scale-105 border", mod.color)}>
+                          <mod.icon className="h-5 w-5" />
                         </div>
-                      </CardHeader>
+                        <div className="min-w-0 flex-1 pt-0.5">
+                          <Badge className="mb-1.5 bg-slate-100 dark:bg-white/[0.05] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.08] text-[9px] font-bold px-2 py-0.5 uppercase tracking-wider">
+                            {mod.category}
+                          </Badge>
+                          <h3 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors leading-tight">
+                            {mod.name}
+                          </h3>
+                        </div>
+                      </div>
 
-                      <CardContent className="p-6 flex-1 flex flex-col justify-between space-y-5 relative z-10">
+                      <div className="p-5 flex-1 flex flex-col justify-between space-y-4 relative z-10">
                         <div className="space-y-4">
-                          <div className="text-sm text-slate-500 leading-relaxed font-medium">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal">
                             {mod.purpose}
-                          </div>
+                          </p>
 
-                          <div className="space-y-3 pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                            <div className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                              <Sparkles className="h-4 w-4 text-blue-500" />
-                              Key Features
+                          <div className="space-y-2.5 pt-3.5 border-t border-slate-100 dark:border-white/[0.06]">
+                            <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                              <Sparkles className="h-3.5 w-3.5 text-sky-500" />
+                              Key Capabilities
                             </div>
-                            <ul className="space-y-2.5">
+                            <ul className="space-y-2">
                               {mod.features.map((feat, fi) => (
-                                <li key={fi} className="text-sm text-foreground flex items-start gap-3 leading-relaxed">
-                                  <div className="h-2 w-2 rounded-full bg-blue-500 mt-1.5 shrink-0 shadow-sm shadow-blue-500/40" />
+                                <li key={fi} className="text-xs text-slate-700 dark:text-slate-300 flex items-start gap-2.5 leading-relaxed">
+                                  <div className="h-1.5 w-1.5 rounded-full bg-sky-500 mt-1.5 shrink-0 shadow-sm shadow-sky-500/40" />
                                   <span className="font-medium opacity-90">{feat}</span>
                                 </li>
                               ))}
@@ -548,15 +540,15 @@ export default function HelpPage() {
                         </div>
 
                         {/* Pro Tip Box */}
-                        <div className="mt-6 p-4 rounded-2xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/50 flex items-start gap-3 shadow-inner">
-                          <Lightbulb className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                          <div className="text-xs leading-relaxed text-blue-900 dark:text-blue-200 font-medium">
-                            <span className="font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider block mb-1">Pro Tip</span>
+                        <div className="mt-4 p-3.5 rounded-xl bg-sky-50/60 dark:bg-sky-500/10 border border-sky-200/70 dark:border-sky-500/20 flex items-start gap-2.5 shadow-sm">
+                          <Lightbulb className="h-4 w-4 text-sky-600 dark:text-sky-400 shrink-0 mt-0.5" />
+                          <div className="text-xs leading-relaxed text-sky-950 dark:text-sky-200 font-medium">
+                            <span className="font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wider block text-[10px] mb-0.5">Pro Tip</span>
                             {mod.proTip}
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -572,43 +564,40 @@ export default function HelpPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-5"
           >
-            <div className="p-5 rounded-2xl bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 flex items-center justify-between flex-wrap gap-3 shadow-sm">
-              <div className="text-sm font-bold text-slate-500">
-                Showing <span className="font-black text-foreground">{filteredFaqs.length}</span> frequently asked CRM questions
+            <div className="p-4 px-5 rounded-2xl bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between flex-wrap gap-3 shadow-sm">
+              <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                Displaying <span className="font-bold text-slate-900 dark:text-white">{filteredFaqs.length}</span> verified operational answers
               </div>
-              <Badge variant="outline" className="text-xs font-mono text-slate-400 border-slate-200 dark:border-slate-700">Updated for v2.4</Badge>
+              <Badge variant="outline" className="text-[10px] font-mono text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/[0.08]">Updated for v2.4</Badge>
             </div>
 
             {filteredFaqs.length === 0 ? (
-              <div className="flex min-h-[300px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl p-12 text-center shadow-inner">
-                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 shadow-inner">
-                  <MessageCircle className="h-8 w-8" />
+              <div className="flex min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 dark:border-white/[0.12] bg-slate-50/50 dark:bg-[#0b0c10]/40 p-10 text-center shadow-sm">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-[#06070a] text-slate-400">
+                  <MessageCircle className="h-6 w-6" />
                 </div>
-                <div className="text-lg font-black text-foreground">No FAQs match your query</div>
-                <p className="text-sm text-slate-500 mt-2">Try searching for terms like &apos;Salesforce&apos; or &apos;limits&apos;.</p>
+                <div className="text-sm font-bold text-slate-900 dark:text-white">No FAQs match your search</div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Try querying keywords such as &apos;Salesforce&apos;, &apos;batch&apos;, or &apos;limits&apos;.</p>
               </div>
             ) : (
-              <div className="grid gap-5 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 {filteredFaqs.map((faq, idx) => (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} key={idx}>
-                    <Card className="h-full border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden hover:shadow-xl transition-all flex flex-col group relative">
-                       <div className="absolute top-0 right-0 p-24 bg-gradient-to-bl from-indigo-500/5 to-transparent rounded-full blur-2xl pointer-events-none group-hover:from-indigo-500/10 transition-colors" />
-                      <CardHeader className="p-6 pb-4 relative z-10">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <Badge className="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-black text-[10px] px-2.5 py-0.5 uppercase tracking-widest shrink-0 shadow-sm">
-                            Q{idx + 1} • {faq.category}
-                          </Badge>
-                        </div>
-                        <CardTitle className="text-base sm:text-lg font-black text-foreground leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          {faq.q}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6 pt-0 text-sm text-slate-500 leading-relaxed font-medium relative z-10 flex-1 flex items-start">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.04 }} key={idx}>
+                    <div className="h-full app-card rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] shadow-sm hover:border-sky-500/30 hover:shadow-md transition-all flex flex-col group relative overflow-hidden p-5">
+                      <div className="flex items-start justify-between gap-3 mb-2.5">
+                        <Badge className="bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-500/30 font-bold text-[9px] px-2 py-0.5 uppercase tracking-wider shrink-0">
+                          Q{idx + 1} • {faq.category}
+                        </Badge>
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white leading-snug group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors mb-2">
+                        {faq.q}
+                      </h4>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal flex-1">
                         {faq.a}
-                      </CardContent>
-                    </Card>
+                      </p>
+                    </div>
                   </motion.div>
                 ))}
               </div>
@@ -624,48 +613,47 @@ export default function HelpPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.3 }}
-            className="space-y-6"
+            className="space-y-5"
           >
-            <div className="p-6 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 shadow-xl flex items-center justify-between flex-wrap gap-6 relative overflow-hidden border border-blue-500/50">
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
-              <div className="space-y-2 relative z-10 max-w-2xl">
-                <div className="text-xl font-black text-white flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm border border-white/20">
-                    <Keyboard className="h-6 w-6 text-white" />
+            <div className="p-6 rounded-2xl bg-gradient-to-r from-sky-600 to-blue-700 shadow-xl flex items-center justify-between flex-wrap gap-4 border border-sky-400/30 text-white relative overflow-hidden">
+              <div className="space-y-1.5 relative z-10 max-w-2xl">
+                <div className="text-lg font-bold flex items-center gap-2.5">
+                  <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm border border-white/20">
+                    <Keyboard className="h-5 w-5 text-white" />
                   </div>
-                  <span>Work Faster with Keyboard Hotkeys</span>
+                  <span>High-Velocity Keyboard Accelerators</span>
                 </div>
-                <p className="text-blue-100 font-medium text-sm leading-relaxed">
-                  Use these system-wide hotkeys anywhere in MeghdootPlayground to jump between modules, trigger batches, or open global search.
+                <p className="text-sky-100 font-medium text-xs leading-relaxed">
+                  Execute repetitive actions without leaving the keyboard. Global shortcuts work seamlessly across all 9 MeghdootPlayground modules.
                 </p>
               </div>
-              <Badge className="bg-white text-blue-600 font-mono text-sm px-4 py-2 font-black shadow-lg relative z-10 rounded-xl border-0">
-                12 Active Hotkeys
+              <Badge className="bg-white text-sky-700 font-mono text-xs px-3.5 py-1.5 font-bold shadow-md relative z-10 rounded-lg border-0">
+                12 System Hotkeys
               </Badge>
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {SHORTCUTS_LIST.map((sc, idx) => (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.03 }} key={idx}>
-                  <Card className="border-0 shadow-md ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-2xl overflow-hidden hover:shadow-lg transition-all hover:-translate-y-0.5 p-5 flex items-center justify-between gap-4 group">
-                    <div className="space-y-2 min-w-0 flex-1">
-                      <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase px-2 py-0.5 tracking-widest">
+                <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.02 }} key={idx}>
+                  <div className="app-card rounded-xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] shadow-sm p-4 flex items-center justify-between gap-3 group hover:border-sky-500/30 transition-all">
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <Badge className="bg-slate-100 dark:bg-white/[0.05] text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/[0.08] text-[9px] font-bold uppercase px-2 py-0.5 tracking-wider">
                         {sc.cat}
                       </Badge>
-                      <div className="text-sm font-bold text-foreground truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{sc.label}</div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-white truncate group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">{sc.label}</div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       {sc.keys.map((k, ki) => (
                         <React.Fragment key={ki}>
-                          <kbd className="px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs font-mono font-black text-slate-700 dark:text-slate-300 shadow-sm">
+                          <kbd className="px-2 py-1 rounded-md bg-slate-100 dark:bg-[#06070a] border border-slate-200 dark:border-white/[0.12] text-[11px] font-mono font-bold text-slate-800 dark:text-slate-200 shadow-sm">
                             {k}
                           </kbd>
-                          {ki < sc.keys.length - 1 && <span className="text-slate-400 font-black text-xs">+</span>}
+                          {ki < sc.keys.length - 1 && <span className="text-slate-400 font-bold text-[10px]">+</span>}
                         </React.Fragment>
                       ))}
                     </div>
-                  </Card>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -682,60 +670,58 @@ export default function HelpPage() {
             transition={{ duration: 0.3 }}
             className="grid gap-6 md:grid-cols-2"
           >
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
-              <Card className="h-full border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden p-8 space-y-6 relative group">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-emerald-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-colors" />
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-500/30">
-                    <ShieldCheck className="h-7 w-7" />
+            <motion.div initial={{ opacity: 0, x: -15 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4 }}>
+              <div className="h-full app-card rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] shadow-sm p-6 sm:p-7 space-y-5 relative group overflow-hidden">
+                <div className="flex items-center gap-3.5 relative z-10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold shadow-sm">
+                    <ShieldCheck className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-foreground">Zero External Data Exfiltration</h3>
-                    <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold mt-1 uppercase tracking-widest">100% Client-Side Local</p>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">Zero External Exfiltration</h3>
+                    <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5 uppercase tracking-wider">100% Client-Side Local</p>
                   </div>
                 </div>
-                <p className="text-sm text-slate-500 leading-relaxed font-medium relative z-10">
-                  MeghdootPlayground is architected with strict security separation. When you paste raw customer ticket IDs, email chains, or customer account numbers into the SOQL Generator or Ticket Formatter, <strong className="text-foreground">zero data is ever transmitted to external cloud servers, Salesforce APIs, or third-party tracking services.</strong>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal relative z-10">
+                  MeghdootPlayground is architected with strict confidentiality boundaries. When processing ticket IDs, email chains, or customer account numbers, <strong className="text-slate-900 dark:text-white">zero sensitive data is ever transmitted to external cloud endpoints, Salesforce APIs, or public LLMs.</strong>
                 </p>
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-4 text-xs font-mono relative z-10 shadow-inner">
-                  <div className="flex items-center justify-between text-foreground font-bold">
+                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-[#06070a] border border-slate-200 dark:border-white/[0.08] space-y-3 text-xs font-mono relative z-10">
+                  <div className="flex items-center justify-between text-slate-800 dark:text-slate-200 font-medium">
                     <span>Salesforce API Connection:</span>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] uppercase tracking-wider font-black px-2 py-1">Disabled (Offline)</Badge>
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5">Air-Gapped (Offline)</Badge>
                   </div>
-                  <div className="flex items-center justify-between text-foreground font-bold">
+                  <div className="flex items-center justify-between text-slate-800 dark:text-slate-200 font-medium">
                     <span>In-Memory Spreadsheet Parsing:</span>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[10px] uppercase tracking-wider font-black px-2 py-1">100% Local SheetJS</Badge>
+                    <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5">100% Local SheetJS</Badge>
                   </div>
                 </div>
-              </Card>
+              </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4, delay: 0.1 }}>
-              <Card className="h-full border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden p-8 space-y-6 relative group">
-                <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-colors" />
-                <div className="flex items-center gap-4 relative z-10">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0176d3] text-white font-bold shadow-lg shadow-[#0176d3]/30">
-                    <Server className="h-7 w-7" />
+            <motion.div initial={{ opacity: 0, x: 15 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.4, delay: 0.08 }}>
+              <div className="h-full app-card rounded-2xl border border-slate-200/90 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] shadow-sm p-6 sm:p-7 space-y-5 relative group overflow-hidden">
+                <div className="flex items-center gap-3.5 relative z-10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold shadow-sm">
+                    <Server className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-foreground">PostgreSQL Database Engine</h3>
-                    <p className="text-sm text-blue-600 dark:text-blue-400 font-bold mt-1 uppercase tracking-widest">Prisma ORM Powered</p>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white">PostgreSQL Architecture</h3>
+                    <p className="text-[11px] text-sky-600 dark:text-sky-400 font-bold mt-0.5 uppercase tracking-wider">Prisma ORM Powered</p>
                   </div>
                 </div>
-                <p className="text-sm text-slate-500 leading-relaxed font-medium relative z-10">
-                  Your custom SOQL query templates, employee rosters, case owner workloads, and operational telemetry are stored in a dedicated PostgreSQL database managed via Prisma ORM. This provides enterprise-grade ACID compliance, transaction safety, and instant query filtering.
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-normal relative z-10">
+                  Custom SOQL query templates, employee rosters, case owner workloads, and operational telemetry are stored in a dedicated local PostgreSQL instance. This provides enterprise ACID compliance, transaction safety, and sub-millisecond query filtering.
                 </p>
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-4 text-xs font-mono relative z-10 shadow-inner">
-                  <div className="flex items-center justify-between text-foreground font-bold">
-                    <span>Database Driver:</span>
-                    <span className="text-[#0176d3] font-black uppercase tracking-wider text-[10px] bg-blue-500/10 px-2 py-1 rounded-md border border-blue-500/20">Prisma Pg Adapter</span>
+                <div className="p-4 rounded-xl bg-slate-50/70 dark:bg-[#06070a] border border-slate-200 dark:border-white/[0.08] space-y-3 text-xs font-mono relative z-10">
+                  <div className="flex items-center justify-between text-slate-800 dark:text-slate-200 font-medium">
+                    <span>Database Adapter:</span>
+                    <span className="text-sky-600 dark:text-sky-400 font-bold uppercase text-[10px] bg-sky-500/10 px-2 py-0.5 rounded-md border border-sky-500/20">Prisma Pg Driver</span>
                   </div>
-                  <div className="flex items-center justify-between text-foreground font-bold">
+                  <div className="flex items-center justify-between text-slate-800 dark:text-slate-200 font-medium">
                     <span>Automated Event Pruning:</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-wider text-[10px] bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">30-Day Retention</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold uppercase text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">30-Day Retention</span>
                   </div>
                 </div>
-              </Card>
+              </div>
             </motion.div>
           </motion.div>
         )}

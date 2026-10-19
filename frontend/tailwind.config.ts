@@ -24,6 +24,10 @@ const config: Config = {
         },
         background: "rgb(var(--color-background) / <alpha-value>)",
         card: "rgb(var(--color-card) / <alpha-value>)",
+        popover: {
+          DEFAULT: "rgb(var(--color-card) / <alpha-value>)",
+          foreground: "rgb(var(--color-foreground) / <alpha-value>)",
+        },
         border: "rgb(var(--color-border) / <alpha-value>)",
         hover: "rgb(var(--color-hover) / <alpha-value>)",
         success: "rgb(var(--color-success) / <alpha-value>)",

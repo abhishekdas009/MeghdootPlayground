@@ -92,13 +92,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
   useGlobalTilt();
 
   return (
-    <div className="app-shell relative min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[url('/images/dark-bg.png')] dark:bg-cover dark:bg-center dark:bg-fixed dark:bg-no-repeat">
+    <div className="app-shell relative min-h-screen overflow-x-hidden bg-background text-foreground transition-colors duration-300">
       
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        {/* Light mode blobs */}
-        <div className="absolute -top-[20%] left-[-10%] h-[50%] w-[50%] rounded-full bg-blue-400/20 mix-blend-multiply blur-[120px] dark:hidden sm:h-[60%] sm:w-[60%]" />
-        <div className="absolute right-[-10%] top-[-10%] h-[50%] w-[50%] rounded-full bg-purple-400/20 mix-blend-multiply blur-[120px] dark:hidden sm:h-[60%] sm:w-[60%]" />
-        <div className="absolute bottom-[-20%] left-[20%] h-[50%] w-[60%] rounded-full bg-sky-300/20 mix-blend-multiply blur-[120px] dark:hidden sm:h-[60%] sm:w-[60%]" />
+        {/* Ambient subtle light mode radiance */}
+        <div className="absolute -top-[15%] left-[-10%] h-[45%] w-[45%] rounded-full bg-blue-500/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
+        <div className="absolute right-[-10%] top-[-10%] h-[45%] w-[45%] rounded-full bg-indigo-500/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
+        <div className="absolute bottom-[-15%] left-[20%] h-[45%] w-[50%] rounded-full bg-sky-400/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
+        
+        {/* Ambient subtle dark mode spotlight aura */}
+        <div className="hidden dark:block absolute -top-[20%] left-[25%] h-[50%] w-[50%] rounded-full bg-sky-500/[0.04] blur-[140px]" />
+        <div className="hidden dark:block absolute top-[40%] right-[-10%] h-[40%] w-[40%] rounded-full bg-indigo-500/[0.025] blur-[140px]" />
       </div>
       <ParticleBackground />
       <Header />

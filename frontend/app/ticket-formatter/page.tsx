@@ -141,59 +141,23 @@ export default function TicketFormatterPage() {
   };
 
   return (
-    <div className="workspace-page mx-auto min-h-screen w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
-      
-      {/* ─── Hero / Header Section ────────────────────────────────────────────── */}
-      <motion.div
-        initial={{ opacity: 0, y: -20, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: "easeOut" }}
-        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
-      >
-        {/* Dynamic Background Elements */}
-        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-[100px] pointer-events-none dark:bg-indigo-500/20 dark:mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[100px] pointer-events-none dark:bg-blue-500/10 dark:mix-blend-screen" />
-        
-        <div className="relative z-10 flex flex-col gap-4">
-          <div className="flex items-center gap-5">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#0176d3] to-indigo-600 shadow-[0_0_30px_rgba(1,118,211,0.4)] border border-white/20">
-              <Sparkles className="h-7 w-7 text-white" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 mb-1.5">
-                <Badge className="bg-[#0176d3]/10 text-blue-700 border border-[#0176d3]/30 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-md uppercase tracking-widest dark:bg-[#0176d3]/20 dark:text-blue-300 dark:border-[#0176d3]/40">
-                  Formatter Tool
-                </Badge>
-              </div>
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-slate-950 drop-shadow-md dark:text-white">
-                Ticket <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400">Formatter</span>
-              </h1>
-            </div>
-          </div>
-          <p className="text-slate-600 dark:text-slate-300 font-medium max-w-2xl leading-relaxed mt-2 text-sm sm:text-base opacity-90">
-            Convert large lists of ticket numbers into any code or query format instantly. Automatically chunks large sets into 500-ticket batches for seamless integration.
-          </p>
-        </div>
-      </motion.div>
-
+    <div className="workspace-page mx-auto min-h-screen w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
       {/* ─── Main Content Grid ─────────────────────────────────────────────────── */}
       <div className="grid gap-8 lg:grid-cols-2">
         
         {/* Left Side: Input Panel */}
         <motion.div initial="hidden" animate="show" variants={containerVariants} className="h-full">
-          <Card className="h-full border border-white/10 shadow-2xl bg-white/5 dark:bg-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)] focus-within:border-blue-500/40">
-            <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
-            
-            <CardHeader className="bg-white/10 dark:bg-white/10 px-8 py-6 border-b border-white/10 dark:border-slate-800/50 flex flex-row items-center justify-between relative z-10 backdrop-blur-md">
-              <CardTitle className="text-lg font-black tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+          <Card className="h-full rounded-3xl overflow-hidden relative group">
+            <CardHeader className="px-8 py-5 border-b border-border/60 flex flex-row items-center justify-between relative z-10">
+              <CardTitle className="text-base font-extrabold tracking-tight text-foreground flex items-center gap-2">
                 Input Tickets
               </CardTitle>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-300 dark:border-slate-700 px-3 py-1 text-blue-600 dark:text-blue-400 shadow-sm">
+                <Badge variant="outline" className="text-xs font-bold px-3 py-0.5 text-primary border-primary/30">
                   {tickets.length} tickets
                 </Badge>
                 {batchCount > 1 && (
-                  <Badge variant="outline" className="text-xs font-bold bg-white/50 dark:bg-slate-900/50 backdrop-blur-md border-slate-300 dark:border-slate-700 px-3 py-1 text-indigo-600 dark:text-indigo-400 shadow-sm">
+                  <Badge variant="outline" className="text-xs font-bold px-3 py-0.5 text-secondary border-secondary/30">
                     {batchCount} batches
                   </Badge>
                 )}
@@ -202,37 +166,24 @@ export default function TicketFormatterPage() {
                   size="icon" 
                   onClick={() => setInput("")} 
                   aria-label="Clear tickets" 
-                  className="h-8 w-8 rounded-full hover:bg-red-500/20 hover:text-red-500 transition-colors ml-2 bg-slate-100 dark:bg-slate-800"
+                  className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors ml-1"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
             
-            <CardContent className="p-8 relative z-10 h-[calc(100%-80px)] flex flex-col">
-              <div className="relative flex-1 flex flex-col group min-h-[350px] rounded-2xl overflow-hidden bg-slate-50/10 dark:bg-slate-900/10">
-                <svg className={cn(
-                  "absolute inset-0 h-full w-full pointer-events-none rounded-2xl transition-colors duration-300 z-0",
-                  "animate-[dash_3s_linear_infinite] group-hover:animate-[dash_1.5s_linear_infinite] group-focus-within:animate-[dash_0.75s_linear_infinite]"
-                )} xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="shimmerGradientInput" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#3b82f6" />
-                      <stop offset="50%" stopColor="#8b5cf6" />
-                      <stop offset="100%" stopColor="#3b82f6" />
-                    </linearGradient>
-                  </defs>
-                  <rect width="100%" height="100%" fill="none" rx="16" ry="16" stroke="url(#shimmerGradientInput)" strokeWidth="2" strokeDasharray="20, 20" strokeLinecap="round" className="opacity-50 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" />
-                </svg>
+            <CardContent className="p-6 relative z-10 h-[calc(100%-75px)] flex flex-col">
+              <div className="relative flex-1 flex flex-col group min-h-[350px] rounded-2xl overflow-hidden bg-card/60 dark:bg-[#06070a] border border-border/80 dark:border-white/10">
                 <Textarea
                   placeholder={`Paste ticket numbers here...\n\nA260182314123\nA260182314124\nA260182314125`}
-                  className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-100 focus-visible:ring-0 focus-visible:outline-none p-6 shadow-none transition-all resize-none placeholder:text-slate-400 dark:placeholder:text-slate-500 relative z-10"
+                  className="flex-1 min-h-[350px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-foreground focus-visible:ring-0 focus-visible:outline-none p-5 shadow-none transition-all resize-none placeholder:text-muted-foreground relative z-10"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                 />
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-5 flex items-center gap-2 font-medium bg-slate-100/50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
-                <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <p className="text-xs text-muted-foreground mt-4 flex items-center gap-2 font-medium bg-muted/60 dark:bg-[#08090d] p-3 rounded-xl border border-border/60 dark:border-white/5">
+                <Sparkles className="h-4 w-4 text-primary shrink-0" />
                 Values are automatically chunked into {batchSize}-ticket batches for optimal query performance.
               </p>
             </CardContent>
@@ -244,23 +195,23 @@ export default function TicketFormatterPage() {
           
           {/* Format Options */}
           <motion.div initial="hidden" animate="show" variants={containerVariants}>
-            <Card className="border border-white/10 shadow-xl bg-white/5 dark:bg-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden">
-              <CardHeader className="bg-transparent px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <CardTitle className="text-sm font-black tracking-widest uppercase text-slate-600 dark:text-slate-400">
+            <Card className="rounded-3xl overflow-hidden">
+              <CardHeader className="bg-transparent px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60">
+                <CardTitle className="text-xs font-black tracking-widest uppercase text-muted-foreground">
                   Select Output Format
                 </CardTitle>
                 <div className="flex flex-col gap-1.5 w-full sm:w-[160px] ml-auto">
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[9px] font-black tracking-widest uppercase text-slate-500 dark:text-slate-400">
+                    <span className="text-[9px] font-black tracking-widest uppercase text-muted-foreground">
                       Batch Size
                     </span>
-                    <span className="text-[10px] font-bold text-blue-500 tracking-wide">
+                    <span className="text-[10px] font-bold text-primary tracking-wide">
                       {batchSize} tickets
                     </span>
                   </div>
-                  <div className="relative flex items-center h-1 w-full bg-black/10 dark:bg-slate-800/50 rounded-full overflow-visible">
+                  <div className="relative flex items-center h-1 w-full bg-border/60 dark:bg-white/10 rounded-full overflow-visible">
                     <div 
-                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-white/30 via-white to-white/30 animate-pulse shadow-[0_0_10px_rgba(255,255,255,0.5)]" 
+                      className="absolute inset-y-0 left-0 rounded-full bg-primary" 
                       style={{ width: `${(batchSize / 2000) * 100}%` }} 
                     />
                     <input
@@ -270,40 +221,32 @@ export default function TicketFormatterPage() {
                       step="10"
                       value={batchSize}
                       onChange={(e) => setBatchSize(Number(e.target.value))}
-                      className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-500 [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(59,130,246,0.8)] [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-blue-500 [&::-moz-range-thumb]:border-none"
+                      className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-none"
                     />
                   </div>
-                  <div className="flex justify-between text-[8px] font-bold text-slate-400 leading-none mt-1">
+                  <div className="flex justify-between text-[8px] font-bold text-muted-foreground leading-none mt-1">
                     <span>10</span>
                     <span>1000</span>
                     <span>2000</span>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-6 max-h-[220px] overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              <CardContent className="p-5 max-h-[220px] overflow-y-auto no-scrollbar">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
                   {FORMATS.map((f) => (
                     <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       type="button"
                       key={f.id}
                       onClick={() => setSelectedFormat(f.id)}
                       className={cn(
-                        "flex items-center justify-center min-h-[48px] rounded-xl border px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 relative group backdrop-blur-md shadow-sm",
+                        "flex items-center justify-center min-h-[44px] rounded-xl border px-3 py-2 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 relative group shadow-xs",
                         selectedFormat === f.id
-                          ? "border-transparent text-white"
-                          : "border-slate-200 dark:border-white/10 bg-white/50 dark:bg-slate-900/40 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20 overflow-hidden"
+                          ? "border-primary bg-primary text-primary-foreground shadow-md font-extrabold"
+                          : "border-border/80 bg-card/70 text-foreground hover:bg-hover hover:border-primary/40"
                       )}
                     >
-                      {selectedFormat === f.id && (
-                        <motion.div
-                          layoutId="formatter-type-slider"
-                          className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-lg shadow-blue-500/30 rounded-xl"
-                          initial={false}
-                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        />
-                      )}
                       <span className="relative z-10">{f.label}</span>
                     </motion.button>
                   ))}
@@ -314,7 +257,7 @@ export default function TicketFormatterPage() {
 
           {/* Output Result panel */}
           <motion.div initial="hidden" animate="show" variants={containerVariants} className="flex-1 min-h-[300px]">
-            <Card className="h-full border border-white/10 shadow-2xl bg-white/5 dark:bg-white/5 backdrop-blur-3xl rounded-3xl overflow-hidden flex flex-col relative group transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(99,102,241,0.3)] focus-within:border-indigo-500/40">
+            <Card className="h-full rounded-3xl overflow-hidden flex flex-col relative group">
               <div className="absolute bottom-0 right-0 p-32 bg-gradient-to-tl from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
               
               <CardHeader className="bg-white/10 dark:bg-white/10 px-6 py-4 border-b border-white/10 dark:border-slate-800/50 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 backdrop-blur-md">
@@ -352,16 +295,16 @@ export default function TicketFormatterPage() {
                   <motion.div 
                     initial={{ opacity: 0, y: -10 }} 
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center justify-between rounded-xl border border-slate-300 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md px-5 py-3 shadow-sm"
+                    className="flex items-center justify-between rounded-xl border border-border/80 bg-card/80 dark:bg-[#08090d] backdrop-blur-md px-5 py-2.5 shadow-xs"
                   >
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                      Batch <span className="text-slate-800 dark:text-slate-100">{batchIndex + 1}</span> of {batchCount}
+                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                      Batch <span className="text-foreground">{batchIndex + 1}</span> of {batchCount}
                     </span>
                     <div className="flex items-center gap-2">
                       <Button 
                         variant="outline" 
                         size="icon" 
-                        className="h-8 w-8 rounded-lg border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300" 
+                        className="h-8 w-8 rounded-lg" 
                         disabled={batchIndex <= 0} 
                         onClick={() => setBatchIndex((i) => Math.max(0, i - 1))}
                       >
@@ -370,17 +313,17 @@ export default function TicketFormatterPage() {
                       <Button 
                         variant="outline" 
                         size="icon" 
-                        className="h-8 w-8 rounded-lg border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300" 
+                        className="h-8 w-8 rounded-lg" 
                         disabled={batchIndex >= batchCount - 1} 
                         onClick={() => setBatchIndex((i) => Math.min(batchCount - 1, i + 1))}
                       >
                         <ChevronRight className="h-4 w-4" />
                       </Button>
-                      <div className="w-px h-5 bg-slate-300 dark:bg-slate-700 mx-1"></div>
+                      <div className="w-px h-5 bg-border mx-1"></div>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-8 px-4 rounded-lg text-blue-600 dark:text-blue-400 font-bold hover:bg-blue-500/10 gap-1.5 text-xs transition-colors" 
+                        className="h-8 px-3 rounded-lg text-primary font-bold hover:bg-primary/10 gap-1.5 text-xs transition-colors" 
                         onClick={() => handleCopy(currentOutput)}
                       >
                         <Copy className="h-3.5 w-3.5" /> Copy Batch
@@ -389,26 +332,12 @@ export default function TicketFormatterPage() {
                   </motion.div>
                 )}
                 
-                <div className="relative flex-1 flex flex-col group min-h-[250px] rounded-2xl overflow-hidden bg-slate-50/10 dark:bg-slate-900/10 h-full">
-                  <svg className={cn(
-                    "absolute inset-0 h-full w-full pointer-events-none rounded-2xl transition-colors duration-300 z-0",
-                    "animate-[dash_3s_linear_infinite] group-hover:animate-[dash_1.5s_linear_infinite] group-focus-within:animate-[dash_0.75s_linear_infinite]"
-                  )} xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="shimmerGradientOutput" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#10b981" />
-                        <stop offset="50%" stopColor="#3b82f6" />
-                        <stop offset="100%" stopColor="#10b981" />
-                      </linearGradient>
-                    </defs>
-                    <rect width="100%" height="100%" fill="none" rx="16" ry="16" stroke="url(#shimmerGradientOutput)" strokeWidth="2" strokeDasharray="20, 20" strokeLinecap="round" className="opacity-50 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity" />
-                  </svg>
+                <div className="relative flex-1 flex flex-col group min-h-[250px] rounded-2xl overflow-hidden bg-card/60 dark:bg-[#06070a] border border-border/80 dark:border-white/10 h-full">
                   <Textarea
                     readOnly
                     value={currentOutput}
-                    className="h-full min-h-[250px] font-mono text-sm leading-relaxed rounded-2xl border-transparent bg-transparent text-slate-800 dark:text-slate-200 p-6 shadow-none transition-all resize-none custom-scrollbar focus-visible:ring-0 focus-visible:outline-none relative z-10"
+                    className="h-full min-h-[250px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-foreground p-5 shadow-none transition-all resize-none no-scrollbar focus-visible:ring-0 focus-visible:outline-none relative z-10"
                   />
-                  <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/5 pointer-events-none group-hover:ring-emerald-500/20 transition-all duration-300 z-20" />
                 </div>
               </CardContent>
             </Card>

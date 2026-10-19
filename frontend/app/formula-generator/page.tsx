@@ -123,46 +123,21 @@ export default function FormulaGeneratorPage() {
 
   return (
     <div className="workspace-page mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:space-y-8 lg:p-8">
-      {/* Hero Header Area */}
-      <div className="page-hero relative flex flex-col gap-4 overflow-hidden rounded-3xl p-8">
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="relative z-10 max-w-2xl"
-        >
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-1.5 text-sm font-medium backdrop-blur-md border border-emerald-500/20 dark:bg-white/10 dark:border-white/20">
-            <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-200" />
-            <span className="text-emerald-700 tracking-wide dark:text-white/95">Excel Magic</span>
-          </div>
-          <h1 className="mb-4 text-4xl font-extrabold tracking-tight lg:text-5xl leading-tight text-slate-950 dark:text-white">
-            Formula Generator <br className="hidden sm:block"/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600 dark:from-emerald-200 dark:to-cyan-200">Without the Headache</span>
-          </h1>
-          <p className="text-lg text-slate-600 dark:text-white/80 max-w-xl font-light">
-            Build complex Excel formulas visually. Never worry about commas, brackets, or syntax errors again.
-          </p>
-        </motion.div>
-        
-        {/* Abstract shapes */}
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl dark:bg-emerald-400/20 dark:mix-blend-screen" />
-        <div className="absolute -bottom-32 right-10 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl dark:bg-cyan-400/30 dark:mix-blend-screen" />
-      </div>
-
       <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
         {/* Left Column: Functions List */}
         <div className="flex flex-col gap-6 lg:col-span-4 xl:col-span-4">
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10">
-              <CardHeader className="border-b bg-muted/40 pb-4 sticky top-0 z-10 backdrop-blur-md">
-                <CardTitle className="flex items-center gap-3 text-lg font-semibold text-foreground">
-                  <div className="rounded-lg bg-emerald-100 p-2 text-emerald-600 shadow-sm dark:bg-emerald-900/40 dark:text-emerald-400">
-                    <Calculator className="h-5 w-5" />
+            <Card className="app-card overflow-hidden p-0 shadow-xl">
+              <CardHeader className="border-b border-border/70 bg-muted/30 pb-4 sticky top-0 z-10 backdrop-blur-md px-5 py-4">
+                <CardTitle className="flex items-center gap-3 text-base font-bold text-foreground">
+                  <div className="rounded-xl bg-emerald-500/10 p-2 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-sm">
+                    <Calculator className="h-4.5 w-4.5" />
                   </div>
                   Functions
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-3">
-                <div className="grid max-h-[60vh] grid-cols-1 gap-2 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="grid max-h-[60vh] grid-cols-1 gap-1.5 overflow-y-auto pr-1 custom-scrollbar">
                   {FORMULAS.map((f, idx) => {
                     const isSelected = selected === f.id;
                     return (
@@ -175,26 +150,26 @@ export default function FormulaGeneratorPage() {
                         key={f.id}
                         onClick={() => { setSelected(f.id); setValues({}); setOutput(""); }}
                         className={cn(
-                          "group relative flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all duration-300",
+                          "group relative flex w-full items-center justify-between rounded-xl border p-3 text-left transition-all duration-200",
                           isSelected
-                            ? "border-emerald-500/50 bg-emerald-50/50 shadow-sm ring-1 ring-emerald-500/20 dark:bg-emerald-500/10"
-                            : "border-border/60 bg-card hover:border-emerald-500/40 hover:bg-emerald-50/30 hover:shadow-sm dark:hover:bg-emerald-500/5"
+                            ? "border-emerald-500/40 bg-emerald-500/10 shadow-sm ring-1 ring-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                            : "border-border/60 bg-card/60 hover:border-emerald-500/30 hover:bg-surface-elevated text-foreground"
                         )}
                       >
                         <div>
                           <p className={cn(
-                            "text-sm font-bold transition-colors duration-300",
-                            isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-foreground group-hover:text-emerald-600"
+                            "text-sm font-bold transition-colors duration-200",
+                            isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
                           )}>
                             {f.label}
                           </p>
-                          <p className="text-xs font-medium text-muted-foreground/80 mt-0.5">
+                          <p className="text-xs font-medium text-muted-foreground mt-0.5">
                             {f.desc}
                           </p>
                         </div>
                         {isSelected && (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                            <ChevronRight className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                            <ChevronRight className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
                           </motion.div>
                         )}
                       </motion.button>
@@ -209,14 +184,14 @@ export default function FormulaGeneratorPage() {
         {/* Right Column: Parameters and Result */}
         <div className="flex flex-col gap-6 lg:col-span-8 xl:col-span-8">
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
-            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-all duration-500 hover:shadow-xl relative min-h-[350px] flex flex-col focus-within:shadow-[0_0_50px_-15px_rgba(16,185,129,0.3)] focus-within:ring-emerald-500/40">
-              <CardHeader className="border-b bg-gradient-to-b from-muted/50 to-muted/10 px-6 py-5">
+            <Card className="app-card overflow-hidden p-0 shadow-xl transition-all duration-300 relative min-h-[350px] flex flex-col focus-within:ring-1 focus-within:ring-emerald-500/40">
+              <CardHeader className="border-b border-border/70 bg-muted/20 px-6 py-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
-                    <Badge variant="outline" className="px-2 py-1 text-xs font-bold uppercase tracking-widest text-emerald-600 border-emerald-200 bg-emerald-50 dark:border-emerald-900/50 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    <Badge variant="outline" className="px-2.5 py-1 text-xs font-bold uppercase tracking-widest text-emerald-600 border-emerald-500/30 bg-emerald-500/10 dark:text-emerald-400">
                       {formula.label}
                     </Badge>
-                    <CardTitle className="text-lg">Parameters</CardTitle>
+                    <CardTitle className="text-lg font-bold text-foreground">Parameters</CardTitle>
                   </div>
                   <Button 
                     variant="ghost" 
@@ -228,7 +203,7 @@ export default function FormulaGeneratorPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 p-6 space-y-6 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:24px_24px]">
+              <CardContent className="flex-1 p-6 space-y-6">
                 <div className="grid gap-5">
                   <AnimatePresence mode="popLayout">
                     {formula.params.map((param, i) => (
@@ -243,7 +218,7 @@ export default function FormulaGeneratorPage() {
                         <label className="text-sm font-semibold text-foreground sm:text-right">{param.label}</label>
                         <div className="sm:col-span-3">
                           <Input
-                            className="h-11 rounded-xl border-border/70 shadow-sm focus-visible:ring-emerald-500/30 transition-all hover:border-emerald-500/40"
+                            className="h-11 rounded-xl border-border/70 bg-surface-recessed/60 dark:bg-[#06070a] shadow-inner focus-visible:ring-emerald-500/30 transition-all hover:border-emerald-500/40 text-foreground"
                             placeholder={param.placeholder}
                             value={values[param.key] ?? ""}
                             onChange={(e) => {
@@ -259,7 +234,7 @@ export default function FormulaGeneratorPage() {
                 <div className="pt-4 flex justify-end">
                   <Button 
                     size="lg"
-                    className="min-w-[160px] gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-500/20 font-semibold"
+                    className="min-w-[160px] gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-500/20 font-bold"
                     onClick={handleBuild}
                   >
                     <Sparkles className="h-4 w-4" /> Generate Formula
@@ -270,19 +245,19 @@ export default function FormulaGeneratorPage() {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="overflow-hidden border-0 shadow-lg ring-1 ring-black/5 dark:ring-white/10 transition-all duration-500 hover:shadow-xl bg-slate-900 focus-within:shadow-[0_0_50px_-15px_rgba(16,185,129,0.3)] focus-within:ring-emerald-500/40">
-              <CardHeader className="border-b border-slate-800 bg-slate-950 px-6 py-4">
+            <Card className="app-card overflow-hidden p-0 shadow-xl transition-all duration-300">
+              <CardHeader className="border-b border-border/70 bg-muted/20 px-6 py-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-base text-slate-200 flex items-center gap-2">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <CardTitle className="text-base text-foreground flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
                     Output Result
                   </CardTitle>
                   <Button 
                     variant="outline" 
                     size="sm" 
                     className={cn(
-                      "gap-2 border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-white transition-all",
-                      copied && "border-emerald-500/50 text-emerald-400 bg-emerald-900/20"
+                      "gap-2 border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 text-foreground hover:bg-surface-elevated transition-all",
+                      copied && "border-emerald-500/50 text-emerald-500 bg-emerald-500/10"
                     )}
                     onClick={handleCopy} 
                     disabled={!output}
@@ -298,12 +273,12 @@ export default function FormulaGeneratorPage() {
                     readOnly
                     value={output}
                     placeholder="Your generated formula will appear here..."
-                    className="min-h-[120px] font-mono text-base bg-slate-950 border-slate-800 text-emerald-400 placeholder:text-slate-600 resize-none focus-visible:ring-emerald-500/30 custom-scrollbar shadow-inner"
+                    className="min-h-[120px] font-mono text-base bg-surface-recessed/60 dark:bg-[#06070a] border border-border/70 dark:border-white/[0.08] text-emerald-600 dark:text-emerald-400 placeholder:text-muted-foreground/60 resize-none focus-visible:ring-emerald-500/30 custom-scrollbar shadow-inner rounded-2xl p-4"
                   />
                   {!output && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <p className="text-sm font-medium text-slate-500 flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 opacity-50" />
+                      <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-emerald-500/60" />
                         Fill parameters and click Generate
                       </p>
                     </div>

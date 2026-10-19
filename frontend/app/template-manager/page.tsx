@@ -947,7 +947,7 @@ export default function QueryLibraryPage() {
           <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0 self-start md:self-center">
             <Button
               variant="outline"
-              className="h-11 px-5 rounded-xl font-bold border-indigo-500/30 text-indigo-700 hover:bg-indigo-500/10 hover:text-indigo-800 shadow-lg backdrop-blur-md gap-2 whitespace-nowrap transition-all w-full sm:w-auto dark:border-indigo-500/40 dark:text-indigo-300 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-200"
+              className="h-11 px-5 rounded-xl font-bold border-indigo-500/30 text-indigo-700 hover:bg-indigo-500/10 hover:text-indigo-800 shadow-sm gap-2 whitespace-nowrap transition-all w-full sm:w-auto dark:border-indigo-500/30 dark:text-indigo-400 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-300"
               onClick={handleLoadSamples}
               disabled={loading}
               title="Load 18 standard Salesforce operation queries"
@@ -958,7 +958,7 @@ export default function QueryLibraryPage() {
 
             <Button
               onClick={openCreateForm}
-              className="h-11 px-6 rounded-xl bg-gradient-to-r from-[#0176d3] to-indigo-600 hover:from-blue-600 hover:to-indigo-500 text-white font-bold shadow-lg shadow-indigo-500/25 transition-all hover:-translate-y-0.5 gap-2 whitespace-nowrap w-full sm:w-auto"
+              className="h-11 px-6 rounded-xl bg-[#0176d3] hover:bg-[#0161b0] text-white font-bold shadow-md shadow-blue-500/20 transition-all hover:-translate-y-0.5 gap-2 whitespace-nowrap w-full sm:w-auto"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
               <span>New Query</span>
@@ -967,8 +967,8 @@ export default function QueryLibraryPage() {
         </div>
 
         {/* Bottom Toolbar Row: Secondary utility tools */}
-        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-4 md:pt-6 mt-2 border-t border-slate-200/70 dark:border-slate-700/60">
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20 backdrop-blur-sm">
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pt-4 md:pt-6 mt-2 border-t border-slate-200/80 dark:border-white/[0.08]">
+          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Repository Active & Syncing</span>
           </div>
@@ -977,7 +977,7 @@ export default function QueryLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-4 rounded-lg font-bold border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm backdrop-blur-md gap-1.5 transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+              className="h-9 px-4 rounded-lg font-bold border-slate-200/80 bg-white dark:bg-white/[0.03] text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm gap-1.5 transition-all dark:border-white/[0.08] dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white"
               onClick={loadQueries}
               disabled={loading}
             >
@@ -988,7 +988,7 @@ export default function QueryLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-4 rounded-lg font-bold border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm backdrop-blur-md gap-1.5 transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+              className="h-9 px-4 rounded-lg font-bold border-slate-200/80 bg-white dark:bg-white/[0.03] text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm gap-1.5 transition-all dark:border-white/[0.08] dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white"
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="h-3.5 w-3.5" />
@@ -998,7 +998,7 @@ export default function QueryLibraryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-4 rounded-lg font-bold border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm backdrop-blur-md gap-1.5 transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white"
+              className="h-9 px-4 rounded-lg font-bold border-slate-200/80 bg-white dark:bg-white/[0.03] text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm gap-1.5 transition-all dark:border-white/[0.08] dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white"
               onClick={handleExport}
               disabled={queries.length === 0}
             >
@@ -1007,7 +1007,7 @@ export default function QueryLibraryPage() {
             </Button>
 
             <Link href="/soql-generator">
-              <Button size="sm" className="h-9 px-4 rounded-lg font-bold bg-[#0176d3]/10 text-blue-700 hover:bg-[#0176d3]/20 border border-[#0176d3]/30 shadow-sm backdrop-blur-md gap-1.5 transition-all ml-2 dark:bg-[#0176d3]/20 dark:text-blue-300 dark:hover:bg-[#0176d3]/40 dark:border-[#0176d3]/50">
+              <Button size="sm" className="h-9 px-4 rounded-lg font-bold bg-[#0176d3]/10 text-blue-700 hover:bg-[#0176d3]/20 border border-[#0176d3]/30 shadow-sm gap-1.5 transition-all ml-2 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:border-blue-500/30">
                 <PlayCircle className="h-3.5 w-3.5" />
                 <span>Launch Workbench</span>
               </Button>
@@ -1026,27 +1026,26 @@ export default function QueryLibraryPage() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
             transition={{ duration: 0.3 }}
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
           >
             {[
-              { title: "Total Templates", val: stats.total, sub: "Stored in repository", icon: Code2, color: "text-[#0176d3] dark:text-blue-400", bg: "bg-[#0176d3]/10 dark:bg-blue-500/10", border: "border-t-[#0176d3] dark:border-t-blue-500", grad: "from-[#0176d3]/5 dark:from-blue-500/10 to-transparent" },
-              { title: "Favourites", val: stats.favourites, sub: "Starred quick access", icon: Star, color: "text-amber-500 dark:text-amber-400", bg: "bg-amber-500/10 dark:bg-amber-500/10", border: "border-t-amber-500 dark:border-t-amber-400", grad: "from-amber-500/5 dark:from-amber-500/10 to-transparent" },
-              { title: "SFDC Objects", val: stats.categories, sub: "Distinct object types", icon: Layers, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-500/10", border: "border-t-purple-500 dark:border-t-purple-400", grad: "from-purple-500/5 dark:from-purple-500/10 to-transparent" },
-              { title: "Executions", val: stats.uses, sub: "Lifetime query runs", icon: TrendingUp, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/10", border: "border-t-emerald-500 dark:border-t-emerald-400", grad: "from-emerald-500/5 dark:from-emerald-500/10 to-transparent" },
+              { title: "Total Templates", val: stats.total, sub: "Stored in repository", icon: Code2, color: "text-[#0176d3] dark:text-blue-400", bg: "bg-[#0176d3]/10 dark:bg-blue-500/10", border: "border-t-[#0176d3] dark:border-t-blue-500" },
+              { title: "Favourites", val: stats.favourites, sub: "Starred quick access", icon: Star, color: "text-amber-500 dark:text-amber-400", bg: "bg-amber-500/10 dark:bg-amber-500/10", border: "border-t-amber-500 dark:border-t-amber-400" },
+              { title: "SFDC Objects", val: stats.categories, sub: "Distinct object types", icon: Layers, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-500/10 dark:bg-purple-500/10", border: "border-t-purple-500 dark:border-t-purple-400" },
+              { title: "Executions", val: stats.uses, sub: "Lifetime query runs", icon: TrendingUp, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 dark:bg-emerald-500/10", border: "border-t-emerald-500 dark:border-t-emerald-400" },
             ].map((kpi, i) => (
               <motion.div key={kpi.title} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-                <div className={cn("relative overflow-hidden shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl transition-all hover:shadow-xl hover:-translate-y-1 rounded-2xl border-t-4", kpi.border)}>
-                  <div className={cn("absolute inset-0 bg-gradient-to-br opacity-60 pointer-events-none", kpi.grad)} />
-                  <div className="p-6 flex flex-col justify-between h-full relative z-10">
+                <div className={cn("app-card border border-slate-200/80 dark:border-white/[0.08] dark:bg-[#0b0c10] shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 rounded-2xl border-t-2 relative overflow-hidden", kpi.border)}>
+                  <div className="p-5 flex flex-col justify-between h-full relative z-10">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{kpi.title}</span>
-                      <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl shadow-sm border border-black/5 dark:border-white/5 transition-transform hover:scale-105", kpi.bg, kpi.color)}>
-                        <kpi.icon className={cn("h-5 w-5", kpi.title === "Favourites" ? "fill-current" : "")} />
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{kpi.title}</span>
+                      <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl shadow-sm border border-slate-200/50 dark:border-white/[0.06]", kpi.bg, kpi.color)}>
+                        <kpi.icon className={cn("h-4.5 w-4.5", kpi.title === "Favourites" ? "fill-current" : "")} />
                       </div>
                     </div>
-                    <div className="mt-5">
-                      <h3 className="text-4xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight drop-shadow-sm">{kpi.val}</h3>
-                      <p className="mt-1 text-[13px] font-semibold text-slate-500 dark:text-slate-400">{kpi.sub}</p>
+                    <div className="mt-4">
+                      <h3 className="text-3xl font-black text-slate-900 dark:text-white tabular-nums tracking-tight">{kpi.val}</h3>
+                      <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">{kpi.sub}</p>
                     </div>
                   </div>
                 </div>
@@ -1062,42 +1061,39 @@ export default function QueryLibraryPage() {
             transition={{ duration: 0.3, type: "spring", bounce: 0.2 }}
             className="relative z-20"
           >
-            <Card className="border-0 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl rounded-3xl overflow-hidden relative transition-all duration-500 focus-within:shadow-[0_0_50px_-15px_rgba(59,130,246,0.3)] focus-within:ring-blue-500/40">
-              <div className="absolute top-0 right-0 p-40 bg-gradient-to-bl from-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute bottom-0 left-0 p-40 bg-gradient-to-tr from-indigo-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-              
-              <CardHeader className="bg-gradient-to-r from-slate-100/50 to-transparent dark:from-slate-800/50 px-8 py-6 border-b border-slate-200/50 dark:border-slate-700/50 flex flex-row items-center justify-between relative z-10">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold shadow-lg shadow-blue-500/20">
-                    <Code2 className="h-6 w-6" />
+            <Card className="app-card border border-slate-200/80 dark:border-white/[0.08] dark:bg-[#0b0c10] shadow-xl rounded-2xl overflow-hidden relative">
+              <CardHeader className="bg-slate-50/80 dark:bg-white/[0.02] px-6 py-5 border-b border-slate-200/80 dark:border-white/[0.08] flex flex-row items-center justify-between relative z-10">
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">
+                    <Code2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-black tracking-tight text-foreground">
+                    <CardTitle className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                       {editing ? "Edit SOQL Query Template" : "Create New SOQL Template"}
                     </CardTitle>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Tip: Include <code className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-xs font-mono text-blue-600 dark:text-blue-400 font-bold border border-blue-500/20">{`{{tickets}}`}</code> placeholder to dynamically inject ticket lists from the generator.
                     </p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={closeForm} className="h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                  <X className="h-5 w-5" />
+                <Button variant="ghost" size="icon" onClick={closeForm} className="h-9 w-9 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+                  <X className="h-4 w-4 text-slate-500" />
                 </Button>
               </CardHeader>
 
-              <CardContent className="p-5 md:p-8 space-y-4 md:space-y-6 relative z-10">
-                <div className="grid grid-cols-1 gap-4 md:gap-6 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Query Label *</label>
+              <CardContent className="p-6 md:p-8 space-y-5 relative z-10">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Query Label *</label>
                     <Input
                       placeholder="e.g. Open WorkOrders by Technician"
-                      className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
+                      className="h-11 rounded-xl border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] text-sm text-slate-900 dark:text-slate-200 focus-visible:ring-blue-500/30"
                       value={form.label}
                       onChange={(event) => setForm((current) => ({ ...current, label: event.target.value }))}
                     />
                   </div>
-                  <div className="space-y-2 relative">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Category (Folder) *</label>
+                  <div className="space-y-1.5 relative">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Category (Folder) *</label>
                     {!isCreatingNewCategory ? (
                       <Select
                         value={form.category || undefined}
@@ -1110,16 +1106,16 @@ export default function QueryLibraryPage() {
                           }
                         }}
                       >
-                        <SelectTrigger className="h-12 w-full rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 shadow-inner font-semibold text-blue-600 dark:text-blue-400 text-sm transition-all px-4">
+                        <SelectTrigger className="h-11 w-full rounded-xl border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] font-semibold text-blue-600 dark:text-blue-400 text-sm px-4">
                           <SelectValue placeholder="Select a category..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-slate-200 dark:border-slate-800 rounded-xl shadow-xl">
+                        <SelectContent className="bg-white dark:bg-[#0b0c10] border-slate-200/80 dark:border-white/[0.08] rounded-xl shadow-xl">
                           {categories.filter(c => c !== "all").map((c) => (
                             <SelectItem key={c} value={c} className="font-semibold text-slate-700 dark:text-slate-300 focus:bg-blue-500/10 focus:text-blue-600 dark:focus:text-blue-400 rounded-lg cursor-pointer my-0.5">
                               {c}
                             </SelectItem>
                           ))}
-                          <SelectSeparator className="bg-slate-200 dark:bg-slate-800 my-1" />
+                          <SelectSeparator className="bg-slate-200/80 dark:bg-white/[0.08] my-1" />
                           <SelectItem value="__NEW__" className="font-bold text-blue-600 dark:text-blue-400 focus:bg-blue-500/10 rounded-lg cursor-pointer">
                             + Create New Category
                           </SelectItem>
@@ -1129,7 +1125,7 @@ export default function QueryLibraryPage() {
                       <div className="relative flex gap-2">
                         <Input
                           placeholder="Type new category name..."
-                          className="h-12 flex-1 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner font-semibold text-blue-600 dark:text-blue-400 text-sm transition-all pr-10"
+                          className="h-11 flex-1 rounded-xl border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] font-semibold text-blue-600 dark:text-blue-400 text-sm pr-10"
                           value={form.category}
                           onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
                           autoFocus
@@ -1140,7 +1136,7 @@ export default function QueryLibraryPage() {
                             setIsCreatingNewCategory(false);
                             setForm((current) => ({ ...current, category: categories.length > 1 ? (categories[1] || "") : "" }));
                           }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-white/[0.06] rounded-lg transition-colors"
                           title="Cancel and select existing"
                         >
                           <X className="h-4 w-4" />
@@ -1150,8 +1146,8 @@ export default function QueryLibraryPage() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Tags (Press Enter)</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Tags (Press Enter)</label>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {form.tags && form.tags.map((tag) => (
                       <Badge key={tag} className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1", getTagColor(tag))}>
@@ -1167,7 +1163,7 @@ export default function QueryLibraryPage() {
                   </div>
                   <Input
                     placeholder="Add a tag and press Enter..."
-                    className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
+                    className="h-11 rounded-xl border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] text-sm text-slate-900 dark:text-slate-200 focus-visible:ring-blue-500/30"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === ",") {
                         e.preventDefault();
@@ -1181,19 +1177,19 @@ export default function QueryLibraryPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">Description (Optional)</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">Description (Optional)</label>
                   <Input
                     placeholder="Briefly describe what this query fetches and when to use it..."
-                    className="h-12 rounded-xl border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:border-blue-500 shadow-inner text-sm transition-all"
+                    className="h-11 rounded-xl border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] text-sm text-slate-900 dark:text-slate-200 focus-visible:ring-blue-500/30"
                     value={form.description}
                     onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-widest text-slate-500 ml-1">SOQL Query Syntax *</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">SOQL Query Syntax *</label>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={handleTestSOQL}
@@ -1211,7 +1207,7 @@ export default function QueryLibraryPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="min-h-[180px] rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-950/80 overflow-hidden shadow-inner focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500 transition-all pt-2 pb-2">
+                  <div className="min-h-[180px] rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] overflow-hidden pt-2 pb-2">
                     <Editor
                       height="180px"
                       language="soql"
@@ -1235,14 +1231,14 @@ export default function QueryLibraryPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-6 mt-4 border-t border-slate-200/50 dark:border-slate-700/50">
-                  <Button variant="outline" onClick={closeForm} disabled={saving} className="h-12 px-8 rounded-xl font-bold border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <div className="flex items-center justify-end gap-3 pt-5 mt-3 border-t border-slate-200/80 dark:border-white/[0.08]">
+                  <Button variant="outline" onClick={closeForm} disabled={saving} className="h-11 px-6 rounded-xl font-semibold border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
                     Cancel
                   </Button>
                   <Button
                     onClick={handleSave}
                     disabled={saving}
-                    className="h-12 px-10 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg shadow-blue-500/25 hover:-translate-y-0.5 transition-all"
+                    className="h-11 px-8 rounded-xl bg-[#0176d3] hover:bg-[#0161b0] text-white font-semibold shadow-sm transition-all"
                   >
                     {saving ? "Saving..." : editing ? "Update Template" : "Save to Library"}
                   </Button>
@@ -1254,14 +1250,14 @@ export default function QueryLibraryPage() {
       </AnimatePresence>
 
       {/* ─── 3. INTERACTIVE SEARCH & FILTER TOOLBAR ─────── */}
-      <div className="flex flex-col lg:flex-row items-center gap-2 md:gap-3 p-2 md:p-3 rounded-2xl bg-white/70 dark:bg-slate-900/60 backdrop-blur-xl shadow-lg shadow-black/5 dark:shadow-black/20 ring-1 ring-black/5 dark:ring-white/10 w-full relative z-10">
+      <div className="app-card flex flex-col lg:flex-row items-center gap-2 md:gap-3 p-2.5 md:p-3 rounded-2xl bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] shadow-sm w-full relative z-10">
         
         {/* Search Input */}
         <div className="relative flex-1 w-full min-w-[280px] group" suppressHydrationWarning data-protonpass-ignore="true">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 group-focus-within:text-[#0176d3] transition-colors z-10" />
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors z-10" />
           <Input
             placeholder="Search templates by label, SFDC object, description..."
-            className="relative z-10 h-12 w-full pl-11 pr-10 text-sm font-medium rounded-xl border-none bg-transparent hover:bg-slate-100/50 dark:hover:bg-slate-800/50 focus-visible:bg-slate-100/80 dark:focus-visible:bg-slate-800/80 focus-visible:ring-0 focus-visible:ring-offset-0 transition-all placeholder:text-slate-400"
+            className="relative z-10 h-10 w-full pl-10 pr-10 text-sm font-medium rounded-xl border-none bg-transparent hover:bg-slate-100/50 dark:hover:bg-white/[0.03] focus-visible:bg-slate-100/80 dark:focus-visible:bg-white/[0.05] focus-visible:ring-0 focus-visible:ring-offset-0 transition-all text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             autoComplete="off"
@@ -1273,7 +1269,7 @@ export default function QueryLibraryPage() {
           {search && (
             <button
               onClick={() => setSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors z-10"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1.5 rounded-full hover:bg-slate-200/50 dark:hover:bg-white/[0.06] transition-colors z-10"
               title="Clear search"
             >
               <X className="h-4 w-4" />
@@ -1281,50 +1277,50 @@ export default function QueryLibraryPage() {
           )}
         </div>
 
-        <div className="hidden lg:block w-px h-8 bg-slate-200 dark:bg-slate-700 shrink-0" />
+        <div className="hidden lg:block w-px h-6 bg-slate-200 dark:bg-white/[0.08] shrink-0" />
 
         {/* Filters and View Toggles */}
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto shrink-0">
           <div className="relative group flex-1 sm:flex-none">
             <select
-              className="h-10 w-full sm:w-auto appearance-none rounded-lg border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 pl-3 pr-8 text-[13px] font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-[#0176d3]/50 focus:border-[#0176d3] shadow-sm cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-700/80"
+              className="h-10 w-full sm:w-auto appearance-none rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] pl-3 pr-8 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-white/[0.03]"
               value={categoryFilter}
               onChange={(event) => setCategoryFilter(event.target.value)}
             >
               {categories.map((category) => (
-                <option key={category} value={category} className="bg-background">
+                <option key={category} value={category} className="bg-white dark:bg-[#0b0c10] text-slate-900 dark:text-white">
                   {category === "all" ? "⚡ All SFDC Categories" : `📁 ${category}`}
                 </option>
               ))}
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
-              <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              <ChevronDown className="h-3.5 w-3.5" />
             </div>
           </div>
 
           <div className="relative group flex-1 sm:flex-none">
             <select
-              className="h-10 w-full sm:w-auto appearance-none rounded-lg border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-800 pl-3 pr-8 text-[13px] font-bold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-[#0176d3]/50 focus:border-[#0176d3] shadow-sm cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-slate-700/80"
+              className="h-10 w-full sm:w-auto appearance-none rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] pl-3 pr-8 text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-blue-500/30 cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-white/[0.03]"
               value={sortBy}
               onChange={(event) => setSortBy(event.target.value as SortOption)}
             >
-              <option value="updated-desc" className="bg-background">🕒 Recently Updated</option>
-              <option value="favourites-first" className="bg-background">⭐ Favourites First</option>
-              <option value="usage-desc" className="bg-background">🔥 Most Executed</option>
-              <option value="label-asc" className="bg-background">🔤 Label (A-Z)</option>
-              <option value="category-asc" className="bg-background">🗂️ Category (A-Z)</option>
+              <option value="updated-desc" className="bg-white dark:bg-[#0b0c10] text-slate-900 dark:text-white">🕒 Recently Updated</option>
+              <option value="favourites-first" className="bg-white dark:bg-[#0b0c10] text-slate-900 dark:text-white">⭐ Favourites First</option>
+              <option value="usage-desc" className="bg-white dark:bg-[#0b0c10] text-slate-900 dark:text-white">🔥 Most Executed</option>
+              <option value="label-asc" className="bg-white dark:bg-[#0b0c10] text-slate-900 dark:text-white">🔤 Label (A-Z)</option>
+              <option value="category-asc" className="bg-white dark:bg-[#0b0c10] text-slate-900 dark:text-white">🗂️ Category (A-Z)</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400">
-              <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              <ChevronDown className="h-3.5 w-3.5" />
             </div>
           </div>
 
-          <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-900 p-1 shrink-0 h-10 shadow-inner">
+          <div className="flex items-center rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-100/80 dark:bg-[#06070a] p-1 shrink-0 h-10">
             <button
               onClick={() => setViewMode("grid")}
               className={cn(
-                "flex h-8 w-16 justify-center items-center gap-1.5 rounded-md text-[13px] font-black transition-all",
-                viewMode === "grid" ? "bg-white dark:bg-slate-700 text-[#0176d3] dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                "flex h-8 px-3 justify-center items-center gap-1.5 rounded-lg text-xs font-semibold transition-all",
+                viewMode === "grid" ? "bg-white dark:bg-white/[0.08] text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               )}
               title="Grid View"
             >
@@ -1334,8 +1330,8 @@ export default function QueryLibraryPage() {
             <button
               onClick={() => setViewMode("table")}
               className={cn(
-                "flex h-8 w-16 justify-center items-center gap-1.5 rounded-md text-[13px] font-black transition-all",
-                viewMode === "table" ? "bg-white dark:bg-slate-700 text-[#0176d3] dark:text-blue-400 shadow-sm ring-1 ring-black/5 dark:ring-white/10" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                "flex h-8 px-3 justify-center items-center gap-1.5 rounded-lg text-xs font-semibold transition-all",
+                viewMode === "table" ? "bg-white dark:bg-white/[0.08] text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
               )}
               title="Table View"
             >
@@ -1392,44 +1388,42 @@ export default function QueryLibraryPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
-              className="flex flex-col justify-between h-full rounded-3xl border border-slate-200/60 dark:border-slate-800/60 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl p-5 md:p-6 shadow-lg hover:shadow-xl hover:border-blue-500/40 transition-all duration-300 group relative overflow-hidden ring-1 ring-black/5 dark:ring-white/5"
+              className="app-card flex flex-col justify-between h-full rounded-2xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] p-5 shadow-sm hover:shadow-md hover:border-blue-500/40 transition-all duration-200 group relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 p-32 bg-gradient-to-bl from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none group-hover:from-blue-500/10 transition-all duration-500" />
-              
               <div className="relative z-10">
                 {/* Top Row: Category Badge & Star */}
-                <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-200/50 dark:border-slate-700/50">
+                <div className="flex items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-white/[0.06]">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest shadow-sm">
+                    <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2.5 py-0.5 rounded-lg uppercase tracking-wider">
                       {query.category}
                     </Badge>
-                    <Badge variant="outline" className="text-[10px] font-bold text-slate-500 bg-slate-100/50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-lg">
+                    <Badge variant="outline" className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-white/[0.04] border-slate-200/80 dark:border-white/[0.08] px-2 py-0.5 rounded-lg">
                       {query.usageCount} run{query.usageCount === 1 ? "" : "s"}
                     </Badge>
                   </div>
                   <button
                     onClick={() => toggleFavourite(query)}
-                    className="text-slate-400 hover:scale-110 transition-transform p-1.5 -mr-1.5 focus:outline-none"
+                    className="text-slate-400 hover:scale-110 transition-transform p-1 focus:outline-none"
                     title={query.favourite ? "Remove from favourites" : "Add to favourites"}
                   >
-                    <Star className={cn("h-5 w-5 transition-colors", query.favourite ? "fill-amber-500 text-amber-500 drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]" : "hover:text-slate-600 dark:hover:text-slate-300")} />
+                    <Star className={cn("h-4.5 w-4.5 transition-colors", query.favourite ? "fill-amber-500 text-amber-500" : "hover:text-slate-600 dark:hover:text-slate-300")} />
                   </button>
                 </div>
 
                 {/* Title & Description */}
-                <div className="py-4 md:py-5">
-                  <h3 className="text-lg font-black text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1 drop-shadow-sm">
+                <div className="py-4">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
                     {query.label}
                   </h3>
-                  <p className="mt-2 text-sm text-slate-500 line-clamp-2 leading-relaxed min-h-[40px]">
+                  <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed min-h-[34px]">
                     {query.description || "No description provided for this SOQL template."}
                   </p>
                   
                   {/* Tags */}
                   {query.tags && query.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-3">
+                    <div className="flex flex-wrap gap-1.5 mt-2.5">
                       {query.tags.map((tag) => (
-                        <Badge key={tag} className={cn("text-[9px] font-bold px-2 py-0.5 rounded-md", getTagColor(tag))}>
+                        <Badge key={tag} className={cn("text-[9px] font-semibold px-2 py-0.5 rounded-md", getTagColor(tag))}>
                           {tag}
                         </Badge>
                       ))}
@@ -1438,21 +1432,21 @@ export default function QueryLibraryPage() {
                 </div>
 
                 {/* SOQL Code Snippet */}
-                <div className="relative group/code my-2">
-                  <pre className="max-h-48 min-h-[100px] overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-slate-100/80 dark:bg-slate-950/80 text-slate-800 dark:text-slate-200 p-4 md:p-5 font-mono text-xs leading-relaxed border border-slate-200 dark:border-slate-800 shadow-inner ring-1 ring-inset ring-black/5 dark:ring-white/5 relative z-0">
+                <div className="relative group/code my-1">
+                  <pre className="max-h-44 min-h-[90px] overflow-auto whitespace-pre-wrap break-words rounded-xl bg-slate-50 dark:bg-[#06070a] text-slate-800 dark:text-slate-200 p-3.5 font-mono text-[11.5px] leading-relaxed border border-slate-200/80 dark:border-white/[0.08] relative z-0">
                     <code className="relative z-10">{query.soql}</code>
                   </pre>
                   <button
                     onClick={() => handleCopy(query)}
-                    className="absolute top-3 right-3 flex items-center gap-1.5 rounded-xl bg-white dark:bg-slate-800 hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-xs font-bold opacity-0 group-hover/code:opacity-100 transition-all shadow-md z-20 focus:opacity-100"
+                    className="absolute top-2.5 right-2.5 flex items-center gap-1.5 rounded-lg bg-white dark:bg-[#0b0c10] hover:bg-blue-600 hover:text-white text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] px-2.5 py-1 text-[11px] font-semibold opacity-0 group-hover/code:opacity-100 transition-all shadow-sm z-20 focus:opacity-100"
                   >
                     {copiedId === query.id ? (
                       <>
-                        <Check className="h-3.5 w-3.5 text-emerald-500 dark:text-emerald-400" /> Copied
+                        <Check className="h-3 w-3 text-emerald-500" /> Copied
                       </>
                     ) : (
                       <>
-                        <Copy className="h-3.5 w-3.5" /> Copy
+                        <Copy className="h-3 w-3" /> Copy
                       </>
                     )}
                   </button>
@@ -1460,55 +1454,55 @@ export default function QueryLibraryPage() {
               </div>
 
               {/* Card Footer Actions */}
-              <div className="relative z-10 flex items-center justify-between pt-5 mt-5 border-t border-slate-200/50 dark:border-slate-700/50">
-                <span className="text-xs text-slate-500 font-semibold">
-                  Updated {formatDate(query.updatedAt)}
+              <div className="relative z-10 flex items-center justify-between pt-4 mt-3 border-t border-slate-100 dark:border-white/[0.06]">
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                  {formatDate(query.updatedAt)}
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleCopy(query)}
-                    className="h-9 px-3.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 gap-1.5 rounded-xl transition-colors"
+                    className="h-8 px-2.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 gap-1 rounded-lg transition-colors"
                     title="Copy & Execute"
                   >
-                    <Copy className="h-4 w-4" /> Copy
+                    <Copy className="h-3.5 w-3.5" /> Copy
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => openEditForm(query)}
-                    className="h-9 w-9 rounded-xl text-slate-400 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
                     title="Edit Query"
                   >
-                    <Edit2 className="h-4 w-4" />
+                    <Edit2 className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => openHistory(query)}
-                    className="h-9 w-9 rounded-xl text-slate-400 hover:text-indigo-600 hover:bg-indigo-500/10 transition-colors"
+                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
                     title="Version History"
                   >
-                    <History className="h-4 w-4" />
+                    <History className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDuplicate(query)}
-                    className="h-9 w-9 rounded-xl text-slate-400 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
                     title="Duplicate Query"
                   >
-                    <Sparkles className="h-4 w-4" />
+                    <Sparkles className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() => handleDelete(query.id)}
-                    className="h-9 w-9 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-500/10 transition-colors"
+                    className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     title="Delete Query"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
@@ -1518,48 +1512,47 @@ export default function QueryLibraryPage() {
       ) : (
         /* ─── Table View (Premium Glass Table) ───── */
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-          <Card className="border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl overflow-hidden rounded-3xl relative">
-            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-blue-500/5 to-transparent pointer-events-none" />
-            <div className="overflow-x-auto relative z-10 p-2">
+          <Card className="app-card border border-slate-200/80 dark:border-white/[0.08] dark:bg-[#0b0c10] shadow-sm overflow-hidden rounded-2xl relative">
+            <div className="overflow-x-auto relative z-10">
               <table className="w-full text-left border-collapse min-w-[900px]">
                 <thead>
-                  <tr className="border-b-2 border-slate-200/50 dark:border-slate-700/50 text-xs font-black uppercase tracking-widest text-slate-500">
-                    <th className="py-5 px-6 w-1/4">Template Label</th>
-                    <th className="py-5 px-5 w-1/6">Category</th>
-                    <th className="py-5 px-6 w-1/3">SOQL Snippet</th>
-                    <th className="py-5 px-5 text-center w-28">Executions</th>
-                    <th className="py-5 px-5 w-32">Updated</th>
-                    <th className="py-5 px-6 text-right w-40">Actions</th>
+                  <tr className="border-b border-slate-200/80 dark:border-white/[0.08] text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-white/[0.02]">
+                    <th className="py-4 px-6 w-1/4">Template Label</th>
+                    <th className="py-4 px-5 w-1/6">Category</th>
+                    <th className="py-4 px-6 w-1/3">SOQL Snippet</th>
+                    <th className="py-4 px-5 text-center w-28">Executions</th>
+                    <th className="py-4 px-5 w-32">Updated</th>
+                    <th className="py-4 px-6 text-right w-40">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 text-sm">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04] text-sm">
                   {filtered.map((query) => (
-                    <tr key={query.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
-                      {/* Label Cell with py-4 px-6 padding */}
-                      <td className="py-5 px-6 font-bold text-foreground align-middle">
-                        <div className="flex items-center gap-4">
-                          <button onClick={() => toggleFavourite(query)} className="shrink-0 p-1.5 -ml-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                            <Star className={cn("h-4 w-4 transition-colors", query.favourite ? "fill-amber-500 text-amber-500 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300")} />
+                    <tr key={query.id} className="hover:bg-slate-50/80 dark:hover:bg-white/[0.02] transition-colors group">
+                      {/* Label Cell */}
+                      <td className="py-4 px-6 font-bold text-slate-900 dark:text-white align-middle">
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => toggleFavourite(query)} className="shrink-0 p-1 -ml-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+                            <Star className={cn("h-4 w-4 transition-colors", query.favourite ? "fill-amber-500 text-amber-500" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300")} />
                           </button>
                           <div className="min-w-0">
-                            <span className="block font-black text-base text-foreground truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{query.label}</span>
+                            <span className="block font-bold text-sm text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{query.label}</span>
                             {query.description && (
-                              <p className="text-xs font-medium text-slate-500 line-clamp-1 mt-1 max-w-xs">{query.description}</p>
+                              <p className="text-xs font-normal text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 max-w-xs">{query.description}</p>
                             )}
                           </div>
                         </div>
                       </td>
 
                       {/* Category Cell */}
-                      <td className="py-5 px-5 align-middle">
-                        <div className="flex flex-col items-start gap-1.5">
-                          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold px-3 py-1 rounded-lg uppercase tracking-widest shadow-sm">
+                      <td className="py-4 px-5 align-middle">
+                        <div className="flex flex-col items-start gap-1">
+                          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wider">
                             {query.category}
                           </Badge>
                           {query.tags && query.tags.length > 0 && (
                             <div className="flex flex-wrap gap-1">
                               {query.tags.map((tag) => (
-                                <Badge key={tag} className={cn("text-[8px] font-bold px-1.5 py-0 rounded", getTagColor(tag))}>
+                                <Badge key={tag} className={cn("text-[8px] font-semibold px-1.5 py-0 rounded", getTagColor(tag))}>
                                   {tag}
                                 </Badge>
                               ))}
@@ -1569,38 +1562,38 @@ export default function QueryLibraryPage() {
                       </td>
 
                       {/* SOQL Snippet Cell */}
-                      <td className="py-5 px-6 align-middle">
-                        <div className="max-w-sm md:max-w-md overflow-hidden text-ellipsis whitespace-nowrap rounded-xl bg-slate-100/80 dark:bg-slate-950/80 text-slate-700 dark:text-slate-300 px-4 py-2.5 font-mono text-xs border border-slate-200/50 dark:border-slate-800/50 shadow-inner">
+                      <td className="py-4 px-6 align-middle">
+                        <div className="max-w-sm md:max-w-md overflow-hidden text-ellipsis whitespace-nowrap rounded-xl bg-slate-50 dark:bg-[#06070a] text-slate-700 dark:text-slate-300 px-3.5 py-2 font-mono text-xs border border-slate-200/80 dark:border-white/[0.08]">
                           {query.soql}
                         </div>
                       </td>
 
                       {/* Executions Cell */}
-                      <td className="py-5 px-5 text-center font-bold text-foreground align-middle">
-                        <span className="inline-flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1 text-xs font-bold shadow-sm">
+                      <td className="py-4 px-5 text-center font-bold text-slate-900 dark:text-white align-middle">
+                        <span className="inline-flex items-center justify-center rounded-lg bg-slate-100/80 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.08] px-2.5 py-0.5 text-xs font-semibold">
                           {query.usageCount}
                         </span>
                       </td>
 
                       {/* Updated Date Cell */}
-                      <td className="py-5 px-5 text-xs text-slate-500 font-bold align-middle whitespace-nowrap">
+                      <td className="py-4 px-5 text-xs text-slate-400 dark:text-slate-500 font-medium align-middle whitespace-nowrap">
                         {formatDate(query.updatedAt)}
                       </td>
 
                       {/* Actions Cell */}
-                      <td className="py-5 px-6 text-right align-middle whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="sm" onClick={() => handleCopy(query)} className="h-9 px-3 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 gap-1.5 rounded-xl transition-colors">
-                            <Copy className="h-4 w-4" /> Copy
+                      <td className="py-4 px-6 text-right align-middle whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" onClick={() => handleCopy(query)} className="h-8 px-2.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 gap-1 rounded-lg transition-colors">
+                            <Copy className="h-3.5 w-3.5" /> Copy
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => openEditForm(query)} className="h-9 w-9 rounded-xl text-slate-400 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                            <Edit2 className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" onClick={() => openEditForm(query)} className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+                            <Edit2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDuplicate(query)} className="h-9 w-9 rounded-xl text-slate-400 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                            <Sparkles className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" onClick={() => handleDuplicate(query)} className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+                            <Sparkles className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(query.id)} className="h-9 w-9 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-500/10 transition-colors">
-                            <Trash2 className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(query.id)} className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </td>
@@ -1621,75 +1614,75 @@ export default function QueryLibraryPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setHistoryModalOpen(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-3xl bg-white/90 dark:bg-slate-900/90 shadow-2xl ring-1 ring-slate-200/50 dark:ring-slate-800/50 backdrop-blur-xl flex flex-col"
+              className="app-card relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] shadow-2xl flex flex-col"
             >
-              <CardHeader className="bg-gradient-to-r from-slate-100/50 to-transparent dark:from-slate-800/50 px-8 py-6 border-b border-slate-200/50 dark:border-slate-700/50 flex flex-row items-center justify-between shrink-0">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold shadow-lg shadow-indigo-500/20">
-                    <History className="h-6 w-6" />
+              <CardHeader className="bg-slate-50/80 dark:bg-white/[0.02] px-6 py-5 border-b border-slate-200/80 dark:border-white/[0.08] flex flex-row items-center justify-between shrink-0">
+                <div className="flex items-center gap-3.5">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold border border-indigo-500/20">
+                    <History className="h-5 w-5" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-black tracking-tight text-foreground">
+                    <CardTitle className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">
                       Version History: {historyQuery.label}
                     </CardTitle>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       View past edits and safely restore previous versions.
                     </p>
                   </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setHistoryModalOpen(false)} className="h-10 w-10 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                  <X className="h-5 w-5" />
+                <Button variant="ghost" size="icon" onClick={() => setHistoryModalOpen(false)} className="h-9 w-9 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+                  <X className="h-4 w-4 text-slate-500" />
                 </Button>
               </CardHeader>
               
-              <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-950/50">
+              <div className="p-6 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-[#06070a]">
                 {loadingHistory ? (
                   <div className="flex items-center justify-center h-40">
                     <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
                   </div>
                 ) : historyRecords.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-40 text-slate-500">
-                    <History className="h-12 w-12 mb-4 opacity-20" />
-                    <p className="font-bold">No previous versions found.</p>
-                    <p className="text-sm">Edits will appear here.</p>
+                  <div className="flex flex-col items-center justify-center h-40 text-slate-400 dark:text-slate-500">
+                    <History className="h-10 w-10 mb-3 opacity-20" />
+                    <p className="font-bold text-sm">No previous versions found.</p>
+                    <p className="text-xs">Edits will appear here.</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {historyRecords.map((record, index) => (
-                      <div key={record.id} className="relative pl-6 before:absolute before:left-[11px] before:top-2 before:bottom-[-24px] before:w-0.5 before:bg-slate-200 dark:before:bg-slate-700 last:before:hidden">
-                        <div className="absolute left-0 top-1 h-[24px] w-[24px] rounded-full bg-indigo-100 dark:bg-indigo-900/50 border-4 border-white dark:border-slate-900 flex items-center justify-center shadow-sm">
-                          <div className="h-2 w-2 rounded-full bg-indigo-500" />
+                      <div key={record.id} className="relative pl-6 before:absolute before:left-[11px] before:top-2 before:bottom-[-16px] before:w-0.5 before:bg-slate-200 dark:before:bg-white/[0.08] last:before:hidden">
+                        <div className="absolute left-0 top-1 h-[22px] w-[22px] rounded-full bg-indigo-50 dark:bg-indigo-950/50 border-2 border-indigo-500 flex items-center justify-center">
+                          <div className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
                         </div>
-                        <Card className="border-0 shadow-md ring-1 ring-black/5 dark:ring-white/10 bg-white dark:bg-slate-800 overflow-hidden rounded-2xl">
-                          <div className="p-4 border-b border-slate-100 dark:border-slate-700/50 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
+                        <Card className="app-card border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] shadow-sm overflow-hidden rounded-xl">
+                          <div className="p-3.5 border-b border-slate-100 dark:border-white/[0.06] flex flex-wrap items-center justify-between gap-3 bg-slate-50/50 dark:bg-white/[0.02]">
                             <div>
-                              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
                                 {index === 0 ? "Latest Backup" : `Version ${historyRecords.length - index}`}
                               </p>
-                              <p className="text-xs text-slate-500">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                 Saved on {new Date(record.createdAt).toLocaleString()}
                               </p>
                             </div>
                             <Button 
                               size="sm" 
                               onClick={() => handleRestore(record.id)}
-                              className="h-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 text-xs font-bold"
+                              className="h-7 bg-[#0176d3] hover:bg-[#0161b0] text-white rounded-lg px-3 text-xs font-semibold"
                             >
-                              <History className="h-3.5 w-3.5 mr-1.5" /> Restore This Version
+                              <History className="h-3 w-3 mr-1" /> Restore This Version
                             </Button>
                           </div>
-                          <div className="p-4">
-                            <div className="mb-3 flex items-center gap-2">
-                              <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300 border-0">{record.category}</Badge>
-                              <span className="font-bold text-sm text-foreground">{record.label}</span>
+                          <div className="p-3.5">
+                            <div className="mb-2 flex items-center gap-2">
+                              <Badge className="bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-slate-300 border-0 text-[10px]">{record.category}</Badge>
+                              <span className="font-semibold text-xs text-slate-900 dark:text-white">{record.label}</span>
                             </div>
-                            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-slate-900 text-slate-200 p-4 font-mono text-xs leading-relaxed shadow-inner">
+                            <pre className="max-h-56 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-50 dark:bg-[#06070a] text-slate-800 dark:text-slate-200 p-3 font-mono text-xs leading-relaxed border border-slate-200/80 dark:border-white/[0.08]">
                               <code>{record.soql}</code>
                             </pre>
                           </div>

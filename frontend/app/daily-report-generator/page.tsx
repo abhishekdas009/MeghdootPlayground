@@ -278,55 +278,23 @@ export default function DailyReportGeneratorPage() {
   };
 
   return (
-    <div className="flex flex-col gap-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-{/* ?? Header Section ?? */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
-      >
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl pointer-events-none dark:bg-purple-500/20 dark:mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl pointer-events-none dark:bg-blue-500/20 dark:mix-blend-screen" />
-        
-        <div className="relative z-10 flex flex-col gap-6 2xl:flex-row 2xl:items-center 2xl:justify-between">
-          <div className="flex min-w-0 flex-col items-start gap-4 sm:flex-row sm:items-center">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 text-white shadow-lg shadow-purple-500/30 border border-white/10">
-              <Mail className="h-7 w-7" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="sm:text-xs font-bold flex items-center gap-1.5 backdrop-blur-sm uppercase tracking-widest text-[10px] font-black text-slate-500 dark:text-slate-400">
-                  EMAIL OPERATIONS
-                </span>
-              </div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white">
-                Daily Report <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Generator</span>
-              </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium mt-2 max-w-xl">
-                Generate daily status summaries, merge case reports, and summarize issue category lists into executive tables.
-              </p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
+    <div className="flex flex-col gap-6 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* ── Module Switcher Tabs ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between max-w-7xl mx-auto w-full px-4 sm:px-6 gap-3">
-        <div className="inline-flex p-1.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 shadow-inner">
+        <div className="inline-flex p-1.5 rounded-2xl bg-muted/60 dark:bg-[#06070a] border border-border/70 dark:border-white/[0.08] shadow-inner">
           <button
             type="button"
             onClick={() => setActiveTab("category-breakdown")}
             className={cn(
               "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all relative",
               activeTab === "category-breakdown"
-                ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm font-extrabold"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-card dark:bg-[#12141a] text-primary shadow-sm font-extrabold border border-border/60 dark:border-white/[0.08]"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Layers className="h-4 w-4 text-blue-500" />
+            <Layers className="h-4 w-4 text-primary" />
             <span>Issue Category Breakdown</span>
-            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
               Image 2 Table
             </span>
           </button>
@@ -336,8 +304,8 @@ export default function DailyReportGeneratorPage() {
             className={cn(
               "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all",
               activeTab === "status-merger"
-                ? "bg-white dark:bg-slate-900 text-purple-600 dark:text-purple-400 shadow-sm font-extrabold"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                ? "bg-card dark:bg-[#12141a] text-purple-600 dark:text-purple-400 shadow-sm font-extrabold border border-border/60 dark:border-white/[0.08]"
+                : "text-muted-foreground hover:text-foreground"
             )}
           >
             <FileSpreadsheet className="h-4 w-4 text-purple-500" />
@@ -345,14 +313,14 @@ export default function DailyReportGeneratorPage() {
           </button>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium">
+        <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground font-medium">
           {activeTab === "category-breakdown" ? (
-            <span className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-xl border border-blue-200/50 dark:border-blue-800/40 font-semibold">
-              <Sparkles className="h-3.5 w-3.5 text-blue-500" />
+            <span className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-xl border border-primary/20 font-semibold">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
               Paste category list ➔ Exact Image 2 table with blue headers
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded-xl border border-purple-200/50 dark:border-purple-800/40 font-semibold">
+            <span className="flex items-center gap-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 px-3 py-1.5 rounded-xl border border-purple-500/20 font-semibold">
               <Mail className="h-3.5 w-3.5 text-purple-500" />
               Merge ticket files & draft daily email
             </span>
@@ -373,46 +341,46 @@ export default function DailyReportGeneratorPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto w-full px-4 sm:px-6">
         {/* Input Section */}
         <div className="lg:col-span-5 space-y-6">
-          <Card className="border-slate-200/60 shadow-sm dark:border-white/[0.1] dark:bg-slate-900/40 backdrop-blur-xl">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
+          <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl backdrop-blur-2xl p-0 overflow-hidden">
+            <CardHeader className="pb-4 px-6 pt-5 border-b border-border/70 bg-muted/20">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
                 <Calculator className="h-5 w-5 text-purple-500" />
                 Input Data
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5">
+            <CardContent className="space-y-5 p-6">
               <div className="space-y-2">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-[10px] text-slate-300">1</span>
+                  <label className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted dark:bg-[#12141a] text-[10px] text-foreground font-bold border border-border/70 dark:border-white/[0.1]">1</span>
                     Completed / Closed Cases
                   </label>
-                  <Button variant="secondary" size="sm" className="h-7 px-3 text-[11px] font-bold rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 border border-indigo-500/20 transition-all" onClick={() => fileInput1Ref.current?.click()}>
+                  <Button variant="secondary" size="sm" className="h-7 px-3 text-[11px] font-bold rounded-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all" onClick={() => fileInput1Ref.current?.click()}>
                     <Upload className="h-3 w-3 mr-1.5" /> Upload File
                   </Button>
                   <input type="file" ref={fileInput1Ref} className="hidden" accept=".csv,.xlsx,.xls,.txt" onChange={(e) => handleFileUpload(e, setClosedInput)} />
                 </div>
                 <Textarea 
                   placeholder="Paste rows here or upload file using button above..." 
-                  className="min-h-[140px] resize-y bg-white dark:bg-black/40 border-slate-200 dark:border-slate-700/50 font-mono text-[11px] text-slate-900 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus-visible:ring-indigo-500/30 rounded-xl leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none"
+                  className="min-h-[140px] resize-y bg-surface-recessed/60 dark:bg-[#06070a] border border-border/70 dark:border-white/[0.08] font-mono text-[11px] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-primary/30 rounded-xl leading-relaxed shadow-inner"
                   value={closedInput}
                   onChange={(e) => setClosedInput(e.target.value)}
                 />
               </div>
               <div className="space-y-2 pt-2">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-800 text-[10px] text-slate-300">2</span>
+                  <label className="text-[11px] font-extrabold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted dark:bg-[#12141a] text-[10px] text-foreground font-bold border border-border/70 dark:border-white/[0.1]">2</span>
                     Other Status Cases
                   </label>
-                  <Button variant="secondary" size="sm" className="h-7 px-3 text-[11px] font-bold rounded-full bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 border border-indigo-500/20 transition-all" onClick={() => fileInput2Ref.current?.click()}>
+                  <Button variant="secondary" size="sm" className="h-7 px-3 text-[11px] font-bold rounded-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 transition-all" onClick={() => fileInput2Ref.current?.click()}>
                     <Upload className="h-3 w-3 mr-1.5" /> Upload File
                   </Button>
                   <input type="file" ref={fileInput2Ref} className="hidden" accept=".csv,.xlsx,.xls,.txt" onChange={(e) => handleFileUpload(e, setOtherInput)} />
                 </div>
                 <Textarea 
                   placeholder="Paste rows for Open, In Progress, Waiting for User Info, etc..." 
-                  className="min-h-[140px] resize-y bg-white dark:bg-black/40 border-slate-200 dark:border-slate-700/50 font-mono text-[11px] text-slate-900 dark:text-slate-300 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus-visible:ring-indigo-500/30 rounded-xl leading-relaxed shadow-inner shadow-slate-100 dark:shadow-none"
+                  className="min-h-[140px] resize-y bg-surface-recessed/60 dark:bg-[#06070a] border border-border/70 dark:border-white/[0.08] font-mono text-[11px] text-foreground placeholder:text-muted-foreground/60 focus-visible:ring-primary/30 rounded-xl leading-relaxed shadow-inner"
                   value={otherInput}
                   onChange={(e) => setOtherInput(e.target.value)}
                 />
@@ -420,22 +388,22 @@ export default function DailyReportGeneratorPage() {
 
               <div className="pt-2">
                 <details className="text-xs group" open={Boolean(categoryInputForEmail)}>
-                  <summary className="font-bold text-slate-600 dark:text-slate-400 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors select-none flex items-center justify-between">
+                  <summary className="font-bold text-muted-foreground cursor-pointer hover:text-foreground transition-colors select-none flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <Layers className="h-3.5 w-3.5 text-blue-500" />
+                      <Layers className="h-3.5 w-3.5 text-primary" />
                       Include Category Breakdown (Image 2 Style)
                     </span>
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full border border-blue-200/50">
+                    <span className="text-[10px] text-primary font-bold uppercase tracking-wider bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
                       Optional
                     </span>
                   </summary>
                   <div className="mt-2.5 space-y-1.5">
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    <p className="text-[11px] text-muted-foreground">
                       Paste category column from Excel to auto-generate the Image 2 breakdown table in this daily email:
                     </p>
                     <Textarea
                       placeholder={"Paste categories here, e.g.:\nData update\nData update\nBug\nAwareness issue"}
-                      className="min-h-[100px] resize-y bg-white dark:bg-black/40 border-slate-200 dark:border-slate-700/50 font-mono text-[11px] text-slate-900 dark:text-slate-300 rounded-xl"
+                      className="min-h-[100px] resize-y bg-surface-recessed/60 dark:bg-[#06070a] border border-border/70 dark:border-white/[0.08] font-mono text-[11px] text-foreground rounded-xl shadow-inner"
                       value={categoryInputForEmail}
                       onChange={(e) => setCategoryInputForEmail(e.target.value)}
                     />
@@ -443,22 +411,22 @@ export default function DailyReportGeneratorPage() {
                 </details>
               </div>
 
-              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="pt-4 border-t border-border/70 dark:border-white/[0.08] space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5"/> Report Date</label>
-                  <Input value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="bg-white/50 dark:bg-black/20 font-medium" />
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5"/> Report Date</label>
+                  <Input value={reportDate} onChange={(e) => setReportDate(e.target.value)} className="bg-surface-recessed/60 dark:bg-[#06070a] border-border/70 dark:border-white/[0.08] font-medium rounded-xl text-foreground" />
                 </div>
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5"><User className="h-3.5 w-3.5"/> Addressed To</label>
-                    <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} className="bg-white/50 dark:bg-black/20 font-medium" />
+                    <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><User className="h-3.5 w-3.5"/> Addressed To</label>
+                    <Input value={managerName} onChange={(e) => setManagerName(e.target.value)} className="bg-surface-recessed/60 dark:bg-[#06070a] border-border/70 dark:border-white/[0.08] font-medium rounded-xl text-foreground" />
                   </div>
                 </div>
               </div>
 
               <Button 
                 onClick={handleGenerate} 
-                className="w-full h-12 mt-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold shadow-md shadow-purple-500/20"
+                className="w-full h-12 mt-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl transition-all"
               >
                 <CheckCircle2 className="mr-2 h-5 w-5" />
                 Generate & Merge
@@ -469,18 +437,18 @@ export default function DailyReportGeneratorPage() {
 
         {/* Output Section */}
         <div className="lg:col-span-7">
-          <Card className="h-full border-slate-200/60 shadow-sm dark:border-white/[0.1] dark:bg-slate-900/40 backdrop-blur-xl flex flex-col">
-            <CardHeader className="flex flex-col xl:flex-row items-start xl:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/60 gap-4 flex-wrap">
-              <CardTitle className="text-lg">Generated Outputs</CardTitle>
+          <Card className="app-card h-full border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl backdrop-blur-2xl flex flex-col p-0 overflow-hidden">
+            <CardHeader className="flex flex-col xl:flex-row items-start xl:items-center justify-between pb-4 border-b border-border/70 bg-muted/20 px-6 py-4 gap-4 flex-wrap">
+              <CardTitle className="text-lg font-bold text-foreground">Generated Outputs</CardTitle>
               {reportData && (
                 <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                  <Button variant="outline" size="sm" onClick={handleDownloadExcel} className="flex-1 sm:flex-none gap-2 bg-[#107c41] hover:bg-[#185c37] text-white border-none shadow-lg shadow-[#107c41]/20">
+                  <Button variant="outline" size="sm" onClick={handleDownloadExcel} className="flex-1 sm:flex-none gap-2 bg-[#107c41] hover:bg-[#185c37] text-white border-none shadow-md shadow-[#107c41]/20 rounded-xl font-bold">
                     <Download className="h-4 w-4" /> Merge to Excel
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleCopyEmail} className="flex-1 sm:flex-none gap-2 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800">
+                  <Button variant="outline" size="sm" onClick={handleCopyEmail} className="flex-1 sm:flex-none gap-2 border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 text-foreground hover:bg-surface-elevated rounded-xl font-bold">
                     <Copy className="h-4 w-4" /> Copy Email
                   </Button>
-                  <Button variant="primary" size="sm" onClick={handleDraftEmail} className="flex-1 sm:flex-none gap-2 bg-[#0078d4] hover:bg-[#106ebe] text-white border-none shadow-lg shadow-[#0078d4]/20">
+                  <Button variant="primary" size="sm" onClick={handleDraftEmail} className="flex-1 sm:flex-none gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-none shadow-md shadow-primary/20 rounded-xl font-bold">
                     <Mail className="h-4 w-4" /> Open Mail Draft
                   </Button>
                 </div>

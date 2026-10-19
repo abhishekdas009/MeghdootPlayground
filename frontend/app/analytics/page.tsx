@@ -123,12 +123,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     const timeString = "Peak: 02:15 PM";
 
     return (
-      <div className="bg-white/95 dark:bg-slate-900/95 border border-border/50 p-4 rounded-xl shadow-xl backdrop-blur-md min-w-[200px]">
-        <p className="font-bold text-sm text-foreground mb-1">{dateString}</p>
-        <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-3 border-b border-border/50 pb-2">
+      <div className="app-card bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] p-3.5 rounded-xl shadow-xl min-w-[200px]">
+        <p className="font-bold text-xs text-slate-900 dark:text-white mb-0.5">{dateString}</p>
+        <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5 border-b border-slate-100 dark:border-white/[0.06] pb-1.5">
           {timeString}
         </p>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {payload.map((entry: any, index: number) => {
             let labelName = entry.name;
             if (entry.dataKey === "soql") labelName = "SOQL Generation";
@@ -139,9 +139,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
               <div key={index} className="flex items-center justify-between gap-6">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                  <span className="text-xs font-semibold text-muted-foreground">{labelName}</span>
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400">{labelName}</span>
                 </div>
-                <span className="text-sm font-black text-foreground">{entry.value}</span>
+                <span className="text-xs font-bold text-slate-900 dark:text-white">{entry.value}</span>
               </div>
             );
           })}
@@ -390,16 +390,16 @@ export default function AnalyticsPage() {
           {/* Right Actions Bar */}
           <div className="flex items-center gap-3 flex-wrap md:justify-end shrink-0">
             {/* Time Range Tabs */}
-            <div className="flex items-center rounded-xl bg-white/65 p-1.5 border border-slate-200/80 backdrop-blur-md shadow-inner dark:bg-slate-900/80 dark:border-slate-700/80">
+            <div className="flex items-center rounded-xl bg-white dark:bg-[#06070a] p-1 border border-slate-200/80 dark:border-white/[0.08] shadow-sm">
               {(["24h", "7d", "30d", "all"] as TimeRange[]).map((range) => (
                 <button
                   key={range}
                   onClick={() => setTimeRange(range)}
                   className={cn(
-                    "px-4 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wide",
+                    "px-3 py-1 rounded-lg text-xs font-semibold transition-all uppercase tracking-wider",
                     timeRange === range
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/50"
-                      : "text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800"
+                      ? "bg-[#0176d3] text-white shadow-sm"
+                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                   )}
                 >
                   {range === "all" ? "All Time" : range}
@@ -411,19 +411,19 @@ export default function AnalyticsPage() {
               variant="outline"
               onClick={() => fetchDatabaseTelemetry(true)}
               disabled={loading}
-              className="h-10 gap-2 font-bold text-sm rounded-xl border-slate-200 bg-white/55 text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-lg backdrop-blur-md transition-all dark:border-slate-700 dark:bg-slate-800/50 dark:text-slate-200 dark:hover:bg-slate-700 dark:hover:text-white"
+              className="h-9 px-3.5 gap-1.5 font-semibold text-xs rounded-xl border-slate-200/80 bg-white dark:bg-white/[0.03] text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm transition-all dark:border-white/[0.08] dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white"
             >
-              <RefreshCw className={cn("h-4 w-4 text-indigo-400", loading && "animate-spin")} />
+              <RefreshCw className={cn("h-3.5 w-3.5 text-blue-500", loading && "animate-spin")} />
               <span>Sync DB</span>
             </Button>
 
             <Button
               variant="primary"
               onClick={handleExportCSV}
-              className="h-10 gap-2 font-bold text-sm rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white shadow-lg shadow-indigo-500/25 transition-all"
+              className="h-9 px-4 gap-1.5 font-semibold text-xs rounded-xl bg-[#0176d3] hover:bg-[#0161b0] text-white shadow-sm transition-all"
               title="Download Telemetry CSV"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
           </div>
@@ -522,28 +522,28 @@ export default function AnalyticsPage() {
             whileHover={{ y: -2 }}
             className="h-full"
           >
-            <Card className="relative h-full min-h-[196px] overflow-hidden group bg-card transition-all rounded-2xl flex flex-col">
+            <Card className="app-card relative h-full min-h-[196px] overflow-hidden group bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] transition-all rounded-2xl flex flex-col shadow-sm hover:shadow-md">
               {/* Top Gradient Accent Bar */}
-              <div className={cn("absolute inset-x-0 top-0 h-1.5 opacity-80 transition-opacity duration-300 bg-gradient-to-r", card.gradient)} />
+              <div className={cn("absolute inset-x-0 top-0 h-1 opacity-80 transition-opacity duration-300 bg-gradient-to-r", card.gradient)} />
               
               {/* Card Content with Fixed Typography Alignment */}
-              <CardContent className="relative z-10 flex flex-1 flex-col p-5 pt-6 sm:p-6 sm:pt-7 lg:pt-7">
+              <CardContent className="relative z-10 flex flex-1 flex-col p-5 pt-6 sm:p-6 sm:pt-6">
                 {/* Header: Title and Icon */}
-                <div className="mb-5 flex items-start justify-between gap-4">
-                  <span className="min-h-[2.5rem] max-w-[12rem] text-[11px] font-bold uppercase leading-[1.35] tracking-wider text-muted-foreground">
+                <div className="mb-4 flex items-start justify-between gap-4">
+                  <span className="min-h-[2.5rem] max-w-[12rem] text-[11px] font-bold uppercase leading-[1.35] tracking-wider text-slate-500 dark:text-slate-400">
                     {card.label}
                   </span>
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3 shadow-sm", card.iconColor)}>
+                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 shadow-sm border border-slate-200/50 dark:border-white/[0.06]", card.iconColor)}>
                     <card.icon className="h-5 w-5" />
                   </div>
                 </div>
 
                 {/* Metrics */}
-                <div className="mb-6 flex-1 space-y-2">
-                  <div className="text-3xl font-black tracking-tight text-foreground drop-shadow-sm">
+                <div className="mb-5 flex-1 space-y-1.5">
+                  <div className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                     {card.val}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
                     <TrendingUp className="h-3.5 w-3.5 shrink-0" />
                     <span className="truncate">{card.trend}</span>
                   </div>
@@ -551,7 +551,7 @@ export default function AnalyticsPage() {
 
                 {/* Progress Bar Footer */}
                 <div className="pt-2 mt-auto">
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.06]">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${card.pct}%` }}
@@ -570,24 +570,24 @@ export default function AnalyticsPage() {
       <div className="grid gap-8 lg:grid-cols-12">
         {/* LEFT 2 COLUMNS: DB LEADERBOARD & DISTRIBUTIONS */}
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-7 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-8">
-          <Card className="h-full min-h-0 border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden flex flex-col bg-card rounded-3xl">
-            <CardHeader className="p-6 border-b border-border/40 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sticky top-0 z-10 backdrop-blur-md">
-              <div className="space-y-1">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400 shadow-sm">
-                    <Layers className="h-5 w-5" />
+          <Card className="app-card h-full min-h-0 border border-slate-200/80 dark:border-white/[0.08] shadow-sm overflow-hidden flex flex-col bg-white dark:bg-[#0b0c10] rounded-2xl">
+            <CardHeader className="p-5 border-b border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sticky top-0 z-10">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Layers className="h-4.5 w-4.5" />
                   </div>
-                  <CardTitle className="text-xl font-black text-foreground">
+                  <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
                     Telemetry Explorer
                   </CardTitle>
                 </div>
-                <CardDescription className="text-sm font-medium mt-1">
+                <CardDescription className="text-xs text-slate-500 dark:text-slate-400">
                   Deep-dive operational metrics directly from the database
                 </CardDescription>
               </div>
 
               {/* Sub-Tabs */}
-              <div className="flex items-center rounded-xl bg-muted p-1 border border-border/60 shrink-0 shadow-inner">
+              <div className="flex items-center rounded-xl bg-slate-100/80 dark:bg-[#06070a] p-1 border border-slate-200/80 dark:border-white/[0.08] shrink-0">
                 {[
                   { id: "trends", label: "Trends", icon: Activity },
                   { id: "leaderboard", label: "Top Templates", icon: TrendingUp },
@@ -598,21 +598,21 @@ export default function AnalyticsPage() {
                     key={t.id}
                     onClick={() => setActiveTab(t.id as TabType)}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
                       activeTab === t.id
-                        ? "bg-card text-indigo-600 dark:text-indigo-400 shadow-sm border border-border/80"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/80"
+                        ? "bg-white dark:bg-white/[0.08] text-blue-600 dark:text-blue-400 shadow-sm"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
                     )}
                   >
-                    <t.icon className="h-4 w-4" />
+                    <t.icon className="h-3.5 w-3.5" />
                     <span>{t.label}</span>
                   </button>
                 ))}
               </div>
             </CardHeader>
 
-            <CardContent className="analytics-panel-scroll min-h-0 flex-1 overflow-y-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] p-0 dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] [background-size:24px_24px]">
-              <div className="p-6">
+            <CardContent className="analytics-panel-scroll min-h-0 flex-1 overflow-y-auto p-0">
+              <div className="p-5">
                 <AnimatePresence mode="wait">
                   {/* TAB 0: TRENDS CHART */}
                   {activeTab === "trends" && (
@@ -621,27 +621,27 @@ export default function AnalyticsPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="space-y-6"
+                      className="space-y-4"
                     >
-                      <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-500/5 to-blue-500/5 border border-border/60 backdrop-blur-sm">
-                        <div className="flex items-center justify-between mb-6">
+                      <div className="p-5 rounded-xl bg-slate-50/80 dark:bg-[#06070a] border border-slate-200/80 dark:border-white/[0.08]">
+                        <div className="flex items-center justify-between mb-5">
                           <div>
-                            <h3 className="text-lg font-black text-foreground">Weekly System Activity</h3>
-                            <p className="text-sm text-muted-foreground font-medium">Real-time operation volume across core modules</p>
+                            <h3 className="text-base font-bold text-slate-900 dark:text-white">Weekly System Activity</h3>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Real-time operation volume across core modules</p>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-indigo-500"></span><span className="text-xs font-bold text-muted-foreground">SOQL</span></div>
-                            <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-emerald-500"></span><span className="text-xs font-bold text-muted-foreground">Excel</span></div>
-                            <div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full bg-amber-500"></span><span className="text-xs font-bold text-muted-foreground">Tickets</span></div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-500"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">SOQL</span></div>
+                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Excel</span></div>
+                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tickets</span></div>
                           </div>
                         </div>
-                        <div className="h-[320px] w-full">
+                        <div className="h-[300px] w-full">
                           <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                               <defs>
                                 <linearGradient id="colorSoql" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colorExcel" x1="0" y1="0" x2="0" y2="1">
                                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
@@ -652,13 +652,13 @@ export default function AnalyticsPage() {
                                   <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                                 </linearGradient>
                               </defs>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/40" />
-                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: "currentColor" }} className="text-muted-foreground" dy={10} />
-                              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 600, fill: "currentColor" }} className="text-muted-foreground" />
-                              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(99, 102, 241, 0.2)', strokeWidth: 2, strokeDasharray: '4 4' }} />
-                              <Area type="monotone" dataKey="soql" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorSoql)" activeDot={{ r: 6, strokeWidth: 0 }} />
-                              <Area type="monotone" dataKey="tickets" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorTickets)" activeDot={{ r: 6, strokeWidth: 0 }} />
-                              <Area type="monotone" dataKey="excel" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorExcel)" activeDot={{ r: 6, strokeWidth: 0 }} />
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/[0.06]" />
+                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" dy={10} />
+                              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
+                              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
+                              <Area type="monotone" dataKey="soql" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSoql)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                              <Area type="monotone" dataKey="tickets" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTickets)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                              <Area type="monotone" dataKey="excel" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExcel)" activeDot={{ r: 5, strokeWidth: 0 }} />
                             </AreaChart>
                           </ResponsiveContainer>
                         </div>
@@ -673,14 +673,14 @@ export default function AnalyticsPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="space-y-5"
+                      className="space-y-4"
                     >
-                      <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-muted-foreground pb-3 border-b border-border/40">
+                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
                         <span>Rank &amp; Query Name</span>
                         <span>Execution Volume</span>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {templates
                           .slice()
                           .sort((a, b) => (b.usageCount || 0) - (a.usageCount || 0))
@@ -694,45 +694,45 @@ export default function AnalyticsPage() {
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: idx * 0.05 }}
                                 key={t.id}
-                                className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:bg-muted/50 transition-all hover:shadow-md gap-4"
+                                className="group flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] hover:border-blue-500/40 transition-all shadow-sm gap-3"
                               >
-                                <div className="flex items-start gap-4 min-w-0 flex-1">
+                                <div className="flex items-start gap-3 min-w-0 flex-1">
                                   <span
                                     className={cn(
-                                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-black shadow-sm",
-                                      idx === 0 ? "bg-amber-400 text-amber-900 shadow-amber-400/30" 
-                                      : idx === 1 ? "bg-slate-300 text-slate-800 shadow-slate-300/30" 
-                                      : idx === 2 ? "bg-amber-700 text-white shadow-amber-700/30" 
-                                      : "bg-muted text-muted-foreground"
+                                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold shadow-sm",
+                                      idx === 0 ? "bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-400/30" 
+                                      : idx === 1 ? "bg-slate-200/50 text-slate-700 dark:bg-white/[0.08] dark:text-slate-300 border border-slate-300/40" 
+                                      : idx === 2 ? "bg-amber-700/20 text-amber-800 dark:text-amber-400 border border-amber-700/30" 
+                                      : "bg-slate-100 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400"
                                     )}
                                   >
                                     #{idx + 1}
                                   </span>
-                                  <div className="min-w-0 flex-1 space-y-1.5">
+                                  <div className="min-w-0 flex-1 space-y-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-base font-bold text-foreground truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                                      <span className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                                         {t.label}
                                       </span>
                                       {t.favourite && (
-                                        <span title="Bookmarked in DB"><Star className="h-4 w-4 fill-amber-400 text-amber-400 shrink-0 drop-shadow-sm" /></span>
+                                        <span title="Bookmarked in DB"><Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400 shrink-0" /></span>
                                       )}
-                                      <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 text-[10px] font-black px-2 py-0.5 uppercase shrink-0">
+                                      <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-semibold px-2 py-0.5 uppercase shrink-0">
                                         {t.category}
                                       </Badge>
                                     </div>
-                                    <div className="text-xs text-muted-foreground truncate font-mono bg-muted/60 px-2.5 py-1 rounded-md border border-border/40">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono bg-slate-50 dark:bg-white/[0.02] px-2 py-0.5 rounded border border-slate-200/60 dark:border-white/[0.06]">
                                       {t.soql.replace(/\n/g, " ")}
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center justify-between sm:justify-end gap-5 shrink-0 pl-13 sm:pl-0">
-                                  <div className="space-y-1.5 text-right min-w-[120px]">
-                                    <div className="text-sm font-black font-mono text-foreground">
-                                      {(t.usageCount || 12).toLocaleString()} <span className="text-[10px] font-bold text-muted-foreground uppercase">runs</span>
+                                <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0">
+                                  <div className="space-y-1 text-right min-w-[100px]">
+                                    <div className="text-xs font-bold font-mono text-slate-900 dark:text-white">
+                                      {(t.usageCount || 12).toLocaleString()} <span className="text-[10px] font-medium text-slate-400 uppercase">runs</span>
                                     </div>
-                                    <div className="h-2 w-full rounded-full bg-muted/80 overflow-hidden shadow-inner">
-                                      <div className="h-full rounded-full bg-indigo-500 transition-all shadow-sm" style={{ width: `${pct}%` }} />
+                                    <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
+                                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
                                     </div>
                                   </div>
 
@@ -741,11 +741,11 @@ export default function AnalyticsPage() {
                                     variant="outline"
                                     onClick={(e) => handleCopySOQL(e, t.soql, t.id)}
                                     className={cn(
-                                      "h-10 w-10 rounded-xl transition-all shadow-sm",
-                                      copiedId === t.id ? "bg-emerald-500 text-white border-emerald-500 hover:bg-emerald-600" : "bg-card hover:bg-indigo-500 hover:text-white hover:border-indigo-500 border-border/80"
+                                      "h-8 w-8 rounded-lg transition-all",
+                                      copiedId === t.id ? "bg-emerald-500 text-white border-emerald-500" : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-600 dark:text-slate-300"
                                     )}
                                   >
-                                    {copiedId === t.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                    {copiedId === t.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                                   </Button>
                                 </div>
                               </motion.div>
@@ -762,49 +762,49 @@ export default function AnalyticsPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="space-y-6"
+                      className="space-y-4"
                     >
-                      <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border border-indigo-500/20 flex items-center justify-between backdrop-blur-sm">
-                        <div className="space-y-1">
-                          <div className="text-xs font-black uppercase tracking-widest text-indigo-600/80 dark:text-indigo-400/80">Total Analyzed Queries</div>
-                          <div className="text-3xl font-black text-foreground font-mono">
-                            {templates.reduce((acc, t) => acc + (t.usageCount || 10), 0).toLocaleString()} <span className="text-sm font-bold text-muted-foreground">executions</span>
+                      <div className="p-4 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Total Analyzed Queries</div>
+                          <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                            {templates.reduce((acc, t) => acc + (t.usageCount || 10), 0).toLocaleString()} <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">executions</span>
                           </div>
                         </div>
-                        <div className="h-14 w-14 rounded-2xl bg-indigo-500/20 flex items-center justify-center">
-                          <PieChart className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                        <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                          <PieChart className="h-5 w-5" />
                         </div>
                       </div>
 
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-3 sm:grid-cols-2">
                         {categoryStats.map((cat, idx) => (
                           <motion.div 
                             initial={{ opacity: 0, scale: 0.95 }}
                             animate={{ opacity: 1, scale: 1 }}
                             transition={{ delay: idx * 0.05 }}
                             key={cat.name} 
-                            className="space-y-3 p-5 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm hover:shadow-md transition-all hover:-translate-y-1"
+                            className="space-y-2.5 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] shadow-sm hover:border-blue-500/30 transition-all"
                           >
                             <div className="flex items-center justify-between text-sm">
-                              <div className="flex items-center gap-3">
-                                <span className={cn("flex h-8 w-8 items-center justify-center rounded-xl font-mono text-xs font-black border shadow-sm", cat.colorClass)}>
+                              <div className="flex items-center gap-2.5">
+                                <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg font-mono text-xs font-bold border", cat.colorClass)}>
                                   {idx + 1}
                                 </span>
-                                <span className="font-bold text-foreground text-base">{cat.name}</span>
+                                <span className="font-bold text-slate-900 dark:text-white text-sm">{cat.name}</span>
                               </div>
-                              <Badge className="bg-muted text-foreground font-black border-border shadow-sm text-xs px-2 py-0.5">{cat.pct}%</Badge>
+                              <Badge className="bg-slate-100 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 font-bold border-slate-200/80 dark:border-white/[0.08] text-xs px-2 py-0.5">{cat.pct}%</Badge>
                             </div>
                             
                             <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground font-bold text-xs uppercase tracking-wider">{cat.count.toLocaleString()} runs</span>
+                              <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs">{cat.count.toLocaleString()} runs</span>
                             </div>
                             
-                            <div className="h-2 w-full rounded-full bg-muted overflow-hidden shadow-inner">
+                            <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${cat.pct}%` }}
                                 transition={{ duration: 1, delay: 0.2 + idx * 0.1 }}
-                                className={cn("h-full rounded-full", idx % 2 === 0 ? "bg-indigo-500" : "bg-emerald-500")}
+                                className={cn("h-full rounded-full", idx % 2 === 0 ? "bg-blue-500" : "bg-emerald-500")}
                               />
                             </div>
                           </motion.div>
@@ -820,43 +820,43 @@ export default function AnalyticsPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="space-y-5"
+                      className="space-y-4"
                     >
-                      <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-muted-foreground pb-3 border-b border-border/40">
+                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
                         <span>Employee &amp; Salesforce ID</span>
                         <span>Capacity Status</span>
                       </div>
 
                       {caseOwners.length === 0 ? (
-                        <div className="py-16 text-center space-y-4 bg-muted/20 rounded-2xl border border-dashed border-border/80">
-                          <div className="mx-auto h-16 w-16 bg-muted rounded-full flex items-center justify-center">
-                            <Users className="h-8 w-8 text-muted-foreground/50" />
+                        <div className="py-12 text-center space-y-3 bg-slate-50/50 dark:bg-[#06070a] rounded-xl border border-dashed border-slate-200 dark:border-white/[0.08]">
+                          <div className="mx-auto h-12 w-12 bg-slate-100 dark:bg-white/[0.04] rounded-full flex items-center justify-center">
+                            <Users className="h-6 w-6 text-slate-400" />
                           </div>
                           <div>
-                            <div className="text-lg font-bold text-foreground">No Case Owners Found</div>
-                            <p className="text-sm font-medium text-muted-foreground mt-1">Configure owners in Case Assignment module to track roster telemetry.</p>
+                            <div className="text-base font-bold text-slate-900 dark:text-white">No Case Owners Found</div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Configure owners in Case Assignment module to track roster telemetry.</p>
                           </div>
                         </div>
                       ) : (
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="grid gap-3 sm:grid-cols-2">
                           {caseOwners.map((owner, idx) => (
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ delay: idx * 0.05 }}
                               key={owner.id || idx}
-                              className="p-4 rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm flex items-center justify-between gap-4 hover:border-indigo-500/40 hover:shadow-md transition-all group"
+                              className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] flex items-center justify-between gap-3 hover:border-blue-500/40 shadow-sm transition-all"
                             >
-                              <div className="flex items-center gap-4 min-w-0">
-                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400 font-black text-lg shadow-sm group-hover:scale-110 transition-transform">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-sm border border-blue-500/20">
                                   {owner.name.slice(0, 2).toUpperCase()}
                                 </div>
                                 <div className="min-w-0">
-                                  <div className="text-base font-bold text-foreground truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{owner.name}</div>
-                                  <div className="text-xs font-mono font-medium text-muted-foreground truncate mt-0.5">ID: {owner.ownerId}</div>
+                                  <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{owner.name}</div>
+                                  <div className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate">ID: {owner.ownerId}</div>
                                 </div>
                               </div>
-                              <Badge className={cn("text-[10px] font-black uppercase tracking-wider shrink-0 px-2.5 py-1", owner.isActive ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30")}>
+                              <Badge className={cn("text-[10px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-md", owner.isActive ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30")}>
                                 {owner.isActive ? "Active" : "Offline"}
                               </Badge>
                             </motion.div>
@@ -873,26 +873,26 @@ export default function AnalyticsPage() {
 
         {/* RIGHT COLUMN: REAL-TIME DB EVENT STREAM */}
         <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-5 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-4">
-          <Card className="h-full min-h-0 border-0 shadow-xl ring-1 ring-black/5 dark:ring-white/10 overflow-hidden flex flex-col bg-card rounded-3xl">
-            <CardHeader className="p-6 border-b border-border/40 bg-gradient-to-b from-muted/60 to-muted/20 flex flex-col gap-4">
+          <Card className="app-card h-full min-h-0 border border-slate-200/80 dark:border-white/[0.08] shadow-sm overflow-hidden flex flex-col bg-white dark:bg-[#0b0c10] rounded-2xl">
+            <CardHeader className="p-5 border-b border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 shadow-sm relative">
-                    <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-3 w-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 relative">
+                    <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-2.5 w-2.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
-                    <Activity className="h-5 w-5" />
+                    <Activity className="h-4.5 w-4.5" />
                   </div>
-                  <CardTitle className="text-xl font-black text-foreground">Live Event Stream</CardTitle>
+                  <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Live Event Stream</CardTitle>
                 </div>
-                <Badge variant="outline" className="text-xs font-bold font-mono bg-card text-muted-foreground border-border px-2 py-0.5 shadow-sm">
+                <Badge variant="outline" className="text-xs font-semibold font-mono bg-slate-100/80 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 border-slate-200/80 dark:border-white/[0.08] px-2 py-0.5">
                   {filteredEvents.length > 0 ? filteredEvents.length : 6} events
                 </Badge>
               </div>
 
               {/* Filter Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
                 {[
                   { id: "all", label: "All" },
                   { id: "soql", label: "SOQL" },
@@ -903,10 +903,10 @@ export default function AnalyticsPage() {
                     key={f.id}
                     onClick={() => setEventFilter(f.id as EventFilter)}
                     className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all border shrink-0 shadow-sm",
+                      "px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all border shrink-0",
                       eventFilter === f.id
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-emerald-600/30"
-                        : "bg-card text-muted-foreground border-border/80 hover:text-foreground hover:bg-muted/80 hover:border-border"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                        : "bg-white dark:bg-[#06070a] text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-white/[0.08] hover:border-emerald-500/30"
                     )}
                   >
                     {f.label}
@@ -915,33 +915,33 @@ export default function AnalyticsPage() {
               </div>
             </CardHeader>
 
-            <CardContent className="analytics-panel-scroll min-h-0 flex-1 space-y-3 overflow-y-auto bg-slate-50/50 p-4 dark:bg-slate-900/30">
+            <CardContent className="analytics-panel-scroll min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-slate-50/40 dark:bg-[#06070a] p-4">
               {filteredEvents.length === 0 ? (
                 /* Fallback rich log if DB events table is fresh/empty */
                 [
-                  { label: "SOQL Query Executed in Generator", mod: "SOQL Generator", time: "2 mins ago", badge: "Query", color: "bg-blue-500/10 text-blue-600 border-blue-500/30" },
-                  { label: "VLOOKUP Spreadsheet Reconciled", mod: "Warranty Finder", time: "14 mins ago", badge: "Excel", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" },
-                  { label: "New Template Saved to DB Library", mod: "Template Manager", time: "38 mins ago", badge: "Library", color: "bg-purple-500/10 text-purple-600 border-purple-500/30" },
-                  { label: "150 Raw Tickets Formatted to IN Syntax", mod: "Ticket Formatter", time: "1 hr ago", badge: "Utility", color: "bg-amber-500/10 text-amber-600 border-amber-500/30" },
-                  { label: "Asset Transfer Component Mapping", mod: "Asset Transfer", time: "2 hrs ago", badge: "Asset", color: "bg-cyan-500/10 text-cyan-600 border-cyan-500/30" },
-                  { label: "Case Owner Capacity Balanced", mod: "Case Assignment", time: "4 hrs ago", badge: "Case", color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/30" },
+                  { label: "SOQL Query Executed in Generator", mod: "SOQL Generator", time: "2 mins ago", badge: "Query", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+                  { label: "VLOOKUP Spreadsheet Reconciled", mod: "Warranty Finder", time: "14 mins ago", badge: "Excel", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+                  { label: "New Template Saved to DB Library", mod: "Template Manager", time: "38 mins ago", badge: "Library", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+                  { label: "150 Raw Tickets Formatted to IN Syntax", mod: "Ticket Formatter", time: "1 hr ago", badge: "Utility", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+                  { label: "Asset Transfer Component Mapping", mod: "Asset Transfer", time: "2 hrs ago", badge: "Asset", color: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20" },
+                  { label: "Case Owner Capacity Balanced", mod: "Case Assignment", time: "4 hrs ago", badge: "Case", color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
                 ].map((ev, i) => (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
                     key={i} 
-                    className="group p-4 rounded-2xl border border-border/60 bg-card hover:bg-muted/60 transition-all space-y-2 hover:shadow-md cursor-default"
+                    className="group p-3 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] hover:border-blue-500/40 transition-all space-y-1.5 shadow-sm"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <Badge className={cn("text-[10px] font-black uppercase px-2 py-0.5 tracking-wider shadow-sm", ev.color)}>
+                      <Badge className={cn("text-[10px] font-semibold uppercase px-2 py-0.5 tracking-wider", ev.color)}>
                         {ev.mod}
                       </Badge>
-                      <span className="text-xs text-muted-foreground font-mono font-semibold flex items-center gap-1.5">
-                        <Clock className="h-3.5 w-3.5" /> {ev.time}
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {ev.time}
                       </span>
                     </div>
-                    <div className="text-sm font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+                    <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                       {ev.label}
                     </div>
                   </motion.div>
@@ -955,21 +955,21 @@ export default function AnalyticsPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.05 }}
                       key={ev.id} 
-                      className="group p-4 rounded-2xl border border-border/60 bg-card hover:bg-muted/60 transition-all space-y-2 hover:shadow-md cursor-default"
+                      className="group p-3 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] hover:border-blue-500/40 transition-all space-y-1.5 shadow-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <Badge className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800/50 text-[10px] font-black uppercase px-2 py-0.5 tracking-wider shadow-sm">
+                        <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-semibold uppercase px-2 py-0.5 tracking-wider">
                           {ev.module || "System"}
                         </Badge>
-                        <span className="text-xs text-muted-foreground font-mono font-semibold flex items-center gap-1.5">
-                          <Clock className="h-3.5 w-3.5" /> {timeAgo}
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {timeAgo}
                         </span>
                       </div>
-                      <div className="text-sm font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors line-clamp-2">
+                      <div className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
                         {ev.label}
                       </div>
                       {ev.meta && (
-                        <div className="text-xs font-mono font-medium text-muted-foreground bg-muted/80 px-2.5 py-1 rounded-md border border-border/40 truncate">
+                        <div className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/[0.02] px-2 py-0.5 rounded border border-slate-200/60 dark:border-white/[0.06] truncate">
                           {ev.meta}
                         </div>
                       )}
@@ -979,9 +979,9 @@ export default function AnalyticsPage() {
               )}
             </CardContent>
 
-            <div className="p-4 bg-muted/40 border-t border-border/60 text-center backdrop-blur-sm">
-              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center justify-center gap-2">
-                <ShieldCheck className="h-4 w-4" />
+            <div className="p-3 bg-slate-50/50 dark:bg-white/[0.02] border-t border-slate-200/80 dark:border-white/[0.08] text-center">
+              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
                 Automated 30-Day Retention Active
               </span>
             </div>
@@ -994,42 +994,40 @@ export default function AnalyticsPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="grid gap-6 sm:grid-cols-3 rounded-3xl bg-card border border-border/80 p-6 shadow-lg relative overflow-hidden"
+        className="app-card grid gap-6 sm:grid-cols-3 rounded-2xl bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] p-5 shadow-sm relative overflow-hidden"
       >
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-emerald-500/5 to-purple-500/5 opacity-50" />
-        
-        <div className="flex items-center gap-4 relative z-10">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400 shadow-sm font-bold">
-            <Server className="h-6 w-6" />
+        <div className="flex items-center gap-3.5 relative z-10">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
+            <Server className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-black text-foreground uppercase tracking-widest text-muted-foreground">Database Driver</div>
-            <div className="text-sm font-bold text-foreground mt-1">Prisma Pg Adapter</div>
-            <div className="text-xs font-mono text-muted-foreground mt-0.5">PostgreSQL Engine</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Database Driver</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">Prisma Pg Adapter</div>
+            <div className="text-xs font-mono text-slate-500 dark:text-slate-400">PostgreSQL Engine</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 border-t sm:border-t-0 sm:border-l border-border/60 pt-4 sm:pt-0 sm:pl-6 relative z-10">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400 shadow-sm font-bold">
-            <ShieldCheck className="h-6 w-6" />
+        <div className="flex items-center gap-3.5 border-t sm:border-t-0 sm:border-l border-slate-200/80 dark:border-white/[0.08] pt-4 sm:pt-0 sm:pl-6 relative z-10">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
+            <ShieldCheck className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-black text-foreground uppercase tracking-widest text-muted-foreground">Telemetry Cache</div>
-            <div className="text-sm font-bold text-foreground mt-1">Real-time Upsert Sync</div>
-            <div className="text-xs font-mono text-muted-foreground mt-0.5">Atomic Consistency</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Telemetry Cache</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">Real-time Upsert Sync</div>
+            <div className="text-xs font-mono text-slate-500 dark:text-slate-400">Atomic Consistency</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 border-t sm:border-t-0 sm:border-l border-border/60 pt-4 sm:pt-0 sm:pl-6 relative z-10">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400 shadow-sm font-bold">
-            <Zap className="h-6 w-6" />
+        <div className="flex items-center gap-3.5 border-t sm:border-t-0 sm:border-l border-slate-200/80 dark:border-white/[0.08] pt-4 sm:pt-0 sm:pl-6 relative z-10">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold">
+            <Zap className="h-5 w-5" />
           </div>
           <div>
-            <div className="text-xs font-black text-foreground uppercase tracking-widest text-muted-foreground">Last Sync Status</div>
-            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1.5">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Last Sync Status</div>
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> 100% Online
             </div>
-            <div className="text-xs font-mono text-muted-foreground mt-0.5">Updated: {lastSynced}</div>
+            <div className="text-xs font-mono text-slate-500 dark:text-slate-400">Updated: {lastSynced}</div>
           </div>
         </div>
       </motion.div>

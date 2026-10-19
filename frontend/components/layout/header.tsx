@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 import { GlobalSearchModal } from "@/components/layout/global-search-modal";
-import { ThemeCustomizer } from "@/components/layout/theme-customizer";
 import { EmptyActivityIllustration } from "@/components/ui/illustrations";
 
 type ThemeMode = "light" | "dark";
@@ -71,7 +70,13 @@ function notificationMeta(type: ActivityEntry["type"]) {
 
 export function Header() {
   const router = useRouter();
-  const { toggleSidebar, setMobileSidebarOpen } = useUIStore();
+  const {
+    toggleSidebar,
+    sidebarCollapsed,
+    onSidebarHoverStart,
+    onMenuButtonMouseLeave,
+    setMobileSidebarOpen,
+  } = useUIStore();
   const activity = useDashboardStore((s) => s.activity);
 
   const formatTime = (ts: string) => {
@@ -179,11 +184,24 @@ export function Header() {
             <Menu className="h-5 w-5" />
           </button>
 
-          {/* Desktop sidebar toggle */}
+          {/* Desktop sidebar toggle (3 lines) */}
           <button
             onClick={toggleSidebar}
-            className="hidden h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 md:flex"
-            aria-label="Toggle sidebar"
+            onMouseEnter={onSidebarHoverStart}
+            onMouseLeave={onMenuButtonMouseLeave}
+            className={cn(
+              "hidden h-9 w-9 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 md:flex",
+              !sidebarCollapsed
+                ? "bg-primary/15 text-primary dark:bg-primary/25 dark:text-sky-300 font-bold"
+                : "text-muted-foreground hover:bg-hover hover:text-foreground"
+            )}
+            title={
+              sidebarCollapsed
+                ? "Click to pin sidebar open (hover to peek full names)"
+                : "Click to minimize sidebar"
+            }
+            aria-label={sidebarCollapsed ? "Expand and pin sidebar" : "Minimize sidebar"}
+            aria-expanded={!sidebarCollapsed}
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -257,14 +275,14 @@ export function Header() {
             className={cn(
               "relative w-full items-center rounded-xl border transition-all duration-200 cursor-pointer flex",
               searchFocused || searchOpen
-                ? "border-[#0176d3] ring-2 ring-[#0176d3]/15 bg-card shadow-sm"
-                : "border-border/80 bg-muted/30 hover:border-border hover:bg-muted/50"
+                ? "border-primary ring-2 ring-primary/20 bg-card shadow-sm dark:shadow-[0_0_20px_rgba(56,189,248,0.15)]"
+                : "border-border/70 bg-card/60 hover:border-border hover:bg-card/90"
             )}
           >
             <Search
               className={cn(
                 "absolute left-3.5 h-4 w-4 transition-colors",
-                searchFocused || searchOpen ? "text-[#0176d3]" : "text-muted-foreground"
+                searchFocused || searchOpen ? "text-primary" : "text-muted-foreground"
               )}
             />
             <Input
@@ -281,7 +299,7 @@ export function Header() {
               onBlur={() => setSearchFocused(false)}
             />
             <div className="absolute right-2.5 flex items-center text-muted-foreground pointer-events-none">
-              <kbd className="hidden h-5.5 items-center gap-0.5 rounded-md border border-border/60 bg-card px-2 text-[10px] font-extrabold tracking-widest text-muted-foreground lg:inline-flex shadow-2xs">
+              <kbd className="hidden h-5.5 items-center gap-0.5 rounded-md border border-border/70 bg-muted/60 px-2 text-[10px] font-extrabold tracking-widest text-muted-foreground lg:inline-flex shadow-xs">
                 <Command className="h-3 w-3" />K
               </kbd>
             </div>
@@ -293,23 +311,24 @@ export function Header() {
           {/* Mobile Search Trigger Button */}
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex md:hidden items-center gap-2 px-3 py-1.5 rounded-full border border-border/80 bg-muted/30 hover:bg-muted/50 text-xs font-bold text-muted-foreground hover:text-foreground transition-all shadow-2xs"
+            className="flex md:hidden items-center gap-2 px-3 py-1.5 rounded-full border border-border/80 bg-muted/30 hover:bg-muted/50 text-xs font-bold text-muted-foreground hover:text-foreground transition-all shadow-xs"
           >
-            <Search className="h-3.5 w-3.5 text-[#0176d3]" />
+            <Search className="h-3.5 w-3.5 text-primary" />
             <span>Search...</span>
           </button>
 
           {/* Theme rail + activity updates */}
           <div className="hidden md:flex items-center gap-2">
-              <ThemeCustomizer />
               <button
                 type="button"
                 role="switch"
                 aria-checked={theme === "dark"}
                 onClick={toggleTheme}
                 className={cn(
-                  "relative flex h-[34px] w-[70px] shrink-0 items-center overflow-hidden rounded-full transition-colors duration-500 ease-in-out shadow-inner",
-                  theme === "dark" ? "bg-[#5a56c6]" : "bg-[#48b5f2]"
+                  "relative flex h-[34px] w-[70px] shrink-0 items-center overflow-hidden rounded-full transition-colors duration-500 ease-in-out border",
+                  theme === "dark" 
+                    ? "bg-[#07080c] border-white/10 shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)]" 
+                    : "bg-[#e0f2fe] border-sky-200 shadow-inner"
                 )}
                 aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
                 title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
@@ -418,13 +437,13 @@ export function Header() {
               <DropdownMenuContent
                 align="end"
                 sideOffset={10}
-                className="w-[360px] overflow-hidden rounded-2xl border-border/50 bg-card/[0.92] p-0 shadow-[0_24px_70px_-24px_rgba(2,8,23,0.55)] backdrop-blur-2xl dark:bg-slate-950/[0.9]"
+                className="w-[360px] overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-0 shadow-2xl backdrop-blur-2xl dark:bg-[#0b0c10]/98 dark:border-white/10 dark:shadow-[0_24px_60px_-15px_rgba(0,0,0,0.95)]"
               >
                 <div className="relative overflow-hidden border-b border-border/50 px-4 py-3.5">
-                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.16),transparent_52%)]" />
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.12),transparent_55%)]" />
                   <div className="relative flex items-center justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-[#0176d3] shadow-inner dark:bg-blue-400/10 dark:text-blue-300">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-inner">
                         <BellRing className="h-4.5 w-4.5" />
                       </div>
                       <div className="min-w-0">
@@ -438,7 +457,7 @@ export function Header() {
                       <button
                         type="button"
                         onClick={markNotificationsAsRead}
-                        className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-extrabold text-[#0176d3] transition-colors hover:bg-blue-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/40 dark:text-blue-300"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-extrabold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                       >
                         <Check className="h-3.5 w-3.5" />
                         Mark read
@@ -477,7 +496,7 @@ export function Header() {
                           <div className="min-w-0 flex-1 pt-0.5">
                             <div className="flex items-start gap-2">
                               <p className="min-w-0 flex-1 truncate text-[12px] font-bold leading-4 text-foreground">{item.label}</p>
-                              {isUnread && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#0176d3] shadow-[0_0_8px_rgba(1,118,211,0.7)]" />}
+                              {isUnread && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_rgba(56,189,248,0.7)]" />}
                             </div>
                             <div className="mt-1 flex min-w-0 items-center gap-2 text-[10px] font-medium text-muted-foreground">
                               {detail && <span className="truncate">{detail}</span>}
@@ -497,7 +516,7 @@ export function Header() {
                   <button
                     type="button"
                     onClick={() => router.push("/analytics")}
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-extrabold text-[#0176d3] transition-colors hover:bg-blue-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/40 dark:text-blue-300"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-extrabold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   >
                     View all activity
                     <ChevronRight className="h-3.5 w-3.5" />

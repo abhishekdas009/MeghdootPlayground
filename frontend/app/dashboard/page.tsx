@@ -155,7 +155,7 @@ function KPICard({ label, value, totalValue, icon: Icon, iconBg, iconText, delay
       whileHover={{ y: -4, scale: 1.02 }}
       className="relative group h-full"
     >
-      <div className="glass-panel glass-panel--elevated relative h-full min-h-[11rem] flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-[clamp(1rem,2vw,1.5rem)] shadow-none backdrop-blur-xl dark:border-white/10">
+      <div className="glass-panel glass-panel--elevated relative h-full min-h-[11rem] flex flex-col justify-between overflow-hidden rounded-2xl p-[clamp(1rem,2vw,1.5rem)]">
         <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
           <Icon className="w-24 h-24 -mr-6 -mt-6 transform rotate-12" />
         </div>
@@ -223,7 +223,7 @@ function QuickActionCard({
       whileHover={{ y: -2 }}
     >
       <Link href={href} className="block h-full">
-        <div className="glass-panel group relative h-full overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 p-5 shadow-none backdrop-blur-xl transition-all duration-300 hover:border-blue-300/30 hover:bg-card/70 dark:border-white/10">
+        <div className="glass-panel group relative h-full overflow-hidden rounded-2xl p-5 transition-all duration-300">
           <div className={cn("absolute inset-x-0 top-0 h-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100", gradient)} />
 
           <div className="flex items-center gap-4">
@@ -640,7 +640,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.4 }}
           >
-            <Card className="overflow-hidden rounded-2xl border border-slate-900/10 bg-card/55 shadow-none backdrop-blur-xl dark:border-white/10">
+            <Card className="overflow-hidden rounded-2xl">
               <CardContent className="p-0">
                 {activity.length === 0 ? (
                   <div className="flex flex-col items-center gap-4 p-12 text-center bg-gradient-to-b from-transparent to-muted/30">

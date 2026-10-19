@@ -834,10 +834,10 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto w-full">
       {/* ── Left Column: Input & Excel Controls ── */}
       <div className="lg:col-span-5 space-y-6">
-        <Card className="border-slate-200/60 shadow-sm dark:border-white/[0.1] dark:bg-slate-900/40 backdrop-blur-xl">
-          <CardHeader className="pb-3 border-b border-slate-100 dark:border-slate-800/60">
+        <Card className="app-card border-slate-200/80 dark:border-white/[0.08] dark:bg-[#0b0c10] shadow-sm">
+          <CardHeader className="pb-3 border-b border-slate-100 dark:border-white/[0.06]">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-base font-bold">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
                 <Layers className="h-4.5 w-4.5 text-blue-500" />
                 Category Dataset
               </CardTitle>
@@ -847,7 +847,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   size="sm"
                   onClick={() => setInput("")}
                   disabled={!input}
-                  className="h-7 px-2 text-[11px] font-semibold text-slate-500 hover:text-red-500"
+                  className="h-7 px-2 text-[11px] font-semibold text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400"
                 >
                   <Trash2 className="h-3 w-3 mr-1" /> Clear
                 </Button>
@@ -855,7 +855,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   variant="secondary"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-7 px-2.5 text-[11px] font-bold rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
+                  className="h-7 px-2.5 text-[11px] font-bold rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
                 >
                   <Upload className="h-3 w-3 mr-1" /> Import Excel/CSV
                 </Button>
@@ -873,7 +873,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
           <CardContent className="space-y-4 pt-4">
             {/* Quick Sample Loaders */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mr-1 flex items-center gap-1">
                 <Sparkles className="h-3 w-3 text-amber-500" /> Quick Samples:
               </span>
               <button
@@ -883,7 +883,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   setSelectedColumnIndex(0);
                   toast.info("Loaded 6-item sample from Image 2");
                 }}
-                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/80 dark:border-white/[0.08]"
               >
                 Sample 1 (Image 2)
               </button>
@@ -894,7 +894,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   setSelectedColumnIndex(0);
                   toast.info("Loaded 21-item full list from Image 1");
                 }}
-                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors border border-slate-200 dark:border-slate-700"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/80 dark:border-white/[0.08]"
               >
                 Sample 2 (Image 1)
               </button>
@@ -905,7 +905,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   setSelectedColumnIndex(1);
                   toast.info("Loaded multi-column Excel sample! Try changing the Grouping Column below.");
                 }}
-                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 transition-colors border border-indigo-200 dark:border-indigo-800"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 transition-colors border border-blue-200/80 dark:border-blue-800/50"
               >
                 Multi-Col Excel
               </button>
@@ -913,10 +913,10 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
             {/* Multi-Column Pivot Selector (If multi-column detected) */}
             {parsed.detectedHeaders.length > 1 && (
-              <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/50 space-y-1.5">
-                <div className="flex items-center justify-between text-xs font-bold text-blue-900 dark:text-blue-200">
+              <div className="p-3.5 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-blue-700 dark:text-blue-400">
                   <span className="flex items-center gap-1.5">
-                    <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600" />
+                    <FileSpreadsheet className="h-3.5 w-3.5" />
                     Pivot Column Selector ({parsed.detectedHeaders.length} columns found):
                   </span>
                 </div>
@@ -930,10 +930,10 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                         setHeaderCategory(head);
                         toast.info(`Now summarizing by: ${head}`);
                       }}
-                      className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                      className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
                         selectedColumnIndex === idx
                           ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                          : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-100"
+                          : "bg-white dark:bg-[#06070a] text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08] hover:border-blue-500/40"
                       }`}
                     >
                       {head}
@@ -945,122 +945,122 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
             {/* Category Textarea */}
             <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
+              <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 dark:text-slate-400">
                 <span>Category items or Excel column</span>
-                <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md border border-blue-200/50 dark:border-blue-800/40">
+                <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
                   {parsed.rawCount} item{parsed.rawCount === 1 ? "" : "s"} detected
                 </span>
               </div>
               <Textarea
                 placeholder={"Paste categories or full Excel column here, e.g.:\nData update\nData update\nBug\nAwareness issue"}
-                className="min-h-[160px] resize-y bg-white dark:bg-black/40 border-slate-200 dark:border-slate-700/50 font-mono text-[11.5px] leading-relaxed text-slate-900 dark:text-slate-200 focus-visible:ring-blue-500/30 rounded-xl"
+                className="min-h-[160px] resize-y bg-white dark:bg-[#06070a] border-slate-200/80 dark:border-white/[0.08] font-mono text-[11.5px] leading-relaxed text-slate-900 dark:text-slate-200 focus-visible:ring-blue-500/30 rounded-xl"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
               />
             </div>
 
             {/* ── Excel Advanced Table Features (Ribbon Style) ── */}
-            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800/60">
-              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-                <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-500" />
+            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-white/[0.06]">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-blue-500" />
                 Excel Table Features & Options
               </div>
 
               {/* Excel Table Toggles */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] cursor-pointer hover:border-blue-500/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={showDataBars}
                     onChange={(e) => setShowDataBars(e.target.checked)}
-                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-transparent border-slate-300 dark:border-white/[0.15]"
                   />
                   <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200">Data Bars</div>
-                    <div className="text-[10px] text-slate-500">In-cell visual volume bar</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-200">Data Bars</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">In-cell visual volume bar</div>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] cursor-pointer hover:border-blue-500/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={showCumulative}
                     onChange={(e) => setShowCumulative(e.target.checked)}
-                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-transparent border-slate-300 dark:border-white/[0.15]"
                   />
                   <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200">Cumulative %</div>
-                    <div className="text-[10px] text-slate-500">Pareto (80/20) column</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-200">Cumulative %</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Pareto (80/20) column</div>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] cursor-pointer hover:border-blue-500/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={bandedRows}
                     onChange={(e) => setBandedRows(e.target.checked)}
-                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-transparent border-slate-300 dark:border-white/[0.15]"
                   />
                   <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200">Banded Rows</div>
-                    <div className="text-[10px] text-slate-500">Zebra alternating row tint</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-200">Banded Rows</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Zebra alternating row tint</div>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] cursor-pointer hover:border-blue-500/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={normalizeVariations}
                     onChange={(e) => setNormalizeVariations(e.target.checked)}
-                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-transparent border-slate-300 dark:border-white/[0.15]"
                   />
                   <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200">Group Variations</div>
-                    <div className="text-[10px] text-slate-500">Data updated → Data Update</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-200">Group Variations</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Data updated → Data Update</div>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] cursor-pointer hover:border-blue-500/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={autoTitleCase}
                     onChange={(e) => setAutoTitleCase(e.target.checked)}
-                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-transparent border-slate-300 dark:border-white/[0.15]"
                   />
                   <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200">Auto Title Case</div>
-                    <div className="text-[10px] text-slate-500">Capitalize words cleanly</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-200">Auto Title Case</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Capitalize words cleanly</div>
                   </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                <label className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] cursor-pointer hover:border-blue-500/30 transition-colors">
                   <input
                     type="checkbox"
                     checked={skipHeaderRow}
                     onChange={(e) => setSkipHeaderRow(e.target.checked)}
-                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4 bg-transparent border-slate-300 dark:border-white/[0.15]"
                   />
                   <div>
-                    <div className="font-bold text-slate-800 dark:text-slate-200">Ignore Header Row</div>
-                    <div className="text-[10px] text-slate-500">Skip first header title</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-200">Ignore Header Row</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">Skip first header title</div>
                   </div>
                 </label>
               </div>
 
               {/* Decimals & Long-Tail Threshold */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 text-xs">
-                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1">Percentage Decimals</span>
+                <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08]">
+                  <span className="font-semibold text-slate-900 dark:text-slate-200 block mb-1.5">Percentage Decimals</span>
                   <div className="flex items-center gap-1.5">
                     {[0, 1, 2].map((dec) => (
                       <button
                         key={dec}
                         type="button"
                         onClick={() => setDecimalPlaces(dec)}
-                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded border transition-all ${
+                        className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
                           decimalPlaces === dec
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                            : "bg-white dark:bg-[#06070a] text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08] hover:border-blue-500/30"
                         }`}
                       >
                         {dec} dec
@@ -1069,18 +1069,18 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   </div>
                 </div>
 
-                <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40">
-                  <span className="font-bold text-slate-800 dark:text-slate-200 block mb-1">Group Small Items (&lt; X%)</span>
-                  <div className="flex items-center gap-1">
+                <div className="p-2.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08]">
+                  <span className="font-semibold text-slate-900 dark:text-slate-200 block mb-1.5">Group Small Items (&lt; X%)</span>
+                  <div className="flex items-center gap-1.5">
                     {[0, 5, 10].map((val) => (
                       <button
                         key={val}
                         type="button"
                         onClick={() => setGroupOthersThreshold(val)}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded border transition-all ${
+                        className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all ${
                           groupOthersThreshold === val
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                            : "bg-white dark:bg-[#06070a] text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08] hover:border-blue-500/30"
                         }`}
                       >
                         {val === 0 ? "Off" : `< ${val}%`}
@@ -1091,8 +1091,8 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
               </div>
 
               {/* Sort Order Selector */}
-              <div className="space-y-1 pt-1">
-                <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+              <div className="space-y-1.5 pt-1">
+                <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
                   <ArrowUpDown className="h-3 w-3" /> Sort Order:
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
@@ -1106,10 +1106,10 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                       key={item.id}
                       type="button"
                       onClick={() => setSortBy(item.id as any)}
-                      className={`py-1.5 px-2 rounded-lg font-bold border transition-all text-center ${
+                      className={`py-1.5 px-2 rounded-lg font-semibold border transition-all text-center ${
                         sortBy === item.id
                           ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                          : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50"
+                          : "bg-white dark:bg-[#06070a] text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-white/[0.08] hover:border-blue-500/30"
                       }`}
                     >
                       {item.label}
@@ -1120,7 +1120,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
               {/* Excluded items reset alert */}
               {excludedCategories.length > 0 && (
-                <div className="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs">
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs">
                   <span className="text-amber-700 dark:text-amber-300 font-medium">
                     {excludedCategories.length} category hidden from calculation
                   </span>
@@ -1137,69 +1137,69 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
               {/* Custom Column Titles */}
               <div className="pt-1">
                 <details className="text-xs group">
-                  <summary className="font-bold text-slate-600 dark:text-slate-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors select-none">
+                  <summary className="font-semibold text-slate-600 dark:text-slate-400 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors select-none">
                     + Custom Column Headers & Alignments
                   </summary>
-                  <div className="space-y-2 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="space-y-2 mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.06]">
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <span className="text-[10px] text-slate-400 block mb-1">Col 1</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block mb-1">Col 1</span>
                         <Input
                           value={headerCategory}
                           onChange={(e) => setHeaderCategory(e.target.value)}
-                          className="h-7 text-xs"
+                          className="h-8 text-xs bg-white dark:bg-[#06070a] border-slate-200/80 dark:border-white/[0.08]"
                         />
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 block mb-1">Col 2</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block mb-1">Col 2</span>
                         <Input
                           value={headerCount}
                           onChange={(e) => setHeaderCount(e.target.value)}
-                          className="h-7 text-xs"
+                          className="h-8 text-xs bg-white dark:bg-[#06070a] border-slate-200/80 dark:border-white/[0.08]"
                         />
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 block mb-1">Col 3</span>
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 block mb-1">Col 3</span>
                         <Input
                           value={headerPercentage}
                           onChange={(e) => setHeaderPercentage(e.target.value)}
-                          className="h-7 text-xs"
+                          className="h-8 text-xs bg-white dark:bg-[#06070a] border-slate-200/80 dark:border-white/[0.08]"
                         />
                       </div>
                     </div>
 
                     <div className="flex items-center gap-4 pt-1">
                       <div className="flex items-center gap-1.5 text-[11px]">
-                        <span className="text-slate-500">Category Align:</span>
+                        <span className="text-slate-500 dark:text-slate-400">Category Align:</span>
                         <button
                           type="button"
                           onClick={() => setCategoryAlign("center")}
-                          className={`px-2 py-0.5 rounded border text-[10px] font-bold ${categoryAlign === "center" ? "bg-blue-600 text-white border-blue-600" : "bg-white dark:bg-slate-800"}`}
+                          className={`px-2 py-0.5 rounded border text-[10px] font-semibold transition-all ${categoryAlign === "center" ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white dark:bg-[#06070a] text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08]"}`}
                         >
                           Center
                         </button>
                         <button
                           type="button"
                           onClick={() => setCategoryAlign("left")}
-                          className={`px-2 py-0.5 rounded border text-[10px] font-bold ${categoryAlign === "left" ? "bg-blue-600 text-white border-blue-600" : "bg-white dark:bg-slate-800"}`}
+                          className={`px-2 py-0.5 rounded border text-[10px] font-semibold transition-all ${categoryAlign === "left" ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white dark:bg-[#06070a] text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08]"}`}
                         >
                           Left
                         </button>
                       </div>
 
                       <div className="flex items-center gap-1.5 text-[11px]">
-                        <span className="text-slate-500">Numbers Align:</span>
+                        <span className="text-slate-500 dark:text-slate-400">Numbers Align:</span>
                         <button
                           type="button"
                           onClick={() => setNumberAlign("center")}
-                          className={`px-2 py-0.5 rounded border text-[10px] font-bold ${numberAlign === "center" ? "bg-blue-600 text-white border-blue-600" : "bg-white dark:bg-slate-800"}`}
+                          className={`px-2 py-0.5 rounded border text-[10px] font-semibold transition-all ${numberAlign === "center" ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white dark:bg-[#06070a] text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08]"}`}
                         >
                           Center
                         </button>
                         <button
                           type="button"
                           onClick={() => setNumberAlign("right")}
-                          className={`px-2 py-0.5 rounded border text-[10px] font-bold ${numberAlign === "right" ? "bg-blue-600 text-white border-blue-600" : "bg-white dark:bg-slate-800"}`}
+                          className={`px-2 py-0.5 rounded border text-[10px] font-semibold transition-all ${numberAlign === "right" ? "bg-blue-600 text-white border-blue-600 shadow-sm" : "bg-white dark:bg-[#06070a] text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08]"}`}
                         >
                           Right
                         </button>
@@ -1215,13 +1215,13 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
       {/* ── Right Column: Interactive Table Preview & Arsenal of Exports ── */}
       <div className="lg:col-span-7 space-y-6">
-        <Card className="border-slate-200/60 shadow-sm dark:border-white/[0.1] dark:bg-slate-900/40 backdrop-blur-xl flex flex-col">
-          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800/60 gap-3">
+        <Card className="app-card border-slate-200/80 dark:border-white/[0.08] dark:bg-[#0b0c10] shadow-sm flex flex-col">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06] gap-3">
             <div>
-              <CardTitle className="flex items-center gap-2 text-base font-bold">
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
                 <Table className="h-4.5 w-4.5 text-blue-500" />
                 Table Preview
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
                   {currentTheme.name}
                 </span>
               </CardTitle>
@@ -1234,7 +1234,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 size="sm"
                 onClick={handleCopyTsv}
                 disabled={parsed.rows.length === 0}
-                className="h-8 text-xs font-semibold border-slate-200 dark:border-slate-700"
+                className="h-8 text-xs font-semibold border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-slate-50 dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-300"
                 title="Copy as Tab-Separated Values for direct Excel pasting"
               >
                 {copiedType === "tsv" ? <Check className="h-3.5 w-3.5 mr-1 text-emerald-500" /> : <FileText className="h-3.5 w-3.5 mr-1" />}
@@ -1246,7 +1246,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 size="sm"
                 onClick={handleDownloadImage}
                 disabled={parsed.rows.length === 0}
-                className="h-8 text-xs font-semibold border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                className="h-8 text-xs font-semibold border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-slate-50 dark:hover:bg-white/[0.06] text-slate-700 dark:text-slate-300"
                 title="Download high-resolution image of this table for slides or chats"
               >
                 <ImageIcon className="h-3.5 w-3.5 mr-1 text-purple-500" />
@@ -1258,7 +1258,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 size="sm"
                 onClick={handleDownloadExcel}
                 disabled={parsed.rows.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 bg-[#107c41] hover:bg-[#185c37] text-white border-none shadow-sm"
+                className="h-8 text-xs font-semibold gap-1.5 bg-[#107c41] hover:bg-[#185c37] text-white border-none shadow-sm"
                 title="Download real Excel file with SUM() formulas and formatting"
               >
                 <Download className="h-3.5 w-3.5" />
@@ -1270,7 +1270,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 size="sm"
                 onClick={handleCopyFormattedTable}
                 disabled={parsed.rows.length === 0}
-                className="h-8 text-xs font-bold gap-1.5 bg-[#0078d4] hover:bg-[#106ebe] text-white shadow-sm"
+                className="h-8 text-xs font-semibold gap-1.5 bg-[#0078d4] hover:bg-[#106ebe] text-white shadow-sm"
                 title="Copy Rich HTML with exact colors and grid borders for Outlook & Word"
               >
                 {copiedType === "html" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -1281,10 +1281,10 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
           <CardContent className="p-6 flex-1 flex flex-col justify-between space-y-6">
             {parsed.rows.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-slate-400 text-center">
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400 dark:text-slate-500 text-center">
                 <Table className="h-12 w-12 mb-3 opacity-20" />
-                <p className="font-bold text-base mb-1">No Data to Display</p>
-                <p className="text-xs max-w-sm">
+                <p className="font-bold text-base mb-1 text-slate-700 dark:text-slate-300">No Data to Display</p>
+                <p className="text-xs max-w-sm text-slate-500 dark:text-slate-400">
                   Paste a list of issue categories or click &quot;Sample 1 (Image 2)&quot; to view the generated summary table.
                 </p>
               </div>
@@ -1294,12 +1294,12 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 {parsed.rows.length > 5 && (
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
-                      <Filter className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400" />
+                      <Filter className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
                       <Input
                         placeholder="Search category in table..."
                         value={tableSearchFilter}
                         onChange={(e) => setTableSearchFilter(e.target.value)}
-                        className="h-8 pl-8 text-xs"
+                        className="h-8 pl-8 text-xs bg-white dark:bg-[#06070a] border-slate-200/80 dark:border-white/[0.08]"
                       />
                     </div>
                   </div>
@@ -1308,7 +1308,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 {/* ── Table Container (Renders authentic Excel styling) ── */}
                 <div
                   ref={tableRef}
-                  className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200/80 dark:border-slate-800"
+                  className="flex flex-col items-center justify-center p-6 bg-slate-50/80 dark:bg-[#06070a] rounded-2xl border border-slate-200/80 dark:border-white/[0.08]"
                 >
                   <div
                     id="category-summary-table-view"
@@ -1525,7 +1525,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                     </table>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between w-full max-w-[500px] text-[11px] text-slate-500 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between w-full max-w-[500px] text-[11px] text-slate-500 dark:text-slate-400 mt-3 pt-2 border-t border-slate-200/80 dark:border-white/[0.08]">
                     <span className="flex items-center gap-1.5">
                       <span
                         className="inline-block w-2.5 h-2.5 rounded-full"
@@ -1533,20 +1533,20 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                       />
                       Header: <strong>{currentTheme.name}</strong> ({currentTheme.headerBg})
                     </span>
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
                       {showDataBars ? "Data Bars Active" : "Clean Grid"}
                     </span>
                   </div>
                 </div>
 
                 {/* ── Mini Visual Distribution (Excel Bar Chart Style) ── */}
-                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 space-y-3">
+                <div className="p-4 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.08] space-y-3">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
                     <span className="flex items-center gap-1.5">
                       <BarChart3 className="h-3.5 w-3.5 text-blue-500" />
                       Visual Distribution (Excel Chart)
                     </span>
-                    <span className="text-[10px] text-slate-400 font-normal">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">
                       Relative Share of {parsed.total} issues
                     </span>
                   </div>
@@ -1556,11 +1556,11 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                       <div key={i} className="space-y-1">
                         <div className="flex justify-between text-[11px] font-medium text-slate-700 dark:text-slate-300">
                           <span className="truncate max-w-[240px]">{r.category}</span>
-                          <span className="font-mono text-slate-500">
+                          <span className="font-mono text-slate-500 dark:text-slate-400">
                             {r.count} ({r.percentage.toFixed(decimalPlaces)}%)
                           </span>
                         </div>
-                        <div className="h-2 w-full bg-slate-200/70 dark:bg-slate-700/60 rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-slate-200/70 dark:bg-white/[0.06] rounded-full overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all duration-500"
                             style={{
@@ -1576,16 +1576,16 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
                 {/* ── Executive Summary KPI Badges ── */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 text-center">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Total Issues</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.08] text-center">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">Total Issues</span>
                     <span className="text-xl font-black text-slate-900 dark:text-white">{parsed.total}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 text-center">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block">Unique Categories</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.08] text-center">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block">Unique Categories</span>
                     <span className="text-xl font-black text-slate-900 dark:text-white">{parsed.rows.length}</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 text-center truncate">
-                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 block truncate">Top Category</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.08] text-center truncate">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-500 block truncate">Top Category</span>
                     <span className="text-sm font-black text-blue-600 dark:text-blue-400 truncate block">
                       {parsed.rows[0] ? `${parsed.rows[0].category} (${parsed.rows[0].percentage.toFixed(decimalPlaces)}%)` : "—"}
                     </span>
@@ -1594,7 +1594,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
                 {/* Add to Daily Report Email Affordance */}
                 {onAppendToDailyEmail && (
-                  <div className="p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 flex items-center justify-between">
                     <div>
                       <p className="text-xs font-bold text-blue-900 dark:text-blue-300">
                         Include in Daily Status Email Draft

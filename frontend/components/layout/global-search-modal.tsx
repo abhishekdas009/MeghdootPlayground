@@ -458,66 +458,67 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/30 px-4 pt-[10vh] backdrop-blur-sm animate-in fade-in duration-200 dark:bg-black/55"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/60 px-4 pt-[10vh] backdrop-blur-md animate-in fade-in duration-200"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onOpenChange(false);
       }}
     >
-
       {/* Modal Container */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Global search"
-        className="relative flex w-full max-w-[700px] max-h-[75vh] flex-col overflow-hidden rounded-[1.35rem] border border-white/65 bg-white/70 shadow-[0_24px_70px_-22px_rgba(15,23,42,0.38)] backdrop-blur-[28px] backdrop-saturate-150 animate-in zoom-in-95 duration-200 dark:border-white/10 dark:bg-slate-950/80 dark:shadow-[0_24px_70px_-22px_rgba(0,0,0,0.7)]"
+        className="relative flex w-full max-w-[700px] max-h-[75vh] flex-col overflow-hidden rounded-2xl border border-slate-200 dark:border-white/[0.1] bg-white dark:bg-[#0b0c10] shadow-2xl animate-in zoom-in-95 duration-200"
         onKeyDown={handleKeyDown}
       >
+        {/* Top Specular Rim */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+
         {/* Sleek Search Input Bar */}
-        <div className="relative bg-white/15 p-3 sm:p-4 dark:bg-white/[0.025]">
-          <div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/50 px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] transition-colors focus-within:border-blue-400/50 focus-within:bg-white/65 focus-within:ring-4 focus-within:ring-blue-500/10 dark:border-white/10 dark:bg-white/[0.045] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] dark:focus-within:border-sky-400/35 dark:focus-within:bg-white/[0.07]">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-[#0176d3] ring-1 ring-blue-500/15 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-300/15">
-              <Search className="h-5 w-5" />
+        <div className="relative bg-slate-50/70 dark:bg-[#06070a]/80 p-3 sm:p-4 border-b border-slate-100 dark:border-white/[0.06]">
+          <div className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] px-3.5 py-2.5 shadow-sm transition-all focus-within:border-sky-500/50 focus-within:ring-2 focus-within:ring-sky-500/20">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20">
+              <Search className="h-4 w-4" />
             </span>
             <div className="relative flex-1" suppressHydrationWarning data-protonpass-ignore="true">
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Search modules, pages, or SOQL queries..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full bg-transparent pr-8 text-base font-semibold tracking-tight text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500 sm:text-lg"
-              autoComplete="off"
-              data-lpignore="true"
-              data-protonpass-ignore="true"
-              data-form-type="other"
-              suppressHydrationWarning
-            />
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Search modules, pages, or SOQL queries..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full bg-transparent pr-6 text-sm sm:text-base font-semibold tracking-tight text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+                autoComplete="off"
+                data-lpignore="true"
+                data-protonpass-ignore="true"
+                data-form-type="other"
+                suppressHydrationWarning
+              />
             </div>
             {query && (
               <button
                 onClick={() => setQuery("")}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-200/55 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-slate-100"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:text-slate-700 dark:hover:text-slate-200"
                 title="Clear text"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
             {!query && (
-              <kbd className="hidden rounded-md border border-slate-200/70 bg-white/40 px-1.5 py-0.5 text-[10px] font-bold text-slate-400 sm:inline-flex dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500">ESC</kbd>
+              <kbd className="hidden rounded-md border border-slate-200 dark:border-white/[0.1] bg-slate-100 dark:bg-[#06070a] px-2 py-0.5 text-[10px] font-mono font-bold text-slate-400 sm:inline-flex">ESC</kbd>
             )}
           </div>
         </div>
-        
-        {/* Soft Divider */}
-        <div className="h-px w-full bg-white/65 dark:bg-white/[0.07]" />
 
         {/* Simple Results List Area */}
-        <div className="custom-scrollbar flex-1 min-h-[250px] max-h-[55vh] space-y-1.5 overflow-y-auto bg-white/[0.14] p-2.5 dark:bg-slate-950/[0.18]">
+        <div className="custom-scrollbar flex-1 min-h-[250px] max-h-[55vh] space-y-1.5 overflow-y-auto p-3 bg-white dark:bg-[#0b0c10]">
           {filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center">
-              <Search className="h-10 w-10 text-slate-300 dark:text-slate-700 mb-4" />
-              <p className="text-base font-bold text-slate-600 dark:text-slate-400">No results found</p>
-              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">Try a different search term or category</p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-[#06070a] text-slate-400 mb-3 border border-slate-200 dark:border-white/[0.08]">
+                <Search className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No matching results</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Try searching for keywords like &apos;SOQL&apos;, &apos;Asset&apos;, or &apos;Warranty&apos;</p>
             </div>
           ) : (
             filteredItems.map((item, index) => {
@@ -528,42 +529,42 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setSelectedIndex(index)}
                   className={cn(
-                    "group flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-transparent bg-white/[0.16] p-3 transition-all duration-200 dark:bg-white/[0.035]",
+                    "group flex cursor-pointer items-center justify-between gap-3.5 rounded-xl border p-2.5 sm:p-3 transition-all duration-150",
                     isSelected
-                      ? "border-blue-400/25 bg-blue-500/10 shadow-[0_8px_24px_-16px_rgba(37,99,235,0.65)] ring-1 ring-blue-500/10 dark:border-sky-300/15 dark:bg-sky-400/[0.09]"
-                      : "hover:border-white/70 hover:bg-white/45 hover:shadow-[0_8px_20px_-18px_rgba(15,23,42,0.3)] dark:hover:border-white/[0.08] dark:hover:bg-white/[0.065]"
+                      ? "border-sky-500/40 bg-sky-50/50 dark:bg-sky-500/10 shadow-sm"
+                      : "border-transparent hover:border-slate-200 dark:hover:border-white/[0.06] hover:bg-slate-50 dark:hover:bg-white/[0.03]"
                   )}
                 >
                   {/* Left Icon + Info */}
-                  <div className="flex items-start gap-4 min-w-0 flex-1">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className={cn(
-                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-transform duration-200 group-hover:scale-105",
-                      isSelected ? "border-white/70 bg-white/50 shadow-sm dark:border-white/10 dark:bg-white/[0.06]" : "border-white/55 bg-white/30 dark:border-white/[0.06] dark:bg-white/[0.035]"
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all",
+                      isSelected ? "border-sky-500/30 bg-white dark:bg-[#06070a] shadow-xs" : "border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-[#06070a]"
                     )}>
                       {item.icon}
                     </div>
                     <div className="min-w-0 flex-1 pt-0.5">
                       <div className="flex items-center gap-2 mb-0.5">
                         <span className={cn(
-                          "text-sm font-bold truncate transition-colors",
-                          isSelected ? "text-[#0176d3] dark:text-blue-400" : "text-slate-700 dark:text-slate-200"
+                          "text-xs sm:text-sm font-bold truncate transition-colors",
+                          isSelected ? "text-sky-600 dark:text-sky-400" : "text-slate-900 dark:text-slate-100"
                         )}>
                           {item.title}
                         </span>
                         {item.typeTag && (
-                          <span className="inline-flex shrink-0 items-center rounded-md border border-white/55 bg-white/35 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-500 dark:border-white/[0.07] dark:bg-white/[0.04] dark:text-slate-400">
+                          <span className="inline-flex shrink-0 items-center rounded-md border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-white/[0.05] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             {item.typeTag}
                           </span>
                         )}
                       </div>
                       {item.subtitle && (
                         <p className={cn(
-                          "text-[13px] truncate",
-                          isSelected ? "text-slate-600 dark:text-slate-400 font-medium" : "text-slate-500 dark:text-slate-500"
+                          "text-xs truncate",
+                          isSelected ? "text-slate-600 dark:text-slate-300 font-medium" : "text-slate-500 dark:text-slate-400"
                         )}>{item.subtitle}</p>
                       )}
                       {item.soql && (
-                        <div className="mt-2 truncate rounded-lg border border-white/45 bg-white/20 px-2 py-1.5 font-mono text-[10px] text-slate-500 shadow-inner dark:border-white/[0.06] dark:bg-black/15 dark:text-slate-400">
+                        <div className="mt-1.5 truncate rounded-lg border border-slate-200 dark:border-white/[0.06] bg-slate-100 dark:bg-[#06070a] px-2 py-1 font-mono text-[10px] text-slate-600 dark:text-slate-400">
                           {item.soql.replace(/\n/g, " ")}
                         </div>
                       )}
@@ -577,33 +578,33 @@ export function GlobalSearchModal({ open, onOpenChange }: GlobalSearchModalProps
                         type="button"
                         onClick={(e) => handleCopySOQL(e, item)}
                         className={cn(
-                          "flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all shadow-sm",
+                          "flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all shadow-xs",
                           copiedId === item.id
                             ? "bg-emerald-500 text-white shadow-emerald-500/20"
-                            : "border border-white/70 bg-white/45 text-slate-600 hover:border-blue-300/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 dark:hover:border-sky-300/25"
+                            : "border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-[#06070a] text-slate-700 dark:text-slate-300 hover:border-sky-500/40"
                         )}
                         title="Copy SOQL"
                       >
                         {copiedId === item.id ? (
                           <>
-                            <Check className="h-3.5 w-3.5" /> Copied
+                            <Check className="h-3 w-3" /> Copied
                           </>
                         ) : (
                           <>
-                            <Copy className="h-3.5 w-3.5" /> Copy
+                            <Copy className="h-3 w-3" /> Copy
                           </>
                         )}
                       </button>
                     )}
 
                     <div className={cn(
-                      "flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold shadow-sm transition-colors",
+                      "flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold shadow-xs transition-colors",
                       isSelected 
-                        ? "bg-[#0176d3] text-white shadow-blue-500/20" 
-                        : "border border-white/70 bg-white/45 text-slate-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300"
+                        ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-sky-500/20" 
+                        : "border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-[#06070a] text-slate-700 dark:text-slate-300"
                     )}>
                       <span>{item.category === "navigation" ? "Open" : "Run"}</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
+                      <ArrowRight className="h-3 w-3" />
                     </div>
                   </div>
                 </div>
