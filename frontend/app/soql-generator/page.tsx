@@ -547,21 +547,28 @@ function parseSOQLResultWithHeaders(input: string): ParsedSOQLResult {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    const values = parseCSVLine(trimmed);
+    let values = parseCSVLine(trimmed);
     if (values.length === 0) continue;
 
     const lowerValues = values.map((v) => cleanHeader(v));
-    const isHeaderLine = lowerValues.some((v) =>
-      v === "id" ||
-      v.endsWith(".id") ||
-      v === "workorderid" ||
-      v.includes("ticket") ||
-      v.includes("casenumber") ||
-      v === "_" ||
-      v === "component" ||
-      v === "component_id__c" ||
-      v.includes("status")
-    );
+    const firstVal = cleanValue(values[0] ?? "").toLowerCase();
+    const isRecordPrefix = firstVal === "asset" || firstVal === "account" || firstVal === "case" || firstVal === "contact" || firstVal === "workorder";
+    const hasSalesforceId = values.some((v) => SALESFORCE_ID_REGEX.test(cleanSalesforceId(v)));
+
+    const isHeaderLine =
+      !hasSalesforceId &&
+      !isRecordPrefix &&
+      lowerValues.some((v) =>
+        v === "id" ||
+        v.endsWith(".id") ||
+        v === "workorderid" ||
+        v.includes("ticket") ||
+        v.includes("casenumber") ||
+        v === "_" ||
+        (headers.length === 0 && v === "component") ||
+        v === "component_id__c" ||
+        v.includes("status")
+      );
 
     if (isHeaderLine) {
       headers = lowerValues;
@@ -573,6 +580,24 @@ function parseSOQLResultWithHeaders(input: string): ParsedSOQLResult {
 
     if (headers.length === 0) {
       headers = values.map((_, i) => `col_${i}`);
+    }
+
+    if (
+      headers.length > values.length &&
+      headers.includes("account") &&
+      headers.includes("account.customer_id__c") &&
+      headers.includes("record_type__c")
+    ) {
+      const acctIdx = headers.indexOf("account");
+      const recTypeIdx = headers.indexOf("record_type__c");
+      if (
+        acctIdx !== -1 &&
+        recTypeIdx !== -1 &&
+        values[acctIdx] === "" &&
+        (values[acctIdx + 1] === "Component" || values[acctIdx + 1] === "Asset")
+      ) {
+        values.splice(acctIdx + 1, 0, "");
+      }
     }
 
     const row: Record<string, string> = {};
