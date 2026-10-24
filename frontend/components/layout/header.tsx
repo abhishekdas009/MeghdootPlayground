@@ -306,7 +306,6 @@ export function Header() {
           </div>
         </div>
 
-        {/* Right Section: Mobile Search, Theme Toggle, Blue Star Logo */}
         <div className="flex flex-1 md:flex-none items-center justify-end gap-3 shrink-0">
           {/* Mobile Search Trigger Button */}
           <button
@@ -316,6 +315,7 @@ export function Header() {
             <Search className="h-3.5 w-3.5 text-primary" />
             <span>Search...</span>
           </button>
+
 
           {/* Theme rail + activity updates */}
           <div className="hidden md:flex items-center gap-2">
@@ -437,7 +437,7 @@ export function Header() {
               <DropdownMenuContent
                 align="end"
                 sideOffset={10}
-                className="w-[360px] overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-0 shadow-2xl backdrop-blur-2xl dark:bg-[#0b0c10]/98 dark:border-white/10 dark:shadow-[0_24px_60px_-15px_rgba(0,0,0,0.95)]"
+                className="w-[360px] overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-0 shadow-2xl backdrop-blur-2xl dark:bg-[#0b0c10]/95 dark:border-white/10 dark:shadow-[0_24px_60px_-15px_rgba(0,0,0,0.95)]"
               >
                 <div className="relative overflow-hidden border-b border-border/50 px-4 py-3.5">
                   <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(56,189,248,0.12),transparent_55%)]" />

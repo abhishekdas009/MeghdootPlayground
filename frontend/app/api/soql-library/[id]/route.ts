@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { updateStoredQuery, deleteStoredQuery } from "@/lib/soql-library-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -50,36 +50,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = (await request.json()) as SOQLLibraryUpdateInput;
     const updateData = normalizeUpdateInput(body);
 
-    const existing = await prisma.sOQLLibrary.findUnique({ where: { id } });
-    if (!existing) {
+    const query = await updateStoredQuery(id, updateData);
+    if (!query) {
       return NextResponse.json({ error: "Query not found" }, { status: 404 });
     }
-
-    // Check if meaningful fields changed before saving history
-    const isMeaningfulChange = 
-      (updateData.soql && updateData.soql !== existing.soql) ||
-      (updateData.label && updateData.label !== existing.label) ||
-      (updateData.description && updateData.description !== existing.description) ||
-      (updateData.category && updateData.category !== existing.category) ||
-      (updateData.tags && JSON.stringify(updateData.tags) !== JSON.stringify(existing.tags));
-
-    if (isMeaningfulChange) {
-      await prisma.sOQLHistory.create({
-        data: {
-          queryId: existing.id,
-          soql: existing.soql,
-          label: existing.label,
-          category: existing.category,
-          tags: existing.tags,
-          description: existing.description,
-        }
-      });
-    }
-
-    const query = await prisma.sOQLLibrary.update({
-      where: { id },
-      data: updateData,
-    });
 
     return NextResponse.json({ query });
   } catch (error) {
@@ -92,9 +66,10 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
 
   try {
-    const query = await prisma.sOQLLibrary.delete({
-      where: { id },
-    });
+    const query = await deleteStoredQuery(id);
+    if (!query) {
+      return NextResponse.json({ error: "Query not found" }, { status: 404 });
+    }
 
     return NextResponse.json({ query });
   } catch (error) {

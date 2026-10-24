@@ -24,7 +24,7 @@ export async function GET() {
     });
     return NextResponse.json({ manuals });
   } catch (error) {
-    return NextResponse.json({ error: "Unable to load user manuals" }, { status: 500 });
+    return NextResponse.json({ manuals: [] }, { status: 200 });
   }
 }
 

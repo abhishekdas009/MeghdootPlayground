@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { bulkCategorizeStoredQueries } from "@/lib/soql-library-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -14,36 +14,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing or invalid category" }, { status: 400 });
     }
 
-    // First fetch existing to save history
-    const existingRecords = await prisma.sOQLLibrary.findMany({
-      where: { id: { in: ids } }
-    });
+    const count = await bulkCategorizeStoredQueries(ids, category.trim());
 
-    // Create history records
-    if (existingRecords.length > 0) {
-      await prisma.sOQLHistory.createMany({
-        data: existingRecords.map(record => ({
-          queryId: record.id,
-          soql: record.soql,
-          label: record.label,
-          category: record.category,
-          tags: record.tags,
-          description: record.description,
-        }))
-      });
-    }
-
-    // Update categories
-    const result = await prisma.sOQLLibrary.updateMany({
-      where: {
-        id: { in: ids }
-      },
-      data: {
-        category: category.trim()
-      }
-    });
-
-    return NextResponse.json({ success: true, count: result.count });
+    return NextResponse.json({ success: true, count });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to perform bulk categorize";
     return NextResponse.json({ error: message }, { status: 500 });

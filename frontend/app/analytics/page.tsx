@@ -390,7 +390,7 @@ export default function AnalyticsPage() {
           {/* Right Actions Bar */}
           <div className="flex items-center gap-3 flex-wrap md:justify-end shrink-0">
             {/* Time Range Tabs */}
-            <div className="flex items-center rounded-xl bg-white dark:bg-[#06070a] p-1 border border-slate-200/80 dark:border-white/[0.08] shadow-sm">
+            <div className="flex items-center rounded-xl glass-mode-toggle p-1 rounded-xl flex items-center">
               {(["24h", "7d", "30d", "all"] as TimeRange[]).map((range) => (
                 <button
                   key={range}
@@ -587,7 +587,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* Sub-Tabs */}
-              <div className="flex items-center rounded-xl bg-slate-100/80 dark:bg-[#06070a] p-1 border border-slate-200/80 dark:border-white/[0.08] shrink-0">
+              <div className="flex items-center rounded-xl bg-white/50 dark:bg-[#0b0c10]/40 backdrop-blur-xl p-1 border border-slate-200/70 dark:border-white/10 shrink-0">
                 {[
                   { id: "trends", label: "Trends", icon: Activity },
                   { id: "leaderboard", label: "Top Templates", icon: TrendingUp },

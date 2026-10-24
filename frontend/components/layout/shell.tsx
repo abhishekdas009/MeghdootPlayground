@@ -4,7 +4,7 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
-import { ParticleBackground } from "@/components/shared/particle-background";
+import { AnimatedBackground } from "@/components/shared/animated-background";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -104,7 +104,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="hidden dark:block absolute -top-[20%] left-[25%] h-[50%] w-[50%] rounded-full bg-sky-500/[0.04] blur-[140px]" />
         <div className="hidden dark:block absolute top-[40%] right-[-10%] h-[40%] w-[40%] rounded-full bg-indigo-500/[0.025] blur-[140px]" />
       </div>
-      <ParticleBackground />
+      <AnimatedBackground />
       <Header />
       <Sidebar />
       <main

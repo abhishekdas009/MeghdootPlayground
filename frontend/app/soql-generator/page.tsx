@@ -1748,7 +1748,7 @@ function PasteResultCard({
   step?: string;
 }) {
   return (
-    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
+    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
       {step && (
         <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
           <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/40 dark:to-transparent bg-clip-text text-transparent">
@@ -1785,13 +1785,13 @@ function PasteResultCard({
       </CardHeader>
       <CardContent className="p-4 pt-0 flex-1 flex flex-col min-h-0 gap-4 relative z-10 overflow-hidden">
         <textarea
-          className="flex-1 min-h-0 w-full rounded-2xl border border-border/70 bg-surface-recessed/60 dark:bg-[#06070a] dark:border-white/[0.08] p-4 text-[13px] font-mono leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none transition-all shadow-inner custom-scrollbar"
+          className="flex-1 min-h-0 w-full rounded-2xl border border-border/70 bg-surface-recessed/60 dark:bg-black/25 dark:border-white/[0.08] p-4 text-[13px] font-mono leading-relaxed text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none transition-all shadow-inner custom-scrollbar backdrop-blur-sm"
           placeholder="Paste CSV from Salesforce Inspector here..."
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
         {value.trim() && (
-          <div className="flex-1 min-h-0 w-full rounded-2xl border border-primary/20 bg-primary/5 dark:bg-[#06070a] dark:border-primary/30 p-4 overflow-auto shadow-inner relative">
+          <div className="flex-1 min-h-0 w-full rounded-2xl border border-primary/20 bg-primary/5 dark:bg-black/25 dark:border-primary/30 p-4 overflow-auto shadow-inner relative backdrop-blur-sm">
             <div className="absolute top-2 right-3">
               <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">OUTPUT</span>
             </div>
@@ -1828,7 +1828,7 @@ function QueryPreviewCard({
   const currentBatch = batches[batchIndex] ?? "";
 
   return (
-    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
+    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
       {step && (
         <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
           <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/40 dark:to-transparent bg-clip-text text-transparent">
@@ -2129,7 +2129,7 @@ function TemplatePicker({
         createPortal(
           <div
             ref={menuRef}
-            className="fixed z-[100] overflow-hidden rounded-2xl border border-border/80 bg-popover/98 p-1.5 text-foreground shadow-2xl backdrop-blur-2xl dark:border-white/[0.1] dark:bg-[#07080c]/98 dark:shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.06)]"
+            className="fixed z-[100] overflow-hidden rounded-2xl border border-border/80 bg-popover/98 p-1.5 text-foreground shadow-2xl backdrop-blur-2xl dark:border-white/[0.1] dark:bg-[#07080c]/95 dark:shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.06)]"
             style={{
               left: menuPosition.left,
               minWidth: menuPosition.width, maxWidth: 'calc(100vw - 24px)', width: 'max-content',
@@ -4151,7 +4151,7 @@ AND Ticket_Numbers__c IN (
           className="2xl:col-span-4 xl:col-span-4 space-y-4 min-w-0 flex flex-col h-full min-h-0"
         >
           {/* Obsidian Frosted Monolithic Glass Card */}
-          <div className="rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/70 dark:bg-[#0b0c10]/75 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300">
+          <div className="rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300">
             {/* Top Specular Rim */}
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 dark:via-white/25 to-transparent pointer-events-none" />
             
@@ -4223,7 +4223,7 @@ AND Ticket_Numbers__c IN (
 
               {isCancellation && (
                 <div className="w-full pt-0.5">
-                  <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-900/[0.04] dark:bg-black/40 border border-slate-900/[0.06] dark:border-white/[0.06] backdrop-blur-md">
+                  <div className="grid grid-cols-4 gap-1 p-1.5 rounded-xl bg-slate-100/80 dark:bg-[#070a14]/70 border border-slate-200/80 dark:border-white/[0.10] backdrop-blur-xl shadow-inner relative">
                     {(["CCO", "NAMO", "NON NAMO", "Account Check"] as const).map((type) => {
                       const isSelected = cancellationType === type;
                       const label = type === "Account Check" ? "Acct Check" : type;
@@ -4234,15 +4234,23 @@ AND Ticket_Numbers__c IN (
                           onClick={() => setCancellationType(type)}
                           title={type === "Account Check" ? "Account Check" : undefined}
                           className={cn(
-                            "relative py-2 px-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg transition-all duration-200 text-center flex items-center justify-center select-none",
+                            "relative py-2 px-1 text-[10px] sm:text-[11px] font-black uppercase tracking-wider rounded-lg transition-all duration-200 text-center flex items-center justify-center select-none z-10",
                             isSelected
-                              ? type === "Account Check"
-                                ? "bg-rose-500/20 text-rose-600 dark:text-rose-300 border border-rose-500/30 shadow-[0_2px_8px_rgba(244,63,94,0.25),inset_0_1px_0_0_rgba(255,255,255,0.2)]"
-                                : "bg-white dark:bg-white/[0.14] text-sky-600 dark:text-sky-300 border border-slate-200/80 dark:border-white/[0.15] shadow-[0_2px_8px_rgba(0,0,0,0.15),inset_0_1px_0_0_rgba(255,255,255,0.25)]"
-                              : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/[0.04]"
+                              ? "text-white"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/[0.06]"
                           )}
                         >
-                          <span className="truncate">{label}</span>
+                          {isSelected && (
+                            <motion.div
+                              layoutId="activeCancellationTypeBadge"
+                              transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                              className="absolute inset-0 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 rounded-lg shadow-md z-[-1] border border-sky-300/40"
+                              style={{
+                                boxShadow: "0 4px 16px rgba(2, 132, 199, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.35)"
+                              }}
+                            />
+                          )}
+                          <span className="truncate relative z-10">{label}</span>
                         </button>
                       );
                     })}
@@ -4296,7 +4304,7 @@ AND Ticket_Numbers__c IN (
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/70 dark:bg-[#0b0c10]/75 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
+                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
               >
               {/* Top Specular Rim */}
               <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 dark:via-white/25 to-transparent pointer-events-none" />
@@ -4561,7 +4569,7 @@ A26060134750619`}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/70 dark:bg-[#0b0c10]/75 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
+                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
               >
                 {/* Top Specular Rim */}
                 <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/50 dark:via-white/25 to-transparent pointer-events-none" />
@@ -5512,7 +5520,7 @@ BSL22295338      CID-6074821`}
               </motion.div>
 
               <motion.div variants={cardItemVariants} className="h-full flex flex-col 2xl:col-span-1">
-                <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
           <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
             <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
               STEP 5
@@ -5536,7 +5544,7 @@ BSL22295338      CID-6074821`}
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
                     <Textarea
                       placeholder={`Paste Salesforce SOQL result of FAILED tickets here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "Cancellation Requested"`}
-                      className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-2xl border border-border/70 dark:border-white/[0.08] bg-surface-recessed/60 dark:bg-[#06070a] p-4 resize-y text-foreground"
+                      className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-2xl border border-border/70 dark:border-white/[0.08] bg-surface-recessed/60 dark:bg-black/25 p-4 resize-y text-foreground backdrop-blur-sm"
                       value={cancellationFailedInput}
                       onChange={(event) => setCancellationFailedInput(event.target.value)}
                     />
@@ -5570,7 +5578,7 @@ BSL22295338      CID-6074821`}
                 return (
                   <>
                     <motion.div variants={cardItemVariants} className="h-full flex flex-col">
-                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
             <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
               <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
                 FOR EMAIL
@@ -5595,7 +5603,7 @@ BSL22295338      CID-6074821`}
                     </motion.div>
 
                     <motion.div variants={cardItemVariants} className="h-full flex flex-col">
-                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
                           {/* WATERMARK */}
                           <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
                             <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
@@ -5625,7 +5633,7 @@ BSL22295338      CID-6074821`}
 
               {cancellationUpdateDebug && (
                 <motion.div variants={cardItemVariants} className="h-full flex flex-col xl:col-span-2">
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
                     <CardHeader className="pb-4 bg-transparent p-6 relative z-10">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
@@ -5664,7 +5672,7 @@ BSL22295338      CID-6074821`}
               <div className="space-y-4 flex flex-col h-full min-h-0">
                 {/* Assignment Mode & Quick Execute Control Box */}
                 <motion.div variants={cardItemVariants}>
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
                                     {/* Massive Watermark Step 2 */}
                   <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
                     <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
@@ -5822,7 +5830,7 @@ BSL22295338      CID-6074821`}
 
                 {/* 2. Paste Manually (Case Assign Mode) */}
                 <motion.div variants={cardItemVariants} className="flex flex-col flex-1 min-h-0">
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col flex-1 min-h-0 transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col flex-1 min-h-0 transition-all duration-300 relative group">
                     {/* Massive Watermark */}
                     <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
                       <span className="text-[25px] md:text-[35px] lg:text-[45px] leading-[0.9] font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent flex flex-col">
@@ -5873,7 +5881,7 @@ BSL22295338      CID-6074821`}
               <div className="space-y-4 flex flex-col h-full min-h-0">
                 {/* 1. Assignment Output Box */}
                 <motion.div variants={cardItemVariants} className="shrink-0">
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group shrink-0">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group shrink-0">
                                     {/* Massive Watermark Step 3 */}
                   <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
                     <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
@@ -6032,7 +6040,7 @@ BSL22295338      CID-6074821`}
             {caseAssignmentResult && (caseAssignMode === "equal" || caseAssignMode === "owner-wise") && (
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 mt-6 items-start w-full">
                 <motion.div variants={cardItemVariants}>
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
                     <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shadow-inner">
@@ -6086,7 +6094,7 @@ BSL22295338      CID-6074821`}
                 </motion.div>
 
                 <motion.div variants={cardItemVariants}>
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
                     <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-inner">
@@ -6125,7 +6133,7 @@ BSL22295338      CID-6074821`}
                 </motion.div>
 
                 <motion.div variants={cardItemVariants}>
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
                     <CardHeader className="pb-4 bg-transparent p-5 relative z-10">
                       <div className="flex items-center gap-3">
                         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shadow-inner">
@@ -6180,7 +6188,7 @@ BSL22295338      CID-6074821`}
                 </motion.div>
                 
                 <motion.div variants={cardItemVariants}>
-                  <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/90 dark:bg-[#0b0c10]/90 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl overflow-hidden relative group transition-all duration-300">
+                  <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl overflow-hidden relative group transition-all duration-300">
                     <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
                       <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
                         DEBUG

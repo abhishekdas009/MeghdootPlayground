@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getStoredQueries, createStoredQuery } from "@/lib/soql-library-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -38,15 +38,9 @@ function normalizeQueryInput(input: SOQLLibraryInput) {
   };
 }
 
-async function listQueries() {
-  return prisma.sOQLLibrary.findMany({
-    orderBy: [{ favourite: "desc" }, { updatedAt: "desc" }, { label: "asc" }],
-  });
-}
-
 export async function GET() {
   try {
-    const queries = await listQueries();
+    const queries = await getStoredQueries();
     return NextResponse.json({ queries });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load SOQL library";
@@ -59,7 +53,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as SOQLLibraryInput;
     const data = normalizeQueryInput(body);
 
-    const query = await prisma.sOQLLibrary.create({ data });
+    const query = await createStoredQuery(data);
 
     return NextResponse.json({ query }, { status: 201 });
   } catch (error) {

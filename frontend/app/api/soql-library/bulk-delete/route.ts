@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { bulkDeleteStoredQueries } from "@/lib/soql-library-store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,13 +11,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing or invalid ids array" }, { status: 400 });
     }
 
-    const result = await prisma.sOQLLibrary.deleteMany({
-      where: {
-        id: { in: ids }
-      }
-    });
+    const count = await bulkDeleteStoredQueries(ids);
 
-    return NextResponse.json({ success: true, count: result.count });
+    return NextResponse.json({ success: true, count });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to perform bulk delete";
     return NextResponse.json({ error: message }, { status: 500 });

@@ -14,7 +14,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 min-w-[9rem] overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-1.5 text-foreground shadow-2xl backdrop-blur-2xl data-[state=open]:animate-fade-in dark:bg-[#0b0c10]/98 dark:border-white/10 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)]",
+        "z-50 min-w-[9rem] overflow-hidden rounded-2xl border border-border/80 bg-card/95 p-1.5 text-foreground shadow-2xl backdrop-blur-2xl data-[state=open]:animate-fade-in dark:bg-[#0b0c10]/95 dark:border-white/10 dark:shadow-[0_20px_50px_rgba(0,0,0,0.95)]",
         className
       )}
       {...props}

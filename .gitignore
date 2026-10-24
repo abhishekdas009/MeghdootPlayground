@@ -136,3 +136,7 @@ dist
 .pnp.*
 
 /generated/prisma
+
+# Local offline data
+.data/
+frontend/.data/

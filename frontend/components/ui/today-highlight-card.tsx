@@ -28,7 +28,7 @@ export function TodayHighlightCard({ className }: { className?: string }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2, duration: 0.5 }}
-      className={cn("glass-panel relative overflow-hidden rounded-2xl border border-border/80 bg-card/85 p-6 shadow-md backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0c10]/95", className)}
+      className={cn("glass-panel relative overflow-hidden rounded-2xl border border-border/80 bg-card/85 p-6 shadow-md backdrop-blur-xl dark:border-white/10 dark:bg-[#0b0c10]/45", className)}
     >
       {/* Background Decor */}
       <div className="absolute -right-6 -top-6 opacity-5 pointer-events-none">

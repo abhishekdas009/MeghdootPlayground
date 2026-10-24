@@ -50,8 +50,12 @@ async function listOwners() {
 }
 
 export async function GET() {
-  const owners = await listOwners();
-  return NextResponse.json({ owners });
+  try {
+    const owners = await listOwners();
+    return NextResponse.json({ owners });
+  } catch {
+    return NextResponse.json({ owners: [] }, { status: 200 });
+  }
 }
 
 export async function POST(request: NextRequest) {

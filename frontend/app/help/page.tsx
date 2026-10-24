@@ -437,7 +437,7 @@ export default function HelpPage() {
               "flex items-center gap-2.5 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all whitespace-nowrap shrink-0 border",
               activeTab === tab.id
                 ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white border-sky-400/30 shadow-md shadow-sky-500/20 font-bold"
-                : "bg-white dark:bg-[#0b0c10] border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-white/[0.15]"
+                : "bg-white/80 dark:bg-[#0a0d14]/85 backdrop-blur-xl border-slate-200/80 dark:border-white/[0.12] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-white/[0.22] dark:shadow-[0_4px_16px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)]"
             )}
           >
             <tab.icon className={cn("h-4 w-4", activeTab === tab.id ? "text-white" : "text-slate-400 dark:text-slate-500")} />

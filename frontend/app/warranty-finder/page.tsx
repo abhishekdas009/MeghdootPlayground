@@ -97,7 +97,7 @@ function AutocompleteInput({
   );
   return (
     <div ref={wrapperRef} className="relative w-full">
-      <div className="rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.04] px-3.5 py-1.5 flex items-center justify-between focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/20 transition-all">
+      <div className="glass-field-well px-3.5 py-1.5 flex items-center justify-between transition-all">
         <input
           type="text"
           required={required}
@@ -108,7 +108,7 @@ function AutocompleteInput({
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
-          className="w-full bg-transparent border-none outline-none focus:ring-0 shadow-none text-xs sm:text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 p-0"
+          className="w-full bg-transparent border-none outline-none focus:ring-0 shadow-none text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 p-0"
           style={{ border: "none", outline: "none", boxShadow: "none", background: "transparent" }}
         />
         <button
@@ -130,7 +130,7 @@ function AutocompleteInput({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute z-50 w-full mt-2 rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white/95 dark:bg-[#0b0c10]/95 backdrop-blur-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar p-1.5 space-y-0.5"
+            className="absolute z-50 w-full mt-2 rounded-2xl border border-slate-200/90 dark:border-white/15 bg-white/95 dark:bg-[#080b12]/95 backdrop-blur-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar p-1.5 space-y-0.5"
           >
             {filteredOptions.map((opt, i) => (
               <div
@@ -395,7 +395,7 @@ export default function WarrantyFinderPage() {
           transition={{ duration: 0.5, delay: 0.05, ease: "easeOut" }}
           className="flex justify-center mb-8 relative z-50"
         >
-          <div className="bg-muted/60 dark:bg-[#06070a] backdrop-blur-xl p-1.5 rounded-full inline-flex border border-border/70 dark:border-white/[0.08] shadow-inner relative">
+          <div className="glass-mode-toggle p-1.5 inline-flex relative">
             <button
               type="button"
               onClick={() => { setActiveTab('model'); setSearchError(""); setSearchResult(null); }}
@@ -403,14 +403,14 @@ export default function WarrantyFinderPage() {
                 "relative px-6 py-2 rounded-full text-sm font-bold transition-colors duration-200 z-10",
                 activeTab === 'model'
                   ? "text-white"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               )}
             >
               {activeTab === 'model' && (
                 <motion.div
                   layoutId="activeTabBadge"
                   transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                  className="absolute inset-0 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 rounded-full shadow-md z-[-1]"
+                  className="absolute inset-0 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 rounded-full shadow-md shadow-blue-500/40 z-[-1] border border-sky-300/40"
                 />
               )}
               Search by Model
@@ -422,14 +422,14 @@ export default function WarrantyFinderPage() {
                 "relative px-6 py-2 rounded-full text-sm font-bold transition-colors duration-200 z-10",
                 activeTab === 'subfamily'
                   ? "text-white"
-                  : "text-muted-foreground hover:text-foreground"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               )}
             >
               {activeTab === 'subfamily' && (
                 <motion.div
                   layoutId="activeTabBadge"
                   transition={{ type: "spring", stiffness: 450, damping: 35 }}
-                  className="absolute inset-0 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 rounded-full shadow-md z-[-1]"
+                  className="absolute inset-0 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 rounded-full shadow-md shadow-blue-500/40 z-[-1] border border-sky-300/40"
                 />
               )}
               Search by Sub Family
@@ -445,7 +445,7 @@ export default function WarrantyFinderPage() {
           onSubmit={activeTab === 'model' ? handleSearch : handleSubFamilySearch}
           className="mb-12 relative z-50"
         >
-          <div className="bg-white/95 dark:bg-[#0c0d12]/95 backdrop-blur-2xl border border-blue-100/80 dark:border-white/[0.12] rounded-3xl md:rounded-full p-2.5 sm:p-3 shadow-[0_12px_45px_rgba(14,165,233,0.12),0_2px_10px_rgba(0,0,0,0.03)] dark:shadow-[0_20px_60px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.08)] flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-2 relative">
+          <div className="glass-search-bar p-2.5 sm:p-3 flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-2 relative">
             <div className="flex-1 min-w-0">
               <AnimatePresence mode="wait" initial={false}>
                 {activeTab === 'model' ? (
@@ -459,11 +459,11 @@ export default function WarrantyFinderPage() {
                   >
                     {/* Field 1: Model Number */}
                     <div className="flex-1 flex items-center gap-3 px-1 sm:px-2 py-1">
-                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-blue-50/90 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-xs">
+                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-sky-500/10 dark:bg-sky-400/15 border border-sky-300/40 dark:border-sky-400/30 flex items-center justify-center text-sky-600 dark:text-sky-300 shrink-0 shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.2)]">
                         <Box className="h-5 w-5" strokeWidth={1.8} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 pl-0.5">
+                        <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-sky-200 uppercase tracking-wider mb-1 pl-0.5">
                           Model Number
                         </label>
                         <AutocompleteInput
@@ -477,15 +477,15 @@ export default function WarrantyFinderPage() {
                     </div>
 
                     {/* Divider 1 */}
-                    <div className="hidden md:block w-px h-10 bg-slate-200/80 dark:bg-white/10 shrink-0 self-center" />
+                    <div className="hidden md:block w-px h-10 bg-slate-300/70 dark:bg-white/15 shrink-0 self-center" />
 
                     {/* Field 2: Installation Date */}
                     <div className="flex-1 flex items-center gap-3 px-1 sm:px-2 py-1">
-                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-blue-50/90 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-xs">
+                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-sky-500/10 dark:bg-sky-400/15 border border-sky-300/40 dark:border-sky-400/30 flex items-center justify-center text-sky-600 dark:text-sky-300 shrink-0 shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.2)]">
                         <CalendarDays className="h-5 w-5" strokeWidth={1.8} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 pl-0.5">
+                        <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-sky-200 uppercase tracking-wider mb-1 pl-0.5">
                           Installation Date
                         </label>
                         <TranslucentDatePicker
@@ -497,15 +497,15 @@ export default function WarrantyFinderPage() {
                     </div>
 
                     {/* Divider 2 */}
-                    <div className="hidden md:block w-px h-10 bg-slate-200/80 dark:bg-white/10 shrink-0 self-center" />
+                    <div className="hidden md:block w-px h-10 bg-slate-300/70 dark:bg-white/15 shrink-0 self-center" />
 
                     {/* Field 3: Branch / City */}
                     <div className="flex-1 flex items-center gap-3 px-1 sm:px-2 py-1">
-                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-blue-50/90 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-xs">
+                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-sky-500/10 dark:bg-sky-400/15 border border-sky-300/40 dark:border-sky-400/30 flex items-center justify-center text-sky-600 dark:text-sky-300 shrink-0 shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.2)]">
                         <MapPin className="h-5 w-5" strokeWidth={1.8} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 pl-0.5">
+                        <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-sky-200 uppercase tracking-wider mb-1 pl-0.5">
                           Branch / City
                         </label>
                         <AutocompleteInput
@@ -526,11 +526,11 @@ export default function WarrantyFinderPage() {
                     transition={{ duration: 0.2, ease: "easeOut" }}
                     className="flex-1 flex items-center gap-3 px-2 sm:px-3 py-1 w-full"
                   >
-                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-blue-50/90 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-xs">
+                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-sky-500/10 dark:bg-sky-400/15 border border-sky-300/40 dark:border-sky-400/30 flex items-center justify-center text-sky-600 dark:text-sky-300 shrink-0 shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.2)]">
                       <Box className="h-5 w-5" strokeWidth={1.8} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 pl-0.5">
+                      <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-sky-200 uppercase tracking-wider mb-1 pl-0.5">
                         Product Sub Family
                       </label>
                       <AutocompleteInput
@@ -599,7 +599,7 @@ export default function WarrantyFinderPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.35, delay: idx * 0.1 }}
                     key={idx}
-                    className="relative rounded-3xl p-6 sm:p-8 overflow-hidden bg-gradient-to-b from-white via-sky-50/40 to-blue-50/50 dark:from-[#091738]/95 dark:via-[#061026]/98 dark:to-[#030816]/98 border border-sky-200/90 dark:border-sky-400/50 shadow-[0_20px_45px_rgba(14,165,233,0.12),0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_0_35px_rgba(14,165,233,0.22),0_20px_50px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.2)] backdrop-blur-2xl transition-all group"
+                    className="relative rounded-3xl p-6 sm:p-8 overflow-hidden bg-gradient-to-b from-white/75 via-sky-50/40 to-blue-50/50 dark:from-[#091738]/50 dark:via-[#061026]/42 dark:to-[#030816]/45 border border-sky-200/90 dark:border-sky-400/50 shadow-[0_20px_45px_rgba(14,165,233,0.12),0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_0_35px_rgba(14,165,233,0.22),0_20px_50px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.2)] backdrop-blur-2xl transition-all group"
                   >
                     {/* Top specular edge highlight */}
                     <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/60 dark:via-sky-300/70 to-transparent pointer-events-none" />

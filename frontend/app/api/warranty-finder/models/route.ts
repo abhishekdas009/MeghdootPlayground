@@ -24,6 +24,6 @@ export async function GET() {
     return NextResponse.json({ success: true, models: sortedModels });
   } catch (error) {
     console.error('Failed to fetch models:', error);
-    return NextResponse.json({ success: false, error: 'Failed to fetch models' }, { status: 500 });
+    return NextResponse.json({ success: true, models: [] }, { status: 200 });
   }
 }

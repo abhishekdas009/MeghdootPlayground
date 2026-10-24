@@ -141,14 +141,14 @@ export function TranslucentDatePicker({ value, onChange, className }: Translucen
 
   return (
     <div className={cn("relative w-full", className)}>
-      <div className="rounded-xl border border-slate-200/90 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.04] px-3.5 py-1.5 flex items-center justify-between focus-within:border-sky-400/80 focus-within:ring-2 focus-within:ring-sky-400/20 transition-all">
+      <div className="glass-field-well px-3.5 py-1.5 flex items-center justify-between transition-all">
         <input 
           type="text"
           value={inputValue}
           onChange={handleInputChange}
           onFocus={() => setIsOpen(true)}
           placeholder="dd-mm-yyyy"
-          className="w-full bg-transparent border-none outline-none text-xs sm:text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 focus:ring-0 shadow-none p-0"
+          className="w-full bg-transparent border-none outline-none text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-0 shadow-none p-0"
           style={{ border: "none", outline: "none", boxShadow: "none", background: "transparent" }}
         />
         <button
@@ -172,7 +172,7 @@ export function TranslucentDatePicker({ value, onChange, className }: Translucen
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="absolute left-0 top-full mt-2 w-[290px] z-50 rounded-2xl border border-border/80 bg-card/95 dark:bg-[#0b0c10]/98 dark:border-white/10 backdrop-blur-3xl shadow-2xl p-4"
+              className="absolute left-0 top-full mt-2 w-[290px] z-50 rounded-2xl border border-border/80 bg-white/95 dark:bg-[#080b12]/95 dark:border-white/15 backdrop-blur-3xl shadow-2xl p-4"
               style={{
                 boxShadow: "0 20px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08)"
               }}
