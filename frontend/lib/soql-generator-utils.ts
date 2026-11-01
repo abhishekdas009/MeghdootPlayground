@@ -46,6 +46,8 @@ export interface CancellationExecutionRow {
   status: string;
   isMaterialConsumed?: boolean;
   isApprovalSent?: boolean;
+  resultStatus?: string;
+  errorMessage?: string;
 }
 
 export interface CaseAssignmentRow {
@@ -568,9 +570,18 @@ export function parseCancellationExecutionRows(input: string): CancellationExecu
       const status = row.status || "";
       const rawMaterial = (row.is_material_consumed__c || row.ismaterialconsumed__c || "").toLowerCase();
       const rawApproval = (row.is_approval_sent__c || row.isapprovalsent__c || "").toLowerCase();
-      const isMaterialConsumed = rawMaterial === "true" || rawMaterial === "1" || rawMaterial === "yes";
-      const isApprovalSent = rawApproval === "true" || rawApproval === "1" || rawApproval === "yes";
-      return { id, ticket, status, isMaterialConsumed, isApprovalSent };
+      let isMaterialConsumed = rawMaterial === "true" || rawMaterial === "1" || rawMaterial === "yes";
+      let isApprovalSent = rawApproval === "true" || rawApproval === "1" || rawApproval === "yes";
+      const resultStatus = row.__status || row.resultstatus || "";
+      const errorMessage = row.__errors || row.errors || row.error || "";
+      const errorLower = (errorMessage + " " + JSON.stringify(row)).toLowerCase();
+      if (errorLower.includes("mr exists") || errorLower.includes("cannot be canceled as mr exists")) {
+        isMaterialConsumed = true;
+      }
+      if (errorLower.includes("approval is pending") || errorLower.includes("pending approval")) {
+        isApprovalSent = true;
+      }
+      return { id, ticket, status, isMaterialConsumed, isApprovalSent, resultStatus, errorMessage };
     })
     .filter((row) => row.id && row.ticket && row.status);
 }

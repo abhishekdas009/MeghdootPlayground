@@ -110,6 +110,8 @@ interface CancellationExecutionRow {
   status: string;
   isMaterialConsumed?: boolean;
   isApprovalSent?: boolean;
+  resultStatus?: string;
+  errorMessage?: string;
 }
 
 interface CaseAssignmentRow {
@@ -906,6 +908,8 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
     statusIdx: number;
     materialIdx: number;
     approvalIdx: number;
+    resultStatusIdx: number;
+    errorIdx: number;
   } | null = null;
 
   for (const line of lines) {
@@ -922,7 +926,8 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
       t === "workorder" ||
       t.includes("status") ||
       t.includes("material") ||
-      t.includes("approval")
+      t.includes("approval") ||
+      t.includes("error")
     );
 
     if (isHeader) {
@@ -931,23 +936,29 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
       let statusIdx = -1;
       let materialIdx = -1;
       let approvalIdx = -1;
+      let resultStatusIdx = -1;
+      let errorIdx = -1;
 
       lowerTokens.forEach((token, idx) => {
-        if (token === "id" || token.endsWith(".id") || token === "workorderid") {
-          idIdx = idx;
+        if (token === "__status" || token === "resultstatus") {
+          resultStatusIdx = idx;
+        } else if (token === "id" || token.endsWith(".id") || token === "workorderid") {
+          if (idIdx === -1) idIdx = idx;
         } else if (token.includes("ticket") || token.includes("casenumber") || token === "number") {
           ticketIdx = idx;
-        } else if (token.includes("status")) {
+        } else if (token === "status") {
           statusIdx = idx;
         } else if (token.includes("material") || token.includes("consumed")) {
           materialIdx = idx;
         } else if (token.includes("approval")) {
           approvalIdx = idx;
+        } else if (token.includes("error")) {
+          errorIdx = idx;
         }
       });
 
       if (idIdx !== -1 || ticketIdx !== -1) {
-        currentHeaders = { idIdx, ticketIdx, statusIdx, materialIdx, approvalIdx };
+        currentHeaders = { idIdx, ticketIdx, statusIdx, materialIdx, approvalIdx, resultStatusIdx, errorIdx };
         continue;
       }
     }
@@ -957,6 +968,8 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
     let rowStatus = "Canceled";
     let isMaterialConsumed = false;
     let isApprovalSent = false;
+    let resultStatus = "";
+    let errorMessage = "";
 
     // 1. Try header mapping
     if (currentHeaders) {
@@ -979,6 +992,12 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
       if (currentHeaders.approvalIdx !== -1 && tokens[currentHeaders.approvalIdx]) {
         const val = cleanValue(tokens[currentHeaders.approvalIdx]).toLowerCase();
         isApprovalSent = val === "true" || val === "1" || val === "yes";
+      }
+      if (currentHeaders.resultStatusIdx !== -1 && tokens[currentHeaders.resultStatusIdx]) {
+        resultStatus = cleanValue(tokens[currentHeaders.resultStatusIdx]);
+      }
+      if (currentHeaders.errorIdx !== -1 && tokens[currentHeaders.errorIdx]) {
+        errorMessage = cleanValue(tokens[currentHeaders.errorIdx]);
       }
     }
 
@@ -1027,6 +1046,25 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
       });
     }
 
+    // 5. Check error message or whole line for MR exists or approval indicators
+    if (!errorMessage) {
+      for (const tok of tokens) {
+        const cleaned = cleanValue(tok);
+        if (cleaned.toLowerCase().includes("mr exists") || cleaned.toLowerCase().includes("cannot be canceled")) {
+          errorMessage = cleaned;
+          break;
+        }
+      }
+    }
+
+    const errorLower = (errorMessage + " " + line).toLowerCase();
+    if (errorLower.includes("mr exists") || errorLower.includes("cannot be canceled as mr exists")) {
+      isMaterialConsumed = true;
+    }
+    if (errorLower.includes("approval is pending") || errorLower.includes("pending approval") || errorLower.includes("recall the pending approval")) {
+      isApprovalSent = true;
+    }
+
     if (rowId && rowTicket) {
       const idKey = rowId.toLowerCase();
       if (!seenIds.has(idKey)) {
@@ -1037,6 +1075,8 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
           status: rowStatus,
           isMaterialConsumed,
           isApprovalSent,
+          resultStatus,
+          errorMessage,
         });
       }
     }
@@ -5617,7 +5657,10 @@ BSL22295338      CID-6074821`}
                 
                 // Parse Step 5 failed rows
                 const cancellationFailedTicketsRows = parseCancellationExecutionRows(cancellationFailedInput);
-                let failedTicketsList = cancellationFailedTicketsRows.map((r) => r.ticket.trim()).filter(Boolean);
+                const actuallyFailedRows = cancellationFailedTicketsRows.filter(
+                  (r) => !r.resultStatus || r.resultStatus.toLowerCase() !== "success"
+                );
+                let failedTicketsList = actuallyFailedRows.map((r) => r.ticket.trim()).filter(Boolean);
                 if (failedTicketsList.length === 0 && hasFailedInput) {
                   const matches = cancellationFailedInput.match(SALESFORCE_TICKET_REGEX) || [];
                   failedTicketsList = matches.map((m) => cleanTicket(m)).filter(Boolean);
@@ -5654,15 +5697,27 @@ BSL22295338      CID-6074821`}
 
                   for (const tkt of cancellationFailedTickets) {
                     const key = cleanTicket(tkt).toUpperCase();
-                    const failedRow = cancellationFailedTicketsRows.find(
+                    const failedRow = actuallyFailedRows.find(
                       (r) => cleanTicket(r.ticket).toUpperCase() === key
                     );
                     const sfRow =
                       step3ByTicket.get(key) ||
                       (failedRow ? step3ById.get(failedRow.id.toLowerCase()) : undefined);
 
-                    const isApproval = sfRow ? Boolean(sfRow.isApprovalSent) : false;
-                    const isMR = sfRow ? Boolean(sfRow.isMaterialConsumed) : false;
+                    let isApproval = sfRow ? Boolean(sfRow.isApprovalSent) : false;
+                    let isMR = sfRow ? Boolean(sfRow.isMaterialConsumed) : false;
+
+                    if (failedRow) {
+                      if (failedRow.isMaterialConsumed) isMR = true;
+                      if (failedRow.isApprovalSent) isApproval = true;
+                      const errMsg = (failedRow.errorMessage || "").toLowerCase();
+                      if (errMsg.includes("mr exists") || errMsg.includes("cannot be canceled as mr exists")) {
+                        isMR = true;
+                      }
+                      if (errMsg.includes("approval is pending") || errMsg.includes("pending approval")) {
+                        isApproval = true;
+                      }
+                    }
 
                     if (isApproval && isMR) {
                       bothApprovalAndMRTickets.push(tkt);
@@ -5714,13 +5769,41 @@ BSL22295338      CID-6074821`}
                     );
                   }
 
-                  const instructionsPlainText = `*Kindly note the following instructions:*\n\n*For approval-pending cases:* Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.\n*For MR-raised tickets:* Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.`;
+                  const hasApprovalFailure = approvalPendingTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
+                  const hasMRFailure = mrRaisedTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
 
-                  const instructionsHtml = `<p><b>Kindly note the following instructions:</b></p>\n<p><b>For approval-pending cases:</b> Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.</p>\n<p><b>For MR-raised tickets:</b> Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.</p>`;
+                  const instructionLines: string[] = [];
+                  const instructionHtmlLines: string[] = [];
 
-                  const bodyText = `Cancellation has been done successfully.\nTotal Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\n\nFailed tickets are mention below:\n\n${sections.join("\n\n")}\n\n${instructionsPlainText}`;
+                  if (hasApprovalFailure) {
+                    instructionLines.push(
+                      `*For approval-pending cases:* Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.`
+                    );
+                    instructionHtmlLines.push(
+                      `<p><b>For approval-pending cases:</b> Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.</p>`
+                    );
+                  }
 
-                  const bodyHtml = `<p>Cancellation has been done successfully.<br>Total Tickets: ${cancellationTotalTickets}<br>Cancelled Tickets: ${cancellationSuccessCount}</p>\n<p>Failed tickets are mention below:</p>\n${htmlSections.join("<br>")}\n${instructionsHtml}`;
+                  if (hasMRFailure) {
+                    instructionLines.push(
+                      `*For MR-raised tickets:* Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.`
+                    );
+                    instructionHtmlLines.push(
+                      `<p><b>For MR-raised tickets:</b> Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.</p>`
+                    );
+                  }
+
+                  const instructionsPlainText = instructionLines.length > 0
+                    ? `\n\n*Kindly note the following instructions:*\n\n${instructionLines.join("\n")}`
+                    : "";
+
+                  const instructionsHtml = instructionHtmlLines.length > 0
+                    ? `\n<p><b>Kindly note the following instructions:</b></p>\n${instructionHtmlLines.join("\n")}`
+                    : "";
+
+                  const bodyText = `Cancellation has been done successfully.\nTotal Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\n\nFailed tickets are mention below:\n\n${sections.join("\n\n")}${instructionsPlainText}`;
+
+                  const bodyHtml = `<p>Cancellation has been done successfully.<br>Total Tickets: ${cancellationTotalTickets}<br>Cancelled Tickets: ${cancellationSuccessCount}</p>\n<p>Failed tickets are mention below:</p>\n${htmlSections.join("<br>")}${instructionsHtml}`;
 
                   mailTemplateText = `Dear,\n${bodyText}`;
                   postTemplateText = `@taguser \n${bodyText}`;
