@@ -108,6 +108,8 @@ interface CancellationExecutionRow {
   id: string;
   ticket: string;
   status: string;
+  isMaterialConsumed?: boolean;
+  isApprovalSent?: boolean;
 }
 
 interface CaseAssignmentRow {
@@ -217,7 +219,7 @@ AND Ticket_Number_Read_Only__c IN (
     id: "19",
     name: "Cancellation Requested",
     category: "WorkOrder",
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nAND Status = 'Cancellation Requested'`,
+    soql: `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
     favourite: false,
   },
   {
@@ -898,7 +900,13 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
   const lines = input.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
   const results: CancellationExecutionRow[] = [];
   const seenIds = new Set<string>();
-  let currentHeaders: { idIdx: number; ticketIdx: number; statusIdx: number } | null = null;
+  let currentHeaders: {
+    idIdx: number;
+    ticketIdx: number;
+    statusIdx: number;
+    materialIdx: number;
+    approvalIdx: number;
+  } | null = null;
 
   for (const line of lines) {
     const tokens = parseCSVLine(line);
@@ -912,13 +920,17 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
       t.includes("ticket") ||
       t === "_" ||
       t === "workorder" ||
-      t.includes("status")
+      t.includes("status") ||
+      t.includes("material") ||
+      t.includes("approval")
     );
 
     if (isHeader) {
       let idIdx = -1;
       let ticketIdx = -1;
       let statusIdx = -1;
+      let materialIdx = -1;
+      let approvalIdx = -1;
 
       lowerTokens.forEach((token, idx) => {
         if (token === "id" || token.endsWith(".id") || token === "workorderid") {
@@ -927,11 +939,15 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
           ticketIdx = idx;
         } else if (token.includes("status")) {
           statusIdx = idx;
+        } else if (token.includes("material") || token.includes("consumed")) {
+          materialIdx = idx;
+        } else if (token.includes("approval")) {
+          approvalIdx = idx;
         }
       });
 
       if (idIdx !== -1 || ticketIdx !== -1) {
-        currentHeaders = { idIdx, ticketIdx, statusIdx };
+        currentHeaders = { idIdx, ticketIdx, statusIdx, materialIdx, approvalIdx };
         continue;
       }
     }
@@ -939,6 +955,8 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
     let rowId = "";
     let rowTicket = "";
     let rowStatus = "Canceled";
+    let isMaterialConsumed = false;
+    let isApprovalSent = false;
 
     // 1. Try header mapping
     if (currentHeaders) {
@@ -953,6 +971,14 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
       }
       if (currentHeaders.statusIdx !== -1 && tokens[currentHeaders.statusIdx]) {
         rowStatus = cleanValue(tokens[currentHeaders.statusIdx]) || "Canceled";
+      }
+      if (currentHeaders.materialIdx !== -1 && tokens[currentHeaders.materialIdx]) {
+        const val = cleanValue(tokens[currentHeaders.materialIdx]).toLowerCase();
+        isMaterialConsumed = val === "true" || val === "1" || val === "yes";
+      }
+      if (currentHeaders.approvalIdx !== -1 && tokens[currentHeaders.approvalIdx]) {
+        const val = cleanValue(tokens[currentHeaders.approvalIdx]).toLowerCase();
+        isApprovalSent = val === "true" || val === "1" || val === "yes";
       }
     }
 
@@ -990,11 +1016,28 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
       }
     }
 
+    // 4. Positional fallback for boolean fields when not found via headers
+    if (!isMaterialConsumed && !isApprovalSent && tokens.length >= 5) {
+      tokens.forEach((tok, idx) => {
+        const lower = cleanValue(tok).toLowerCase();
+        if (lower === "true" || lower === "false") {
+          if (idx === 3) isMaterialConsumed = lower === "true";
+          if (idx === 4) isApprovalSent = lower === "true";
+        }
+      });
+    }
+
     if (rowId && rowTicket) {
       const idKey = rowId.toLowerCase();
       if (!seenIds.has(idKey)) {
         seenIds.add(idKey);
-        results.push({ id: rowId, ticket: rowTicket, status: rowStatus });
+        results.push({
+          id: rowId,
+          ticket: rowTicket,
+          status: rowStatus,
+          isMaterialConsumed,
+          isApprovalSent,
+        });
       }
     }
   }
@@ -2781,11 +2824,11 @@ AND Ticket_Numbers__c IN (
   const cancellationQueryBatches = React.useMemo(() => {
     let templateSoql = "";
     if (cancellationType === "CCO") {
-      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     } else if (cancellationType === "NAMO") {
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     } else if (cancellationType === "NON NAMO") {
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     } else if (cancellationType === "Account Check") {
       templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status,Account.Group__c from WorkOrder Where Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
     }
@@ -3749,8 +3792,24 @@ AND Ticket_Numbers__c IN (
     }
   };
 
-  const handleCopy = async (value: string) => {
+  const handleCopy = async (value: string, htmlContent?: string) => {
     if (!value.trim()) return;
+    try {
+      if (htmlContent && typeof ClipboardItem !== "undefined") {
+        const textBlob = new Blob([value], { type: "text/plain" });
+        const htmlBlob = new Blob([htmlContent], { type: "text/html" });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/plain": textBlob,
+            "text/html": htmlBlob,
+          }),
+        ]);
+        toast.success("Copied to clipboard");
+        return;
+      }
+    } catch {
+      // Fallback to writeText
+    }
     await navigator.clipboard.writeText(value);
     toast.success("Copied to clipboard");
   };
@@ -5368,7 +5427,7 @@ BSL22295338      CID-6074821`}
 
                   <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
                     <Textarea
-                      placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "Cancellation Requested"`}
+                      placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Is_Material_Consumed__c"   "Is_Approval_Sent__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "true"   "false"   "Cancellation Requested"`}
                       className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y"
                       value={cancellationExecutionInput}
                       onPaste={handleCancellationResultPaste}
@@ -5553,27 +5612,121 @@ BSL22295338      CID-6074821`}
               </motion.div>
 
               {(() => {
-                const cancellationTotalTickets = uniqueExecutableCancellationRows.length;
+                const cancellationTotalTickets = uniqueExecutableCancellationRows.length || parsedTickets.length;
                 const hasFailedInput = cancellationFailedInput.trim().length > 0;
                 
-                // Extract tickets using regex: first a letter, then numbers
+                // Parse Step 5 failed rows
                 const cancellationFailedTicketsRows = parseCancellationExecutionRows(cancellationFailedInput);
-                  const cancellationFailedTickets = Array.from(new Set(cancellationFailedTicketsRows.map(r => r.ticket)));
-                
+                let failedTicketsList = cancellationFailedTicketsRows.map((r) => r.ticket.trim()).filter(Boolean);
+                if (failedTicketsList.length === 0 && hasFailedInput) {
+                  const matches = cancellationFailedInput.match(SALESFORCE_TICKET_REGEX) || [];
+                  failedTicketsList = matches.map((m) => cleanTicket(m)).filter(Boolean);
+                }
+                const cancellationFailedTickets = Array.from(new Set(failedTicketsList));
                 const cancellationFailedCount = cancellationFailedTickets.length;
-                const cancellationSuccessCount = Math.max(0, cancellationTotalTickets - cancellationFailedTickets.length);
+                const cancellationSuccessCount = Math.max(0, cancellationTotalTickets - cancellationFailedCount);
 
-                const statsText = hasFailedInput
-                  ? `Total Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\nFailed Tickets: ${cancellationFailedCount}`
-                  : `Total Tickets: ${cancellationTotalTickets}`;
+                let mailTemplateText = "";
+                let postTemplateText = "";
+                let mailHtmlText = "";
+                let postHtmlText = "";
 
-                const mailTemplateText = `Dear,\nCancellation has been done successfully.\n\n` +
-                  (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
-                  statsText;
+                if (!hasFailedInput || cancellationFailedTickets.length === 0) {
+                  mailTemplateText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
+                  postTemplateText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
+                  mailHtmlText = `<p>Dear,</p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
+                  postHtmlText = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
+                } else {
+                  // Build Step 3 map by ticket and ID
+                  const step3ByTicket = new Map<string, CancellationExecutionRow>();
+                  const step3ById = new Map<string, CancellationExecutionRow>();
+                  uniqueExecutableCancellationRows.forEach((r) => {
+                    const cleanTkt = cleanTicket(r.ticket).toUpperCase();
+                    if (cleanTkt) step3ByTicket.set(cleanTkt, r);
+                    if (r.id) step3ById.set(r.id.toLowerCase(), r);
+                  });
 
-                const postTemplateText = `@taguser \nCancellation has been done successfully.\n\n` +
-                  (hasFailedInput && cancellationFailedTickets.length > 0 ? `Failed Tickets:\n${cancellationFailedTickets.join("\n")}\n\n` : "") +
-                  statsText;
+                  // Categorize failed tickets
+                  const approvalPendingTickets: string[] = [];
+                  const mrRaisedTickets: string[] = [];
+                  const bothApprovalAndMRTickets: string[] = [];
+                  const failedTickets: string[] = [];
+
+                  for (const tkt of cancellationFailedTickets) {
+                    const key = cleanTicket(tkt).toUpperCase();
+                    const failedRow = cancellationFailedTicketsRows.find(
+                      (r) => cleanTicket(r.ticket).toUpperCase() === key
+                    );
+                    const sfRow =
+                      step3ByTicket.get(key) ||
+                      (failedRow ? step3ById.get(failedRow.id.toLowerCase()) : undefined);
+
+                    const isApproval = sfRow ? Boolean(sfRow.isApprovalSent) : false;
+                    const isMR = sfRow ? Boolean(sfRow.isMaterialConsumed) : false;
+
+                    if (isApproval && isMR) {
+                      bothApprovalAndMRTickets.push(tkt);
+                    } else if (isApproval) {
+                      approvalPendingTickets.push(tkt);
+                    } else if (isMR) {
+                      mrRaisedTickets.push(tkt);
+                    } else {
+                      failedTickets.push(tkt);
+                    }
+                  }
+
+                  const sections: string[] = [];
+                  const htmlSections: string[] = [];
+
+                  if (approvalPendingTickets.length > 0) {
+                    sections.push(
+                      `Appoval pending tickets : \n----------------------------------------\n\n${approvalPendingTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>Appoval pending tickets :</b><br>----------------------------------------<br>${approvalPendingTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (mrRaisedTickets.length > 0) {
+                    sections.push(
+                      `MR raised tickets:\n----------------------------------------\n${mrRaisedTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>MR raised tickets:</b><br>----------------------------------------<br>${mrRaisedTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (bothApprovalAndMRTickets.length > 0) {
+                    sections.push(
+                      `Both approval pending and MR raise\n----------------------------------------\n\n${bothApprovalAndMRTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>Both approval pending and MR raise</b><br>----------------------------------------<br>${bothApprovalAndMRTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (failedTickets.length > 0) {
+                    sections.push(
+                      `Failed ticket\n----------------------------------------\n${failedTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>Failed ticket</b><br>----------------------------------------<br>${failedTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  const instructionsPlainText = `*Kindly note the following instructions:*\n\n*For approval-pending cases:* Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.\n*For MR-raised tickets:* Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.`;
+
+                  const instructionsHtml = `<p><b>Kindly note the following instructions:</b></p>\n<p><b>For approval-pending cases:</b> Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.</p>\n<p><b>For MR-raised tickets:</b> Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.</p>`;
+
+                  const bodyText = `Cancellation has been done successfully.\nTotal Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\n\nFailed tickets are mention below:\n\n${sections.join("\n\n")}\n\n${instructionsPlainText}`;
+
+                  const bodyHtml = `<p>Cancellation has been done successfully.<br>Total Tickets: ${cancellationTotalTickets}<br>Cancelled Tickets: ${cancellationSuccessCount}</p>\n<p>Failed tickets are mention below:</p>\n${htmlSections.join("<br>")}\n${instructionsHtml}`;
+
+                  mailTemplateText = `Dear,\n${bodyText}`;
+                  postTemplateText = `@taguser \n${bodyText}`;
+                  mailHtmlText = `<p>Dear,</p>${bodyHtml}`;
+                  postHtmlText = `<p>@taguser </p>${bodyHtml}`;
+                }
 
                 return (
                   <>
@@ -5589,7 +5742,7 @@ BSL22295338      CID-6074821`}
   <div className="flex items-center gap-3">
   <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Email Template Output</CardTitle>
                             </div>
-                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(mailTemplateText)}>
+                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(mailTemplateText, mailHtmlText)}>
                               <Copy className="h-3.5 w-3.5" /> Copy
                             </Button>
                           </div>
@@ -5615,7 +5768,7 @@ BSL22295338      CID-6074821`}
                             <div className="flex items-center gap-3">
                               <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Post Template Output</CardTitle>
                             </div>
-                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText)}>
+                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText, postHtmlText)}>
                               <Copy className="h-3.5 w-3.5" /> Copy
                             </Button>
                           </div>

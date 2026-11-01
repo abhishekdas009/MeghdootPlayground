@@ -84,48 +84,53 @@ function getMonday(d: Date) {
 }
 
 export async function incrementMetric(input: RecordMetricInput) {
-  const change = input.change ?? 1;
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  
-  const existing = await prisma.dashboardMetric.findUnique({
-    where: { key: input.key },
-  });
-
-  const now = new Date();
-  const thisMonday = getMonday(now);
-  const shouldReset = !existing || existing.lastResetAt < thisMonday;
-
-  await prisma.$transaction([
-    prisma.dashboardMetric.upsert({
+  try {
+    const change = input.change ?? 1;
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    
+    const existing = await prisma.dashboardMetric.findUnique({
       where: { key: input.key },
-      update: {
-        value: { increment: change },
-        weeklyValue: shouldReset ? change : { increment: change },
-        lastResetAt: shouldReset ? now : undefined,
-        label: input.label,
-        category: input.category ?? "general",
-      },
-      create: {
-        key: input.key,
-        label: input.label,
-        value: change,
-        weeklyValue: change,
-        lastResetAt: now,
-        category: input.category ?? "general",
-      },
-    }),
-    prisma.dashboardEvent.create({
-      data: {
-        type: input.key,
-        label: input.label,
-        meta: input.meta || null,
-        module: input.module,
-      },
-    }),
-    prisma.dashboardEvent.deleteMany({
-      where: { createdAt: { lt: thirtyDaysAgo } },
-    }),
-  ]);
+    });
+
+    const now = new Date();
+    const thisMonday = getMonday(now);
+    const shouldReset = !existing || existing.lastResetAt < thisMonday;
+
+    await prisma.$transaction([
+      prisma.dashboardMetric.upsert({
+        where: { key: input.key },
+        update: {
+          value: { increment: change },
+          weeklyValue: shouldReset ? change : { increment: change },
+          lastResetAt: shouldReset ? now : undefined,
+          label: input.label,
+          category: input.category ?? "general",
+        },
+        create: {
+          key: input.key,
+          label: input.label,
+          value: change,
+          weeklyValue: change,
+          lastResetAt: now,
+          category: input.category ?? "general",
+        },
+      }),
+      prisma.dashboardEvent.create({
+        data: {
+          type: input.key,
+          label: input.label,
+          meta: input.meta || null,
+          module: input.module,
+        },
+      }),
+      prisma.dashboardEvent.deleteMany({
+        where: { createdAt: { lt: thirtyDaysAgo } },
+      }),
+    ]);
+  } catch (err) {
+    console.warn("[dashboard-metrics] Database offline, skipping metric persistence:", err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 export async function trackMetricEvent(input: {
@@ -155,43 +160,53 @@ export async function setMetricValue(input: {
   value: number;
   category?: string;
 }) {
-  const existing = await prisma.dashboardMetric.findUnique({
-    where: { key: input.key },
-  });
+  try {
+    const existing = await prisma.dashboardMetric.findUnique({
+      where: { key: input.key },
+    });
 
-  const now = new Date();
-  const thisMonday = getMonday(now);
-  const shouldReset = !existing || existing.lastResetAt < thisMonday;
+    const now = new Date();
+    const thisMonday = getMonday(now);
+    const shouldReset = !existing || existing.lastResetAt < thisMonday;
 
-  await prisma.dashboardMetric.upsert({
-    where: { key: input.key },
-    update: {
-      value: input.value,
-      weeklyValue: shouldReset ? input.value : input.value, // It's a set value, not increment, so just set it.
-      lastResetAt: shouldReset ? now : undefined,
-      label: input.label,
-      category: input.category ?? "general",
-    },
-    create: {
-      key: input.key,
-      label: input.label,
-      value: input.value,
-      weeklyValue: input.value,
-      lastResetAt: now,
-      category: input.category ?? "general",
-    },
-  });
+    await prisma.dashboardMetric.upsert({
+      where: { key: input.key },
+      update: {
+        value: input.value,
+        weeklyValue: shouldReset ? input.value : input.value,
+        lastResetAt: shouldReset ? now : undefined,
+        label: input.label,
+        category: input.category ?? "general",
+      },
+      create: {
+        key: input.key,
+        label: input.label,
+        value: input.value,
+        weeklyValue: input.value,
+        lastResetAt: now,
+        category: input.category ?? "general",
+      },
+    });
+  } catch (err) {
+    console.warn("[dashboard-metrics] Database offline, skipping metric set:", err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 export async function resetDashboardMetrics() {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  await prisma.$transaction([
-    prisma.dashboardMetric.updateMany({
-      data: { value: 0 },
-    }),
-    prisma.dashboardEvent.deleteMany({
-      where: { createdAt: { lt: thirtyDaysAgo } },
-    }),
-  ]);
-  return true;
+  try {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await prisma.$transaction([
+      prisma.dashboardMetric.updateMany({
+        data: { value: 0 },
+      }),
+      prisma.dashboardEvent.deleteMany({
+        where: { createdAt: { lt: thirtyDaysAgo } },
+      }),
+    ]);
+    return true;
+  } catch (err) {
+    console.warn("[dashboard-metrics] Database offline, skipping metric reset:", err instanceof Error ? err.message : err);
+    return false;
+  }
 }

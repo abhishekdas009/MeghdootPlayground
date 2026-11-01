@@ -102,7 +102,7 @@ export function parseCSVLine(line: string): string[] {
 
   // Pre-check for space-separated quotes e.g. "a"  "b" (Workbench export)
   const spaceQuoteRegex = /"([^"]*)"(?:\s+|$)/g;
-  if (!line.includes(',') && !line.includes('\t') && line.includes('"') && /"[^"]*"\s+"[^"]*"/.test(line)) {
+  if (!line.includes(',') && line.includes('"') && /"[^"]*"\s+"[^"]*"/.test(line)) {
     const matches = [...line.matchAll(spaceQuoteRegex)];
     if (matches.length > 1) {
       return matches.map((m) => m[1] ?? '');

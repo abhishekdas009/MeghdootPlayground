@@ -37,7 +37,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
-import Editor, { useMonaco } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 
 interface LibraryQuery {
   id: string;
@@ -280,74 +280,72 @@ const getTagColor = (tag: string) => {
   return tagColors[Math.abs(hash) % tagColors.length];
 };
 
+const setupMonacoSOQL = (monaco: any) => {
+  if (!monaco) return;
+  try {
+    if (!monaco.languages.getLanguages().some((l: any) => l.id === "soql")) {
+      monaco.languages.register({ id: "soql" });
+      monaco.languages.setMonarchTokensProvider("soql", {
+        ignoreCase: true,
+        keywords: [
+          "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "IN", "INCLUDES", "EXCLUDES", "LIKE", "ORDER", "BY", "LIMIT", "OFFSET", "ASC", "DESC", "NULLS", "FIRST", "LAST", "GROUP", "HAVING", "WITH", "DATA", "CATEGORY", "UPDATE", "TRACKING", "VIEWSTAT", "FOR", "REFERENCE", "NULL", "TRUE", "FALSE",
+        ],
+        operators: ["=", "!=", "<", ">", "<=", ">=", ":", "!"],
+        symbols: /[=><!~?:&|+\-*\/\^%]+/,
+        tokenizer: {
+          root: [
+            [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
+            [/'[^']*'/, "string"],
+            [/\d+/, "number"],
+            [/[{}()\[\]]/, "@brackets"],
+            [/@symbols/, { cases: { "@operators": "operator", "@default": "" } }],
+          ],
+        },
+      });
+
+      monaco.languages.registerCompletionItemProvider("soql", {
+        provideCompletionItems: (model: any, position: any) => {
+          const word = model.getWordUntilPosition(position);
+          const range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn,
+          };
+
+          const suggestions = [
+            ...["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "AND", "OR", "IN"].map((k) => ({
+              label: k,
+              kind: monaco.languages.CompletionItemKind.Keyword,
+              insertText: k,
+              range,
+            })),
+            ...["WorkOrder", "Case", "Asset", "Account", "Contact", "ServiceAppointment", "Product2", "User"].map((obj) => ({
+              label: obj,
+              kind: monaco.languages.CompletionItemKind.Class,
+              insertText: obj,
+              range,
+            })),
+            ...["Id", "Name", "Status", "Ticket_Number_Read_Only__c", "CreatedDate", "Subject", "Description", "ParentId", "AccountId"].map((field) => ({
+              label: field,
+              kind: monaco.languages.CompletionItemKind.Field,
+              insertText: field,
+              range,
+            })),
+          ];
+
+          return { suggestions };
+        },
+      });
+    }
+  } catch {
+    // Ignored
+  }
+};
 export default function QueryLibraryPage() {
   const [queries, setQueries] = React.useState<LibraryQuery[]>([]);
   const [isCreatingNewCategory, setIsCreatingNewCategory] = React.useState(false);
-  const monaco = useMonaco();
 
-  React.useEffect(() => {
-    if (monaco) {
-      try {
-        if (!monaco.languages.getLanguages().some((l) => l.id === "soql")) {
-          monaco.languages.register({ id: "soql" });
-          monaco.languages.setMonarchTokensProvider("soql", {
-            ignoreCase: true,
-            keywords: [
-              "SELECT", "FROM", "WHERE", "AND", "OR", "NOT", "IN", "INCLUDES", "EXCLUDES", "LIKE", "ORDER", "BY", "LIMIT", "OFFSET", "ASC", "DESC", "NULLS", "FIRST", "LAST", "GROUP", "HAVING", "WITH", "DATA", "CATEGORY", "UPDATE", "TRACKING", "VIEWSTAT", "FOR", "REFERENCE", "NULL", "TRUE", "FALSE",
-            ],
-            operators: ["=", "!=", "<", ">", "<=", ">=", ":", "!"],
-            symbols: /[=><!~?:&|+\-*\/\^%]+/,
-            tokenizer: {
-              root: [
-                [/[a-zA-Z_]\w*/, { cases: { "@keywords": "keyword", "@default": "identifier" } }],
-                [/'[^']*'/, "string"],
-                [/\d+/, "number"],
-                [/[{}()\[\]]/, "@brackets"],
-                [/@symbols/, { cases: { "@operators": "operator", "@default": "" } }],
-              ],
-            },
-          });
-
-          monaco.languages.registerCompletionItemProvider("soql", {
-            provideCompletionItems: (model, position) => {
-              const word = model.getWordUntilPosition(position);
-              const range = {
-                startLineNumber: position.lineNumber,
-                endLineNumber: position.lineNumber,
-                startColumn: word.startColumn,
-                endColumn: word.endColumn,
-              };
-
-              const suggestions = [
-                ...["SELECT", "FROM", "WHERE", "ORDER BY", "LIMIT", "AND", "OR", "IN"].map((k) => ({
-                  label: k,
-                  kind: monaco.languages.CompletionItemKind.Keyword,
-                  insertText: k,
-                  range,
-                })),
-                ...["WorkOrder", "Case", "Asset", "Account", "Contact", "ServiceAppointment", "Product2", "User"].map((obj) => ({
-                  label: obj,
-                  kind: monaco.languages.CompletionItemKind.Class,
-                  insertText: obj,
-                  range,
-                })),
-                ...["Id", "Name", "Status", "Ticket_Number_Read_Only__c", "CreatedDate", "Subject", "Description", "ParentId", "AccountId"].map((field) => ({
-                  label: field,
-                  kind: monaco.languages.CompletionItemKind.Field,
-                  insertText: field,
-                  range,
-                })),
-              ];
-
-              return { suggestions };
-            },
-          });
-        }
-      } catch (e) {
-        // Ignored
-      }
-    }
-  }, [monaco]);
   const [search, setSearch] = React.useState("");
   const [showForm, setShowForm] = React.useState(false);
   const [editing, setEditing] = React.useState<LibraryQuery | null>(null);
@@ -1040,9 +1038,9 @@ export default function QueryLibraryPage() {
             </Button>
 
             <Link href="/soql-generator">
-              <Button size="sm" className="h-9 px-4 rounded-lg font-bold bg-[#0176d3]/10 text-blue-700 hover:bg-[#0176d3]/20 border border-[#0176d3]/30 shadow-sm gap-1.5 transition-all ml-2 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20 dark:border-blue-500/30">
-                <PlayCircle className="h-3.5 w-3.5" />
-                <span>Launch Workbench</span>
+              <Button size="sm" className="h-9 px-4 rounded-lg font-bold text-white shadow-sm gap-1.5 transition-all ml-2">
+                <PlayCircle className="h-3.5 w-3.5 text-white" />
+                <span className="text-white">Launch Workbench</span>
               </Button>
             </Link>
           </div>
@@ -1242,6 +1240,7 @@ export default function QueryLibraryPage() {
                   </div>
                   <div className="min-h-[180px] rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] overflow-hidden pt-2 pb-2">
                     <Editor
+                      beforeMount={setupMonacoSOQL}
                       height="180px"
                       language="soql"
                       theme="vs-dark"

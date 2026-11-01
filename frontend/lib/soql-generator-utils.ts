@@ -44,6 +44,8 @@ export interface CancellationExecutionRow {
   id: string;
   ticket: string;
   status: string;
+  isMaterialConsumed?: boolean;
+  isApprovalSent?: boolean;
 }
 
 export interface CaseAssignmentRow {
@@ -134,9 +136,9 @@ export const defaultTemplates: Template[] = [
     id: "19",
     name: "Cancellation Requested",
     category: "WorkOrder",
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status
+    soql: `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status
 FROM WorkOrder
-WHERE Ticket_Number_Read_Only__c IN (
+WHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (
 {{tickets}}
 )`,
     favourite: false,
@@ -564,7 +566,11 @@ export function parseCancellationExecutionRows(input: string): CancellationExecu
       const id = row.id || "";
       const ticket = row.ticket_number_read_only__c || row.ticketnumberreadonly__c || "";
       const status = row.status || "";
-      return { id, ticket, status };
+      const rawMaterial = (row.is_material_consumed__c || row.ismaterialconsumed__c || "").toLowerCase();
+      const rawApproval = (row.is_approval_sent__c || row.isapprovalsent__c || "").toLowerCase();
+      const isMaterialConsumed = rawMaterial === "true" || rawMaterial === "1" || rawMaterial === "yes";
+      const isApprovalSent = rawApproval === "true" || rawApproval === "1" || rawApproval === "yes";
+      return { id, ticket, status, isMaterialConsumed, isApprovalSent };
     })
     .filter((row) => row.id && row.ticket && row.status);
 }

@@ -21,6 +21,8 @@ import {
   Users,
   FilePlus,
   Layers3,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDashboardStore, type ActivityEntry } from "@/lib/dashboard-store";
@@ -123,10 +125,54 @@ export function Header() {
     setTheme(nextTheme);
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = (event?: React.MouseEvent) => {
     const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
     const root = document.documentElement;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const doc = document as ViewTransitionDocument;
+    if (typeof doc.startViewTransition === "function" && !prefersReducedMotion) {
+      let x = window.innerWidth / 2;
+      let y = 0;
+      if (event && (event.clientX || event.clientY)) {
+        x = event.clientX;
+        y = event.clientY;
+      } else if (event?.currentTarget) {
+        const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+        x = rect.left + rect.width / 2;
+        y = rect.top + rect.height / 2;
+      }
+
+      const endRadius = Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      );
+
+      const transition = doc.startViewTransition(() => {
+        applyTheme(nextTheme);
+      });
+
+      transition.ready
+        ?.then(() => {
+          document.documentElement.animate(
+            {
+              clipPath: [
+                `circle(0px at ${x}px ${y}px)`,
+                `circle(${endRadius}px at ${x}px ${y}px)`,
+              ],
+            },
+            {
+              duration: 500,
+              easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+              pseudoElement: "::view-transition-new(root)",
+            }
+          );
+        })
+        .catch(() => {
+          applyTheme(nextTheme);
+        });
+      return;
+    }
 
     if (!prefersReducedMotion) {
       root.classList.add("theme-transition");
@@ -316,6 +362,20 @@ export function Header() {
             <span>Search...</span>
           </button>
 
+          {/* Mobile Theme Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="flex md:hidden h-8 w-8 items-center justify-center rounded-full border border-border/70 bg-muted/30 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-all shadow-xs"
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 text-amber-400" />
+            ) : (
+              <Moon className="h-4 w-4 text-sky-600" />
+            )}
+          </button>
+
 
           {/* Theme rail + activity updates */}
           <div className="hidden md:flex items-center gap-2">
@@ -375,7 +435,7 @@ export function Header() {
                 <motion.span
                   aria-hidden="true"
                   animate={{ x: theme === "dark" ? 3 : 39 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 26, mass: 0.8 }}
                   className="absolute flex h-[28px] w-[28px] items-center justify-center rounded-full shadow-sm"
                 >
                     {/* Moon */}
@@ -386,7 +446,7 @@ export function Header() {
                         rotate: theme === "dark" ? 0 : -90,
                         scale: theme === "dark" ? 1 : 0.5
                       }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      transition={{ type: "spring", stiffness: 320, damping: 26 }}
                       className="absolute inset-0 rounded-full bg-[#dcdcdc] overflow-hidden"
                     >
                         {/* Craters */}
@@ -403,7 +463,7 @@ export function Header() {
                         rotate: theme === "light" ? 0 : 90,
                         scale: theme === "light" ? 1 : 0.5
                       }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      transition={{ type: "spring", stiffness: 320, damping: 26 }}
                       className="absolute inset-0 rounded-full bg-[#f8c844] border-[3px] border-[#d8a127]"
                     />
                 </motion.span>

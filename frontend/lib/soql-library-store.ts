@@ -52,7 +52,7 @@ export const DEFAULT_SFDC_QUERIES: Omit<StoredQuery, "createdAt" | "updatedAt">[
     category: "WorkOrder",
     tags: ["cancellation", "status"],
     description: "Filter WorkOrders where Status is currently marked as 'Cancellation Requested'.",
-    soql: "SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)\nAND Status = 'Cancellation Requested'",
+    soql: "SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)",
     favourite: false,
     usageCount: 0,
   },
