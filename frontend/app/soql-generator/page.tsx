@@ -5652,7 +5652,7 @@ BSL22295338      CID-6074821`}
               </motion.div>
 
               {(() => {
-                const cancellationTotalTickets = uniqueExecutableCancellationRows.length || parsedTickets.length;
+                const cancellationTotalTickets = parsedTickets.length || uniqueExecutableCancellationRows.length;
                 const hasFailedInput = cancellationFailedInput.trim().length > 0;
                 
                 // Parse Step 5 failed rows
