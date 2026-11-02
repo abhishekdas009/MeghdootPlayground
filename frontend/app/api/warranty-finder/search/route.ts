@@ -1,23 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
-  getWarrantyModelAliases,
-  isInstallationDateInRange,
+  matchesWarrantyDate,
   matchesWarrantyBranch,
+  matchesWarrantyModel,
   normalizeWarrantyModel,
   parseFinderInstallationDate,
   repairWarrantyText,
 } from '@/lib/warranty';
-
-function matchesWarrantyModel(
-  normalizedModel: string,
-  strippedModel: string,
-  condition: { models: string | null },
-): boolean {
-  const aliasesFromModelsField = getWarrantyModelAliases(condition.models);
-
-  return aliasesFromModelsField.includes(normalizedModel) || aliasesFromModelsField.includes(strippedModel);
-}
 
 export async function POST(request: Request) {
   try {
@@ -42,10 +32,7 @@ export async function POST(request: Request) {
 
     const strippedModel = normalizedModel.replace(/^(?:BO|BI)-/, "");
 
-    // Fetch conditions from the DB
-    // `modelAliases` is the indexed lookup generated during an import. The
-    // `models` condition also supports records edited directly in the database,
-    // where the visible model list may have changed without its child aliases.
+    // Fetch candidate conditions from DB
     const candidateConditions = await prisma.warrantyCondition.findMany({
       where: {
         OR: [
@@ -60,27 +47,27 @@ export async function POST(request: Request) {
 
     const matchedConditions = [];
 
-    // Filter in memory for date and branch
+    // Hierarchical evaluation order:
+    // 1. Installation Date Operator (Between / Greater Than / More Than)
+    // 2. Branch Operator (IN / NOT IN)
+    // 3. Model Operator (IN / Equals)
     for (const cond of candidateConditions) {
-       if (!matchesWarrantyModel(normalizedModel, strippedModel, cond)) {
-         continue;
-       }
+      // 1. First check Installation Date Operator
+      if (!matchesWarrantyDate(dateToSearch, cond.installationDateOperator, cond.installationFrom, cond.installationTo)) {
+        continue;
+      }
 
-       // Check date
-       if (dateToSearch) {
-         if (!isInstallationDateInRange(dateToSearch, cond.installationFrom, cond.installationTo)) {
-           continue;
-         }
-       }
+      // 2. Then check Branch Operator
+      if (!matchesWarrantyBranch(branch, cond.branchOperator, cond.branches)) {
+        continue;
+      }
 
-       // Check branch
-       if (branch && cond.branches && cond.branchOperator) {
-         if (!matchesWarrantyBranch(branch, cond.branchOperator, cond.branches)) {
-           continue;
-         }
-       }
+      // 3. Then check Model Operator
+      if (!matchesWarrantyModel(normalizedModel, cond.modelOperator, cond.models)) {
+        continue;
+      }
 
-       matchedConditions.push(cond);
+      matchedConditions.push(cond);
     }
 
     if (matchedConditions.length > 0) {

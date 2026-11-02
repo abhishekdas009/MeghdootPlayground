@@ -77,17 +77,19 @@ model DashboardEvent {
 }
 
 model WarrantyCondition {
-  id               String    @id @default(cuid())
-  sourceRow        Int?
-  termName         String    @map("WarrantyTermName")
-  duration         Int?      @map("WarrantyDuration")
-  unitOfTime       String?   @map("WarrantyUnitOfTime")
-  installationFrom DateTime? @map("Installation_From__c")
-  installationTo   DateTime? @map("Installation_To__c")
-  branchOperator   String?   @map("Branch_Operator__c")
-  branches         String?   @map("Branch__c")
-  models           String?   @map("Modals__c") @db.Text
-  createdAt        DateTime  @default(now())
+  id                       String    @id @default(cuid())
+  sourceRow                Int?
+  termName                 String    @map("WarrantyTermName")
+  duration                 Int?      @map("WarrantyDuration")
+  unitOfTime               String?   @map("WarrantyUnitOfTime")
+  installationDateOperator String?   @map("Installation_date_operator__c")
+  installationFrom         DateTime? @map("Installation_From__c")
+  installationTo           DateTime? @map("Installation_To__c")
+  branchOperator           String?   @map("Branch_Operator__c")
+  branches                 String?   @map("Branch__c")
+  modelOperator            String?   @map("Model_Operator__c")
+  models                   String?   @map("Modals__c") @db.Text
+  createdAt                DateTime  @default(now())
 
   @@index([installationFrom, installationTo])
   @@map("Warranty_Conditions__c")

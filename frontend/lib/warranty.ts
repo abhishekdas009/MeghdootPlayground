@@ -2,13 +2,21 @@ import Papa from "papaparse";
 
 export const WARRANTY_EXPORT_HEADERS = [
   "Warranty_Term__r.WarrantyTermName",
-  "Warranty_Term__r.WarrantyDuration",
-  "Warranty_Term__r.WarrantyUnitOfTime",
+  "Installation_date_operator__c",
   "Installation_From__c",
   "Installation_To__c",
+  "Warranty_Term__r.WarrantyDuration",
+  "Warranty_Term__r.WarrantyUnitOfTime",
   "Branch_Operator__c",
   "Branch__c",
+  "Model_Operator__c",
   "Modals__c",
+] as const;
+
+export const REQUIRED_WARRANTY_HEADERS = [
+  "Warranty_Term__r.WarrantyTermName",
+  "Warranty_Term__r.WarrantyDuration",
+  "Warranty_Term__r.WarrantyUnitOfTime",
 ] as const;
 
 type WarrantyExportHeader = (typeof WARRANTY_EXPORT_HEADERS)[number];
@@ -20,10 +28,12 @@ export interface ParsedWarrantyCondition {
   termName: string;
   duration: number;
   unitOfTime: string;
+  installationDateOperator: string | null;
   installationFrom: Date | null;
   installationTo: Date | null;
   branchOperator: BranchOperator | null;
   branches: string | null;
+  modelOperator: string | null;
   models: string | null;
   modelAliases: string[];
 }
@@ -258,23 +268,115 @@ export function isInstallationDateInRange(
   return true;
 }
 
-export function matchesWarrantyBranch(
-  branch: string,
-  branchOperator: string | null,
-  branches: string | null,
+export function matchesWarrantyDate(
+  installationDate: Date | null,
+  installationDateOperator: string | null | undefined,
+  installationFrom: Date | null | undefined,
+  installationTo: Date | null | undefined,
 ): boolean {
-  const operator = parseBranchOperator(branchOperator ?? "");
-  if (operator === null) return true;
-  if (operator === "INVALID" || !branch.trim()) return false;
+  if (!installationDate) {
+    return true;
+  }
+
+  const toCalendarDay = (date: Date) => Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+  );
+
+  const installDay = toCalendarDay(installationDate);
+  const fromDay = installationFrom ? toCalendarDay(installationFrom) : null;
+  const toDay = installationTo ? toCalendarDay(installationTo) : null;
+
+  const rawOp = (installationDateOperator || "").trim().toUpperCase();
+
+  // "Between"
+  if (rawOp === "BETWEEN") {
+    if (fromDay !== null && installDay < fromDay) return false;
+    if (toDay !== null && installDay > toDay) return false;
+    return true;
+  }
+
+  // "More Than" / "Greater Than"
+  if (rawOp === "MORE THAN" || rawOp === "GREATER THAN" || rawOp === ">" || rawOp === ">=") {
+    if (fromDay !== null && installDay < fromDay) return false;
+    return true;
+  }
+
+  // "Less Than"
+  if (rawOp === "LESS THAN" || rawOp === "<" || rawOp === "<=") {
+    if (toDay !== null && installDay > toDay) return false;
+    if (fromDay !== null && installDay > fromDay) return false;
+    return true;
+  }
+
+  // No operator specified: standard range check if bounds exist
+  if (fromDay !== null && installDay < fromDay) return false;
+  if (toDay !== null && installDay > toDay) return false;
+  return true;
+}
+
+export function matchesWarrantyBranch(
+  branch: string | null | undefined,
+  branchOperator: string | null | undefined,
+  branches: string | null | undefined,
+): boolean {
+  if (!branch || !branch.trim()) {
+    return true;
+  }
+
+  const op = (branchOperator || "").trim().toUpperCase();
+  if (!op || !branches || !branches.trim()) {
+    return true;
+  }
 
   const branchValues = parseWarrantyBranches(branches);
   const containsBranch = branchValues.includes(normalizeWarrantyBranch(branch));
-  return operator === "IN" ? containsBranch : !containsBranch;
+
+  if (op === "IN") {
+    return containsBranch;
+  }
+  if (op === "NOT IN") {
+    return !containsBranch;
+  }
+  if (op === "EQUALS" || op === "=") {
+    return containsBranch;
+  }
+  if (op === "NOT EQUALS" || op === "!=") {
+    return !containsBranch;
+  }
+
+  return true;
+}
+
+export function matchesWarrantyModel(
+  searchedModel: string,
+  modelOperator: string | null | undefined,
+  conditionModels: string | null | undefined,
+): boolean {
+  if (!conditionModels || !conditionModels.trim()) {
+    return false;
+  }
+
+  const normalizedModel = normalizeWarrantyModel(searchedModel);
+  const strippedModel = normalizedModel.replace(/^(?:BO|BI)-/, "");
+
+  const aliases = getWarrantyModelAliases(conditionModels);
+  const containsModel = aliases.includes(normalizedModel) || aliases.includes(strippedModel);
+
+  const op = (modelOperator || "").trim().toUpperCase();
+
+  if (op === "NOT IN" || op === "NOT EQUALS" || op === "!=") {
+    return !containsModel;
+  }
+
+  // "IN", "EQUALS", "=", or default/empty with models present
+  return containsModel;
 }
 
 function validateHeaders(headers: string[]): string | null {
-  const missingHeaders = WARRANTY_EXPORT_HEADERS.filter(
-    (header) => !headers.includes(header)
+  const missingHeaders = REQUIRED_WARRANTY_HEADERS.filter(
+    (header) => !headers.includes(header) && !headers.includes(header.split(".").pop()!)
   );
 
   if (missingHeaders.length === 0) return null;
@@ -282,8 +384,11 @@ function validateHeaders(headers: string[]): string | null {
   return `The file is missing the following required headers: ${missingHeaders.join(", ")}.`;
 }
 
-function valueAt(row: Record<string, string>, header: WarrantyExportHeader): string {
-  return cleanCell(row[header]);
+function valueAt(row: Record<string, string>, header: string): string {
+  if (row[header] !== undefined) return cleanCell(row[header]);
+  const baseHeader = header.split(".").pop();
+  if (baseHeader && row[baseHeader] !== undefined) return cleanCell(row[baseHeader]);
+  return "";
 }
 
 export function parseWarrantyImport(value: unknown): WarrantyImportParseResult {
@@ -344,10 +449,12 @@ export function parseWarrantyImport(value: unknown): WarrantyImportParseResult {
     const termName = valueAt(row, "Warranty_Term__r.WarrantyTermName");
     const durationValue = valueAt(row, "Warranty_Term__r.WarrantyDuration");
     const unitOfTime = valueAt(row, "Warranty_Term__r.WarrantyUnitOfTime");
+    const installationDateOperatorValue = valueAt(row, "Installation_date_operator__c");
     const installationFromValue = valueAt(row, "Installation_From__c");
     const installationToValue = valueAt(row, "Installation_To__c");
     const branchOperatorValue = valueAt(row, "Branch_Operator__c");
     const branchesValue = valueAt(row, "Branch__c");
+    const modelOperatorValue = valueAt(row, "Model_Operator__c");
     const modelsValue = valueAt(row, "Modals__c");
     if (!termName) {
       errors.push(`Row ${sourceRow}: WarrantyTermName is required.`);
@@ -397,10 +504,12 @@ export function parseWarrantyImport(value: unknown): WarrantyImportParseResult {
       termName,
       duration: Number.parseInt(durationValue, 10),
       unitOfTime,
+      installationDateOperator: installationDateOperatorValue || null,
       installationFrom: installationFrom?.date ?? null,
       installationTo: installationTo?.date ?? null,
       branchOperator: branchOperator === "INVALID" ? null : branchOperator,
       branches: branchesValue || null,
+      modelOperator: modelOperatorValue || null,
       models: modelsValue || null,
       modelAliases: modelAliases.aliases,
     });

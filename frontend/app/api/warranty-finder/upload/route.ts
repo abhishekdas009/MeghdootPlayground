@@ -84,10 +84,12 @@ export async function POST(request: Request) {
           termName: cond.termName,
           duration: cond.duration,
           unitOfTime: cond.unitOfTime,
+          installationDateOperator: cond.installationDateOperator,
           installationFrom: cond.installationFrom,
           installationTo: cond.installationTo,
           branchOperator: cond.branchOperator,
           branches: cond.branches,
+          modelOperator: cond.modelOperator,
           models: cond.models
         }))
       })

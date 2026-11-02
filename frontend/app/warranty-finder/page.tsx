@@ -192,7 +192,7 @@ export default function WarrantyFinderPage() {
   const [showQueryModal, setShowQueryModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const soqlQuery = activeTab === 'model'
-    ? "SELECT Warranty_Term__r.WarrantyTermName, Installation_From__c, Installation_To__c, Warranty_Term__r.WarrantyDuration, Warranty_Term__r.WarrantyUnitOfTime, Branch_Operator__c, Branch__c, Modals__c FROM Warranty_Conditions__c WHERE Warranty_Term__r.IsActive = true"
+    ? "SELECT Warranty_Term__r.WarrantyTermName, Installation_date_operator__c, Installation_From__c, Installation_To__c, Warranty_Term__r.WarrantyDuration, Warranty_Term__r.WarrantyUnitOfTime, Branch_Operator__c, Branch__c, Model_Operator__c, Modals__c FROM Warranty_Conditions__c WHERE Warranty_Term__r.IsActive = true"
     : "SELECT Id, Product_Sub_Family__c, Product_Sub_Family_Operator__c, Warranty_Term__r.WarrantyTermName FROM Warranty_Conditions__c WHERE Warranty_Term__r.IsActive = true";
 
   useEffect(() => {
