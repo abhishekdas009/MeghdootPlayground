@@ -12,8 +12,8 @@ export async function GET() {
     
     for (const cond of conditions) {
       if (!cond.models) continue;
-      // split by comma, clean whitespace, remove empty
-      const parts = cond.models.split(',').map(m => m.trim().replace(/[\s\u00A0]+/g, '')).filter(Boolean);
+      // split by comma, newline, semicolon, clean whitespace, remove empty
+      const parts = cond.models.split(/[,;\r\n]+/).map(m => m.trim().replace(/[\s\u00A0]+/g, '')).filter(Boolean);
       for (const part of parts) {
         uniqueModels.add(part);
       }

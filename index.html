@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Salesforce SOQL template engine and API for dynamic query parameterization, batch parsing, and automated Excel export.">
+  <title>Meghdoot | Salesforce SOQL Templating Engine &amp; API</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;500;600&family=Host+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./landing.css">
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header class="site-nav">
+    <div class="container nav-inner">
+      <div class="brand-group">
+        <a href="/" class="brand-mark">
+          <span class="brand-symbol" aria-hidden="true"></span>
+          <span>Meghdoot</span>
+        </a>
+        <a href="#search" class="nav-search-pill">
+          <span>Search endpoints</span>
+          <kbd class="nav-kbd">/</kbd>
+        </a>
+      </div>
+
+      <nav aria-label="Primary navigation">
+        <ul class="nav-links">
+          <li><a href="#endpoints" class="nav-link">Endpoints</a></li>
+          <li><a href="#benchmarks" class="nav-link">Telemetry</a></li>
+          <li><a href="#docs" class="nav-link">Documentation</a></li>
+          <li><a href="#signup" class="btn btn-primary">Get API key</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content">
+    <!-- Hero Section (Stage Posture) -->
+    <section class="hero-stage">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <h1 class="hero-head">Salesforce SOQL templating at wire speed</h1>
+          <p class="hero-lead">Bind parameters dynamically, parse relational models, and stream formatted Excel reports.</p>
+
+          <div class="hero-actions">
+            <a href="#signup" class="btn btn-primary">Get free API key</a>
+            <a href="#docs" class="btn btn-secondary">Read API specs</a>
+          </div>
+
+          <span class="hero-terms">Free tier grants 50,000 monthly template compilations and Excel exports.</span>
+        </div>
+
+        <!-- Command Workbench Visual -->
+        <div class="hero-visual" aria-label="Meghdoot SOQL template compiler workbench">
+          <div class="workbench-bar">
+            <div class="workbench-tabs">
+              <span class="workbench-tab is-active">POST /api/v1/query/compile</span>
+              <span class="workbench-tab">GET /stream/excel</span>
+            </div>
+            <div class="telemetry-strip">
+              <span class="telemetry-tag">200 ok</span>
+              <span class="telemetry-val">1.4ms compile</span>
+              <span class="telemetry-val">8.2mb memory</span>
+            </div>
+          </div>
+
+          <div class="workbench-body">
+            <!-- Parameter Definition Pane (Amber / Human Input) -->
+            <div class="workbench-pane">
+              <div class="pane-meta">
+                <span class="pane-label">Template definition &amp; bound parameters</span>
+                <span class="pane-badge badge-amber">developer input</span>
+              </div>
+              <pre class="code-block"><code><span class="code-keyword">SELECT</span> Id, Status, WorkOrderNumber, CreatedDate
+<span class="code-keyword">FROM</span> WorkOrder
+<span class="code-keyword">WHERE</span> Status != <span class="code-string">'Completed'</span>
+  <span class="code-keyword">AND</span> Ticket_Number__c <span class="code-keyword">IN</span> (<span class="code-param">{{tickets}}</span>)</code></pre>
+            </div>
+
+            <!-- Execution Telemetry Pane (Cool Blue / Machine) -->
+            <div class="workbench-stream">
+              <div class="pane-meta">
+                <span class="pane-label">Streaming relational response</span>
+                <span class="pane-badge badge-cool">engine telemetry</span>
+              </div>
+              <table class="stream-table">
+                <thead>
+                  <tr>
+                    <th>Record ID</th>
+                    <th>Ticket ref</th>
+                    <th>Status</th>
+                    <th>Resolved duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="num">0WO5g000003K8xGAAS</td>
+                    <td>T-88910</td>
+                    <td>In Progress</td>
+                    <td class="num">42ms</td>
+                  </tr>
+                  <tr>
+                    <td class="num">0WO5g000003K8xHAAS</td>
+                    <td>T-88911</td>
+                    <td>Pending Parts</td>
+                    <td class="num">19ms</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Footer Command Bar -->
+            <div class="workbench-foot">
+              <span>cURL execution</span>
+              <code class="curl-snippet">curl -s -X POST https://api.meghdoot.io/v1/compile -d @query.json</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>

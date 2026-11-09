@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         })),
       });
     } else {
-      return NextResponse.json({ success: false, message: 'No matching warranty term found for this product sub family.' });
+      return NextResponse.json({ success: false, message: `Kindly connect with SSG team for Warranty Term Confirmation for the product sub family : ${trimmedSubFamily}` });
     }
   } catch (error) {
     console.error('Error searching product sub family data:', error);

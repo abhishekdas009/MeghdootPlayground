@@ -99,7 +99,7 @@ export function Sidebar() {
             aria-current={isActive ? "page" : undefined}
             data-active={isActive ? "true" : undefined}
             className={cn(
-              "sidebar-nav-link group relative flex items-center rounded-xl border border-transparent text-[13px] font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              "sidebar-nav-link group relative flex items-center rounded-xl border border-transparent text-[13px] font-bold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
               isCompact ? "w-[50px] h-[50px] justify-center p-0 gap-0 mx-auto" : "min-h-[44px] w-full px-3 py-2.5 gap-3",
               isActive
                 ? "sidebar-nav-link--active font-extrabold"
@@ -110,7 +110,7 @@ export function Sidebar() {
             {/* Icon box */}
             <div
               className={cn(
-                "sidebar-nav-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-all duration-200 group-hover:scale-110",
+                "sidebar-nav-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 group-hover:scale-110",
                 isActive
                   ? iconBg
                   : "text-muted-foreground group-hover:text-foreground bg-transparent group-hover:bg-muted/40"
@@ -161,12 +161,12 @@ export function Sidebar() {
         {/* Workspace identity */}
         <div
           className={cn(
-            "flex items-center justify-between gap-2 rounded-xl p-2 bg-background/40 backdrop-blur-sm border border-border/30 shadow-none transition-all",
+            "flex items-center justify-between gap-2 rounded-xl p-2 bg-background/40 backdrop-blur-sm border border-border/30 shadow-none transition-colors duration-150",
             isCompact ? "flex-col justify-center p-1.5 gap-1.5" : ""
           )}
         >
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-[#0176d3]/30 overflow-hidden">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-primary/30 overflow-hidden">
             <Image
               src="/logo%20white.png"
               alt="Meghdoot Logo"
@@ -185,8 +185,8 @@ export function Sidebar() {
           {(!isCompact || isMobile) && (
             <div className="min-w-0 flex-1 leading-tight">
               <div className="text-xs font-extrabold text-foreground truncate">Salesforce Team</div>
-              <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 truncate flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="text-[10px] font-sans text-emerald-600 dark:text-emerald-400 truncate flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
                 <span>PostgreSQL DB</span>
               </div>
             </div>
@@ -200,7 +200,7 @@ export function Sidebar() {
           type="button"
           onClick={toggleSidebar}
           className={cn(
-            "flex min-h-[36px] w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground transition-all duration-200 hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+            "flex min-h-[36px] w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             isCompact ? "justify-center px-0" : ""
           )}
           aria-label={sidebarCollapsed ? "Expand and pin sidebar" : "Collapse sidebar"}
@@ -232,10 +232,10 @@ export function Sidebar() {
         onMouseEnter={onSidebarHoverStart}
         onMouseLeave={onSidebarHoverEnd}
         className={cn(
-          "desktop-icon-dock fixed left-0 top-[var(--app-header-height)] hidden h-[calc(100dvh-var(--app-header-height))] flex-col overflow-hidden border-r transition-all duration-200 md:flex",
+          "desktop-icon-dock fixed left-0 top-[var(--app-header-height)] hidden h-[calc(100dvh-var(--app-header-height))] flex-col overflow-hidden border-r transition-colors duration-150 md:flex",
           sidebarCollapsed && sidebarHovered
-            ? "z-40 bg-background/95 dark:bg-[#070b14]/95 backdrop-blur-2xl border-border/80 shadow-2xl shadow-black/25 dark:shadow-black/75"
-            : "z-30 bg-background/45 backdrop-blur-xl border-border/40 shadow-[1px_0_0_rgb(255_255_255_/_0.03)]"
+            ? "z-40 bg-background/95 dark:bg-card backdrop-blur-2xl border-border/80 shadow-2xl shadow-black/25 dark:shadow-black/75"
+            : "z-30 bg-background/45 backdrop-blur-xl border-border/40 border-r border-border"
         )}
       >
         {/* Nav items container */}
@@ -268,7 +268,7 @@ export function Sidebar() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-              className="fixed inset-y-0 left-0 z-50 flex w-[min(19rem,calc(100vw-2rem))] flex-col overflow-hidden border-r border-border/20 bg-card/90 dark:bg-[#07080c]/95 dark:border-white/10 backdrop-blur-2xl pt-[env(safe-area-inset-top)] shadow-2xl md:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-[min(19rem,calc(100vw-2rem))] flex-col overflow-hidden border-r border-border/20 bg-card/90 dark:bg-card dark:border-white/10 backdrop-blur-2xl pt-[env(safe-area-inset-top)] shadow-2xl md:hidden"
             >
               {/* Mobile Header with Logo and Close X */}
               <div className="flex min-h-16 items-center justify-between border-b border-border/20 px-4 bg-transparent">
@@ -291,14 +291,14 @@ export function Sidebar() {
                     <span className="truncate text-lg font-extrabold text-foreground tracking-tight">
                       Meghdoot
                     </span>
-                    <span className="text-[11px] font-extrabold text-[#0176d3] uppercase tracking-wider">
+                    <span className="text-[11px] font-extrabold text-primary ">
                       Lightning v2.4
                     </span>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground border border-border/60 bg-card shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0176d3]/50"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted hover:text-foreground border border-border/60 bg-card shadow-2xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                   onClick={() => setMobileSidebarOpen(false)}
                   aria-label="Close navigation"
                 >

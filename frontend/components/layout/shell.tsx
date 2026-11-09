@@ -4,6 +4,9 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
+import { MultiTaskingDock } from "@/components/layout/multitasking-dock";
+import { KeyboardShortcutsModal } from "@/components/layout/keyboard-shortcuts-modal";
+import { WallpaperModal } from "@/components/layout/wallpaper-modal";
 import { AnimatedBackground } from "@/components/shared/animated-background";
 import { useUIStore } from "@/store/ui-store";
 import { cn } from "@/lib/utils";
@@ -122,6 +125,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {children}
         </motion.div>
       </main>
+      <MultiTaskingDock />
+      <KeyboardShortcutsModal />
+      <WallpaperModal />
     </div>
   );
 }

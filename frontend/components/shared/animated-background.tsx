@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useUIStore } from "@/store/ui-store";
 
 interface AuroraRay {
   xOffset: number;
@@ -38,8 +39,14 @@ interface Ripple {
 }
 
 export function AnimatedBackground() {
+  const [mounted, setMounted] = React.useState(false);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [isDark, setIsDark] = React.useState(true);
+  const { wallpaperId, wallpaperOpacity, wallpaperSpeed } = useUIStore();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Synchronize with document dark class
   React.useEffect(() => {
@@ -80,6 +87,10 @@ export function AnimatedBackground() {
   const ripplesRef = React.useRef<Ripple[]>([]);
 
   React.useEffect(() => {
+    if (!mounted) return;
+    const isAnimated = ["aurora", "starfield", "cyber-grid", "fluid-plasma"].includes(wallpaperId);
+    if (!isAnimated) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -89,6 +100,8 @@ export function AnimatedBackground() {
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
     let time = 0;
+
+    const speedMultiplier = wallpaperSpeed === "paused" ? 0 : wallpaperSpeed === "slow" ? 0.35 : 1.0;
 
     const handleResize = () => {
       if (!canvas) return;
@@ -105,7 +118,6 @@ export function AnimatedBackground() {
       m.x = e.clientX;
       m.y = e.clientY;
 
-      // Soft ionized trail on quick cursor motion
       const speed = Math.hypot(m.vx, m.vy);
       if (speed > 16 && Math.random() < 0.25) {
         ripplesRef.current.push({
@@ -152,18 +164,16 @@ export function AnimatedBackground() {
     window.addEventListener("mouseup", handleMouseUp);
     window.addEventListener("mouseleave", handleMouseLeave);
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // PRE-ALLOCATED ASSETS (POLAR STARS & PLASMA MOTES)
-    // ──────────────────────────────────────────────────────────────────────────
-    const starCount = 65;
+    // Asset Allocations
+    const starCount = wallpaperId === "starfield" ? 160 : 65;
     const stars: Star[] = [];
     for (let i = 0; i < starCount; i++) {
       stars.push({
         x: Math.random() * width,
-        y: Math.random() * (height * 0.7),
-        r: Math.random() * 1.3 + 0.4,
-        baseAlpha: Math.random() * 0.5 + 0.2,
-        twinkleSpeed: Math.random() * 1.8 + 0.8,
+        y: Math.random() * height,
+        r: Math.random() * 1.5 + 0.4,
+        baseAlpha: Math.random() * 0.6 + 0.2,
+        twinkleSpeed: Math.random() * 2.0 + 0.6,
         phase: Math.random() * Math.PI * 2,
       });
     }
@@ -185,32 +195,29 @@ export function AnimatedBackground() {
       });
     }
 
-    // Pre-allocated ray phases for natural curtain striation
     const curtainRays: AuroraRay[] = [];
     for (let i = 0; i < 90; i++) {
       curtainRays.push({
-        xOffset: (i / 90),
+        xOffset: i / 90,
         heightMult: 0.6 + Math.random() * 0.8,
         phase: Math.random() * Math.PI * 2,
         speed: 1.2 + Math.random() * 1.4,
       });
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // MAIN 60FPS RENDER LOOP: AURORA BOREALIS CURTAINS
-    // ──────────────────────────────────────────────────────────────────────────
-    const render = () => {
-      time += 0.007;
-
-      // 1. Polar Ambient Base Wash
+    // ── AURORA BOREALIS ──
+    const renderAurora = () => {
       if (isDark) {
         ctx.fillStyle = "#030408";
         ctx.fillRect(0, 0, width, height);
 
-        // Soft deep atmospheric glow in the upper stratosphere
         const ambientGrad = ctx.createRadialGradient(
-          width * 0.5, height * 0.35, 100,
-          width * 0.5, height * 0.35, Math.max(width, height) * 0.85
+          width * 0.5,
+          height * 0.35,
+          100,
+          width * 0.5,
+          height * 0.35,
+          Math.max(width, height) * 0.85
         );
         ambientGrad.addColorStop(0, "rgba(6, 30, 48, 0.45)");
         ambientGrad.addColorStop(0.5, "rgba(8, 16, 32, 0.25)");
@@ -221,10 +228,13 @@ export function AnimatedBackground() {
         ctx.fillStyle = "#f8fafc";
         ctx.fillRect(0, 0, width, height);
 
-        // Soft luminous morning polar wash in light theme
         const lightGrad = ctx.createRadialGradient(
-          width * 0.5, height * 0.3, 100,
-          width * 0.5, height * 0.3, Math.max(width, height) * 0.9
+          width * 0.5,
+          height * 0.3,
+          100,
+          width * 0.5,
+          height * 0.3,
+          Math.max(width, height) * 0.9
         );
         lightGrad.addColorStop(0, "rgba(238, 246, 255, 0.65)");
         lightGrad.addColorStop(0.6, "rgba(241, 245, 249, 0.45)");
@@ -233,7 +243,6 @@ export function AnimatedBackground() {
         ctx.fillRect(0, 0, width, height);
       }
 
-      // 2. Polar Twinkling Stars (visible in dark mode & softly in light)
       if (isDark) {
         for (let i = 0; i < stars.length; i++) {
           const s = stars[i]!;
@@ -245,11 +254,8 @@ export function AnimatedBackground() {
         }
       }
 
-      // 3. Multi-Layered Aurora Borealis Curtains
       const m = mouseRef.current;
-
       const layers = [
-        // Layer 1: High-Altitude Ionized Violet & Indigo Curtain
         {
           baseYRatio: 0.28,
           amp: 68,
@@ -261,7 +267,6 @@ export function AnimatedBackground() {
           rayCol: isDark ? "#c084fc" : "#7c3aed",
           rayHeight: 95,
         },
-        // Layer 2: Signature Arctic Emerald Green Curtain (Strongest O2 emission line)
         {
           baseYRatio: 0.44,
           amp: 90,
@@ -273,21 +278,19 @@ export function AnimatedBackground() {
           rayCol: isDark ? "#34d399" : "#059669",
           rayHeight: 120,
         },
-        // Layer 3: Vibrant Glacial Cyan & Aquamarine Fold
         {
           baseYRatio: 0.58,
           amp: 74,
           freq: 0.0034,
           speed: 1.25,
-          alpha: isDark ? 0.32 : 0.20,
+          alpha: isDark ? 0.32 : 0.2,
           colStart: isDark ? "rgba(56, 189, 248, " : "rgba(2, 132, 199, ",
           colEnd: isDark ? "rgba(6, 182, 212, " : "rgba(14, 165, 233, ",
           rayCol: isDark ? "#38bdf8" : "#0284c7",
           rayHeight: 85,
         },
-        // Layer 4: Deep Ethereal Magenta / Polar Edge Glow
         {
-          baseYRatio: 0.70,
+          baseYRatio: 0.7,
           amp: 55,
           freq: 0.0025,
           speed: 0.7,
@@ -306,7 +309,6 @@ export function AnimatedBackground() {
 
         const stepX = 14;
         for (let x = 0; x <= width + stepX; x += stepX) {
-          // Interactive cursor pull & organic fluid displacement
           let mouseDisplace = 0;
           if (m.x !== -1000) {
             const dx = Math.abs(x - m.x);
@@ -316,7 +318,6 @@ export function AnimatedBackground() {
             }
           }
 
-          // Multi-harmonic undulating wave formulation
           const wave1 = Math.sin(x * layer.freq + time * layer.speed + layerIdx * 1.5) * layer.amp;
           const wave2 = Math.cos(x * layer.freq * 1.7 - time * 0.8 + layerIdx) * (layer.amp * 0.35);
           const wave3 = Math.sin(x * layer.freq * 0.5 + time * 0.4) * (layer.amp * 0.2);
@@ -329,7 +330,6 @@ export function AnimatedBackground() {
         ctx.lineTo(width, height);
         ctx.closePath();
 
-        // Aurora Curtain Volumetric Vertical Gradient
         const curtainGrad = ctx.createLinearGradient(
           0,
           height * layer.baseYRatio - layer.amp,
@@ -344,13 +344,11 @@ export function AnimatedBackground() {
         ctx.fillStyle = curtainGrad;
         ctx.fill();
 
-        // Vertical Folding Striations (Auroral Rays along geomagnetic lines)
         const rayStride = 3;
         for (let i = 0; i < points.length; i += rayStride) {
           const pt = points[i]!;
           const rayIndex = (i + layerIdx * 17) % curtainRays.length;
           const rayData = curtainRays[rayIndex]!;
-
           const shimmer = Math.sin(time * rayData.speed + rayData.phase) * 0.35 + 0.65;
           const currentRayH = layer.rayHeight * rayData.heightMult * shimmer;
 
@@ -370,29 +368,15 @@ export function AnimatedBackground() {
         }
       });
 
-      // 4. Floating Ionized Plasma Motes
       for (let i = 0; i < motes.length; i++) {
         const mote = motes[i]!;
-        mote.x += mote.vx;
-        mote.y += mote.vy;
+        mote.x += mote.vx * speedMultiplier;
+        mote.y += mote.vy * speedMultiplier;
 
-        // Wrap around boundaries
         if (mote.x < 0) mote.x = width;
         if (mote.x > width) mote.x = 0;
         if (mote.y < 0) mote.y = height;
         if (mote.y > height) mote.y = 0;
-
-        // Mouse deflection / attraction
-        if (m.x !== -1000) {
-          const dx = mote.x - m.x;
-          const dy = mote.y - m.y;
-          const dist = Math.hypot(dx, dy);
-          if (dist < m.radius && dist > 1) {
-            const force = (1 - dist / m.radius) * 0.45;
-            mote.x += (dx / dist) * force * 1.5;
-            mote.y += (dy / dist) * force * 1.5;
-          }
-        }
 
         ctx.beginPath();
         ctx.arc(mote.x, mote.y, mote.size, 0, Math.PI * 2);
@@ -402,8 +386,130 @@ export function AnimatedBackground() {
         ctx.fill();
         ctx.globalAlpha = 1.0;
       }
+    };
 
-      // 5. Click & Velocity Shockwave Ripples
+    // ── DEEP SPACE COSMOS ──
+    const renderStarfield = () => {
+      ctx.fillStyle = isDark ? "#020308" : "#f1f5f9";
+      ctx.fillRect(0, 0, width, height);
+
+      const nebulae = [
+        { x: width * 0.25, y: height * 0.3, r: width * 0.4, color: isDark ? "rgba(99, 102, 241, 0.18)" : "rgba(199, 210, 254, 0.4)" },
+        { x: width * 0.75, y: height * 0.65, r: width * 0.45, color: isDark ? "rgba(168, 85, 247, 0.14)" : "rgba(233, 213, 255, 0.35)" },
+        { x: width * 0.5, y: height * 0.85, r: width * 0.35, color: isDark ? "rgba(14, 165, 233, 0.15)" : "rgba(186, 230, 253, 0.35)" },
+      ];
+
+      nebulae.forEach((neb) => {
+        const rad = ctx.createRadialGradient(neb.x, neb.y, 10, neb.x, neb.y, neb.r);
+        rad.addColorStop(0, neb.color);
+        rad.addColorStop(1, "transparent");
+        ctx.fillStyle = rad;
+        ctx.fillRect(0, 0, width, height);
+      });
+
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i]!;
+        s.y += 0.15 * speedMultiplier;
+        if (s.y > height) s.y = 0;
+
+        const twinkle = Math.sin(time * s.twinkleSpeed + s.phase) * 0.4 + 0.6;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = isDark
+          ? `rgba(240, 249, 255, ${s.baseAlpha * twinkle})`
+          : `rgba(30, 58, 138, ${s.baseAlpha * twinkle * 0.6})`;
+        ctx.fill();
+      }
+    };
+
+    // ── CYBERNETIC BLUEPRINT ──
+    const renderCyberGrid = () => {
+      ctx.fillStyle = isDark ? "#030712" : "#f8fafc";
+      ctx.fillRect(0, 0, width, height);
+
+      const horizonY = height * 0.48;
+      const gridSize = 50;
+
+      ctx.strokeStyle = isDark ? "rgba(2, 132, 199, 0.22)" : "rgba(2, 132, 199, 0.18)";
+      ctx.lineWidth = 1;
+
+      const numLines = Math.floor(width / gridSize) + 8;
+      for (let i = -4; i <= numLines; i++) {
+        const xBottom = i * gridSize;
+        const xTop = width * 0.5 + (xBottom - width * 0.5) * 0.2;
+        ctx.beginPath();
+        ctx.moveTo(xTop, horizonY);
+        ctx.lineTo(xBottom, height);
+        ctx.stroke();
+      }
+
+      const speedOffset = (time * 40 * speedMultiplier) % gridSize;
+      for (let y = horizonY; y < height; y += (y - horizonY) * 0.18 + 8) {
+        const currentY = y + speedOffset * ((y - horizonY) / (height - horizonY));
+        if (currentY <= height) {
+          ctx.beginPath();
+          ctx.moveTo(0, currentY);
+          ctx.lineTo(width, currentY);
+          ctx.stroke();
+        }
+      }
+
+      const horizonGrad = ctx.createLinearGradient(0, horizonY - 40, 0, horizonY + 80);
+      horizonGrad.addColorStop(0, "transparent");
+      horizonGrad.addColorStop(0.5, isDark ? "rgba(56, 189, 248, 0.35)" : "rgba(2, 132, 199, 0.25)");
+      horizonGrad.addColorStop(1, "transparent");
+      ctx.fillStyle = horizonGrad;
+      ctx.fillRect(0, horizonY - 40, width, 120);
+    };
+
+    // ── AMBIENT PLASMA FLOW ──
+    const renderFluidPlasma = () => {
+      ctx.fillStyle = isDark ? "#05070f" : "#f8fafc";
+      ctx.fillRect(0, 0, width, height);
+
+      const orbs = [
+        {
+          x: width * 0.3 + Math.sin(time * 0.8) * 120,
+          y: height * 0.4 + Math.cos(time * 0.7) * 80,
+          r: width * 0.45,
+          color: isDark ? "rgba(236, 72, 153, 0.22)" : "rgba(244, 114, 182, 0.35)",
+        },
+        {
+          x: width * 0.7 + Math.cos(time * 0.6) * 100,
+          y: height * 0.6 + Math.sin(time * 0.8) * 90,
+          r: width * 0.42,
+          color: isDark ? "rgba(139, 92, 246, 0.24)" : "rgba(196, 181, 253, 0.4)",
+        },
+        {
+          x: width * 0.5 + Math.sin(time * 0.5) * 140,
+          y: height * 0.3 + Math.cos(time * 0.6) * 100,
+          r: width * 0.38,
+          color: isDark ? "rgba(14, 165, 233, 0.2)" : "rgba(186, 230, 253, 0.4)",
+        },
+      ];
+
+      orbs.forEach((orb) => {
+        const rad = ctx.createRadialGradient(orb.x, orb.y, 20, orb.x, orb.y, orb.r);
+        rad.addColorStop(0, orb.color);
+        rad.addColorStop(1, "transparent");
+        ctx.fillStyle = rad;
+        ctx.fillRect(0, 0, width, height);
+      });
+    };
+
+    const render = () => {
+      time += 0.007 * speedMultiplier;
+
+      if (wallpaperId === "aurora") {
+        renderAurora();
+      } else if (wallpaperId === "starfield") {
+        renderStarfield();
+      } else if (wallpaperId === "cyber-grid") {
+        renderCyberGrid();
+      } else if (wallpaperId === "fluid-plasma") {
+        renderFluidPlasma();
+      }
+
       const ripples = ripplesRef.current;
       for (let i = ripples.length - 1; i >= 0; i--) {
         const r = ripples[i]!;
@@ -438,13 +544,111 @@ export function AnimatedBackground() {
       window.removeEventListener("mouseup", handleMouseUp);
       window.removeEventListener("mouseleave", handleMouseLeave);
     };
-  }, [isDark]);
+  }, [mounted, isDark, wallpaperId, wallpaperSpeed]);
+
+  if (!mounted) {
+    return (
+      <div
+        className="pointer-events-none fixed inset-0 z-0 h-full w-full overflow-hidden"
+        aria-hidden="true"
+        suppressHydrationWarning
+      />
+    );
+  }
+
+  const isAnimated = ["aurora", "starfield", "cyber-grid", "fluid-plasma"].includes(wallpaperId);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none fixed inset-0 z-0 h-full w-full opacity-100 transition-opacity duration-700"
+    <div
+      className="pointer-events-none fixed inset-0 z-0 h-full w-full overflow-hidden transition-all duration-700"
+      style={{ opacity: wallpaperOpacity }}
       aria-hidden="true"
-    />
+      suppressHydrationWarning
+    >
+      {/* ── 1. Real-time Animated GPU Canvas ── */}
+      {isAnimated && (
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 h-full w-full"
+        />
+      )}
+
+      {/* ── 2. Static Wallpaper Layers (Complementing Dark & Light Mode) ── */}
+      {!isAnimated && (
+        <div className="absolute inset-0 h-full w-full transition-all duration-700">
+          {/* A. Minimalist Clean Slate */}
+          {wallpaperId === "minimal" && (
+            <div className="h-full w-full bg-radial from-slate-900/50 via-[#070b14] to-[#020408] dark:block hidden" />
+          )}
+          {wallpaperId === "minimal" && (
+            <div className="h-full w-full bg-radial from-white via-slate-100 to-slate-200 dark:hidden block" />
+          )}
+
+          {/* B. Blue Star Corporate Frost */}
+          {wallpaperId === "bluestar-frost" && (
+            <>
+              <div className="h-full w-full bg-gradient-to-br from-[#0c2340] via-[#051124] to-[#02050d] dark:block hidden" />
+              <div className="h-full w-full bg-gradient-to-br from-blue-100/80 via-sky-50 to-indigo-100/60 dark:hidden block" />
+              <div
+                className="absolute inset-0 opacity-25 dark:opacity-40 mix-blend-overlay"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(#0176D3 1.5px, transparent 1.5px), radial-gradient(#0284c7 1.5px, transparent 1.5px)",
+                  backgroundSize: "40px 40px",
+                  backgroundPosition: "0 0, 20px 20px",
+                }}
+              />
+            </>
+          )}
+
+          {/* C. Midnight Indigo Nebula */}
+          {wallpaperId === "midnight-nebula" && (
+            <>
+              <div className="h-full w-full bg-[radial-gradient(circle_at_80%_20%,#4338ca_0%,#1e1b4b_40%,#030712_90%)] dark:block hidden" />
+              <div className="h-full w-full bg-[radial-gradient(circle_at_80%_20%,#c7d2fe_0%,#e0e7ff_50%,#f8fafc_90%)] dark:hidden block" />
+            </>
+          )}
+
+          {/* D. Sunset Horizon */}
+          {wallpaperId === "sunset-twilight" && (
+            <>
+              <div className="h-full w-full bg-[linear-gradient(160deg,#b45309_0%,#7c2d12_30%,#0f172a_75%,#020617_100%)] opacity-70 dark:block hidden" />
+              <div className="h-full w-full bg-[linear-gradient(160deg,#fef3c7_0%,#fed7aa_35%,#f1f5f9_80%)] dark:hidden block" />
+            </>
+          )}
+
+          {/* E. Salesforce Lightning Mesh */}
+          {wallpaperId === "salesforce-mesh" && (
+            <>
+              <div className="h-full w-full bg-[linear-gradient(120deg,#0284c7_0%,#0369a1_30%,#082f49_70%,#020617_100%)] opacity-75 dark:block hidden" />
+              <div className="h-full w-full bg-[linear-gradient(120deg,#e0f2fe_0%,#bae6fd_40%,#f0fdfa_80%,#ffffff_100%)] dark:hidden block" />
+              <div
+                className="absolute inset-0 opacity-15 dark:opacity-20"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(30deg, #38bdf8 12%, transparent 12.5%, transparent 87%, #38bdf8 87.5%, #38bdf8), linear-gradient(150deg, #38bdf8 12%, transparent 12.5%, transparent 87%, #38bdf8 87.5%, #38bdf8)",
+                  backgroundSize: "60px 105px",
+                }}
+              />
+            </>
+          )}
+
+          {/* F. Carbon Dot Matrix */}
+          {wallpaperId === "carbon-matrix" && (
+            <>
+              <div className="h-full w-full bg-[#050912] dark:block hidden" />
+              <div className="h-full w-full bg-slate-50 dark:hidden block" />
+              <div
+                className="absolute inset-0 opacity-30 dark:opacity-35"
+                style={{
+                  backgroundImage: "radial-gradient(#38bdf8 1.2px, transparent 1.2px)",
+                  backgroundSize: "24px 24px",
+                }}
+              />
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

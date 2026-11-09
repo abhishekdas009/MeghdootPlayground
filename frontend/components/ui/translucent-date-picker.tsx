@@ -113,29 +113,51 @@ export function TranslucentDatePicker({ value, onChange, className }: Translucen
     }
   }, [value, displayValue]);
 
+  const extractDateFromString = (text: string): { yyyy: string; mm: string; dd: string; display: string } | null => {
+    if (!text) return null;
+    const clean = text.trim();
+    // 1. Match DD-MM-YYYY or DD/MM/YYYY anywhere in string (even if preceded by "Installation Date" or other text)
+    const dmy = clean.match(/(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{4})/);
+    if (dmy && dmy[1] && dmy[2] && dmy[3]) {
+      const dd = dmy[1].padStart(2, '0');
+      const mm = dmy[2].padStart(2, '0');
+      const yyyy = dmy[3];
+      return { yyyy, mm, dd, display: `${dd}-${mm}-${yyyy}` };
+    }
+    // 2. Match YYYY-MM-DD or YYYY/MM/DD anywhere in string
+    const ymd = clean.match(/(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})/);
+    if (ymd && ymd[1] && ymd[2] && ymd[3]) {
+      const yyyy = ymd[1];
+      const mm = ymd[2].padStart(2, '0');
+      const dd = ymd[3].padStart(2, '0');
+      return { yyyy, mm, dd, display: `${dd}-${mm}-${yyyy}` };
+    }
+    return null;
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
     
-    const datePattern1 = /^(\d{2})[-/](\d{2})[-/](\d{4})$/; 
-    const datePattern2 = /^(\d{4})[-/](\d{2})[-/](\d{2})$/; 
-    
-    let match = val.match(datePattern1);
-    if (match) {
-      const [, dd, mm, yyyy] = match;
-      onChange(`${yyyy}-${mm}-${dd}`);
-      return;
-    }
-    
-    match = val.match(datePattern2);
-    if (match) {
-      const [, yyyy, mm, dd] = match;
-      onChange(`${yyyy}-${mm}-${dd}`);
+    if (val.trim() === "") {
+      onChange("");
       return;
     }
 
-    if (val === "") {
-        onChange("");
+    const extracted = extractDateFromString(val);
+    if (extracted) {
+      onChange(`${extracted.yyyy}-${extracted.mm}-${extracted.dd}`);
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = e.clipboardData.getData("text");
+    const extracted = extractDateFromString(pasted);
+    if (extracted) {
+      e.preventDefault();
+      setInputValue(extracted.display);
+      onChange(`${extracted.yyyy}-${extracted.mm}-${extracted.dd}`);
+      setIsOpen(false);
     }
   };
 
@@ -146,6 +168,7 @@ export function TranslucentDatePicker({ value, onChange, className }: Translucen
           type="text"
           value={inputValue}
           onChange={handleInputChange}
+          onPaste={handlePaste}
           onFocus={() => setIsOpen(true)}
           placeholder="dd-mm-yyyy"
           className="w-full bg-transparent border-none outline-none text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-400 focus:ring-0 shadow-none p-0"

@@ -8,6 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SOQLHighlighter } from "@/components/ui/soql-highlighter";
+
+import { SOQLRelationshipGraph } from "@/components/soql/soql-relationship-graph";
+import { Network } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -16,6 +19,7 @@ import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 import { parseAssetTransferPairs } from "@/lib/parsers";
 import {
   Copy,
+  ExternalLink,
   Trash2,
   Star,
   ChevronDown,
@@ -1991,6 +1995,7 @@ function QueryPreviewCard({
             <div className="relative flex-1 min-h-0">
                     <SOQLHighlighter query={currentBatch} className="h-full overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-[13px] leading-relaxed text-slate-700 selection:bg-indigo-500/20 selection:text-indigo-900 dark:text-sky-200/90 dark:selection:text-indigo-100 custom-scrollbar" />
             </div>
+
           </div>
         ) : (
           <div className="flex flex-1 items-center justify-center rounded-2xl bg-surface-recessed/50 dark:bg-white/[0.02] border border-dashed border-border/60 dark:border-white/[0.06]">
@@ -2425,6 +2430,11 @@ export default function SOQLGeneratorPage() {
 
   const [transferOutput, setTransferOutput] = React.useState("");
   const [transferDebug, setTransferDebug] = React.useState("");
+  const [transferModeTab, setTransferModeTab] = React.useState<"email" | "post" | "debug">("email");
+  const [transferSuccessfulPairs, setTransferSuccessfulPairs] = React.useState<Array<{ componentId: string; newCid: string }>>([]);
+  const [customTransferEmail, setCustomTransferEmail] = React.useState<string | null>(null);
+  const [customTransferPost, setCustomTransferPost] = React.useState<string | null>(null);
+  const [transferListStyle, setTransferListStyle] = React.useState<"bullets" | "numbered">("bullets");
 
   const [childDetailsComponentInput, setChildDetailsComponentInput] = React.useState("");
   const [childDetailsSOQLResult, setChildDetailsSOQLResult] = React.useState("");
@@ -2628,6 +2638,80 @@ export default function SOQLGeneratorPage() {
   const inputBatchCount = parsedTickets.length > 0 ? Math.ceil(parsedTickets.length / inputBatchSize) : 0;
   const ticketStats = React.useMemo(() => getTicketStats(parsedTickets), [parsedTickets]);
   const assetPairs = React.useMemo(() => parseAssetTransferPairs(assetTransferInput), [assetTransferInput]);
+
+  const activeTransferPairs = React.useMemo(() => {
+    if (transferSuccessfulPairs.length > 0) return transferSuccessfulPairs;
+    return assetPairs;
+  }, [transferSuccessfulPairs, assetPairs]);
+
+  const defaultTransferEmail = React.useMemo(() => {
+    if (activeTransferPairs.length === 0) return "";
+    const lines: string[] = [
+      "Hi Team,",
+      "",
+      "This is to inform you that the following asset transfers have been successfully completed:",
+      "",
+    ];
+
+    activeTransferPairs.forEach((pair, idx) => {
+      const prefix = transferListStyle === "numbered" ? `${idx + 1}. ` : "• ";
+      lines.push(`${prefix}Component ID ${pair.componentId} has been transferred to Customer ID ${pair.newCid}.`);
+      if (idx < activeTransferPairs.length - 1) {
+        lines.push("");
+      }
+    });
+
+    lines.push("");
+    lines.push("Please consider the asset transfer activity completed.");
+    return lines.join("\n");
+  }, [activeTransferPairs, transferListStyle]);
+
+  const defaultTransferPost = React.useMemo(() => {
+    if (activeTransferPairs.length === 0) return "";
+    const lines: string[] = [
+      "Hi Team,",
+      "",
+      "This is to inform you that the following asset transfers have been successfully completed:",
+      "",
+    ];
+
+    activeTransferPairs.forEach((pair, idx) => {
+      const prefix = transferListStyle === "numbered" ? `${idx + 1}. ` : "• ";
+      lines.push(`${prefix}Component ID ${pair.componentId} has been transferred to Customer ID ${pair.newCid}.`);
+      if (idx < activeTransferPairs.length - 1) {
+        lines.push("");
+      }
+    });
+
+    lines.push("");
+    lines.push("Please consider the asset transfer activity completed.");
+    return lines.join("\n");
+  }, [activeTransferPairs, transferListStyle]);
+
+  const transferEmailText = customTransferEmail !== null ? customTransferEmail : defaultTransferEmail;
+  const transferPostText = customTransferPost !== null ? customTransferPost : defaultTransferPost;
+
+  const handleCopyTransferTab = () => {
+    if (transferModeTab === "email") {
+      const listTag = transferListStyle === "numbered" ? "ol" : "ul";
+      const html = `<p>Hi Team,</p><p>This is to inform you that the following asset transfers have been successfully completed:</p><${listTag} style="margin: 12px 0; padding-left: 20px;">${activeTransferPairs.map(p => `<li style="margin-bottom: 8px;">Component ID ${p.componentId} has been transferred to Customer ID ${p.newCid}.</li>`).join("")}</${listTag}><p>Please consider the asset transfer activity completed.</p>`;
+      handleCopy(transferEmailText, html);
+      toast.success("Asset transfer email copied to clipboard!");
+    } else if (transferModeTab === "post") {
+      const listTag = transferListStyle === "numbered" ? "ol" : "ul";
+      const html = `<p>Hi Team,</p><p>This is to inform you that the following asset transfers have been successfully completed:</p><${listTag} style="margin: 12px 0; padding-left: 20px;">${activeTransferPairs.map(p => `<li style="margin-bottom: 8px;">Component ID ${p.componentId} has been transferred to Customer ID ${p.newCid}.</li>`).join("")}</${listTag}><p>Please consider the asset transfer activity completed.</p>`;
+      handleCopy(transferPostText, html);
+      toast.success("Asset transfer post copied to clipboard!");
+    } else {
+      handleCopy(transferDebug);
+      toast.success("Transfer debug logs copied to clipboard!");
+    }
+  };
+
+  const handleCopySubject = () => {
+    handleCopy("Confirmation of Asset Transfer Completion");
+    toast.success("Email subject copied to clipboard!");
+  };
   const childDetailsComponentParse = React.useMemo(
     () => parseComponentIds(childDetailsComponentInput),
     [childDetailsComponentInput]
@@ -3010,6 +3094,7 @@ AND Ticket_Numbers__c IN (
     const debugLines: string[] = [];
     const missingAssets: string[] = [];
     const missingCids: string[] = [];
+    const successfulPairsList: Array<{ componentId: string; newCid: string }> = [];
 
     for (const pair of assetPairs) {
       const assetRow = assetData[pair.componentId];
@@ -3052,6 +3137,7 @@ AND Ticket_Numbers__c IN (
           continue;
         }
 
+        successfulPairsList.push(pair);
         debugLines.push(`✅ ${pair.componentId} → ${addedIds.join(" & ")} | CID ${pair.newCid} → ${accountId}`);
       } else {
         const assetId = assetRow.id;
@@ -3060,10 +3146,14 @@ AND Ticket_Numbers__c IN (
           continue;
         }
         rows.push(`"[Asset]","${assetId}","${accountId}"`);
+        successfulPairsList.push(pair);
         debugLines.push(`✅ ${pair.componentId} → ${assetId} (Asset.Id) | CID ${pair.newCid} → ${accountId}`);
       }
     }
 
+    setTransferSuccessfulPairs(successfulPairsList);
+    setCustomTransferEmail(null);
+    setCustomTransferPost(null);
     setTransferOutput(rows.join("\n"));
     setTransferDebug(debugLines.join("\n"));
 
@@ -3800,6 +3890,9 @@ AND Ticket_Numbers__c IN (
     setAccountSOQLResult("");
     setTransferOutput("");
     setTransferDebug("");
+    setTransferSuccessfulPairs([]);
+    setCustomTransferEmail(null);
+    setCustomTransferPost(null);
     setChildDetailsComponentInput("");
     setChildDetailsInput("");
     setChildDetailsSOQLResult("");
@@ -5318,36 +5411,295 @@ BSL22295338      CID-6074821`}
                   </motion.div>
                 )}
 
-                {/* STEP 7 */}
+                {/* STEP 7: Dispatch & Debug (Email, Post & Debug Switcher) */}
                 {transferDebug && (
                   <motion.div variants={cardItemVariants} className="h-full flex flex-col">
                     <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/45 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
                       <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
-                        <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
-                          DEBUG
+                        <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent uppercase">
+                          {transferModeTab === "email" ? "EMAIL" : transferModeTab === "post" ? "POST" : "DEBUG"}
                         </span>
                       </div>
                       <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
                         <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
-                          <div className="flex flex-col gap-1 w-full relative">
-                            <div className="absolute top-0 right-0">
-                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(transferDebug)}>
-                                <Copy className="h-3.5 w-3.5" /> Copy
+                          <div className="flex flex-col gap-2 w-full relative">
+                            {/* Top row: Switcher + Copy Button */}
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              {/* Pill Switch for Email, Post, Debug */}
+                              <div className="inline-flex items-center p-1 rounded-xl bg-slate-200/80 dark:bg-black/60 border border-slate-300/80 dark:border-white/[0.1] shadow-inner">
+                                <button
+                                  type="button"
+                                  onClick={() => setTransferModeTab("email")}
+                                  className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                                    transferModeTab === "email"
+                                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-500/25"
+                                      : "text-slate-600 dark:text-slate-400 hover:text-foreground hover:bg-white/60 dark:hover:bg-white/[0.06]"
+                                  )}
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
+                                  <span>Email</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTransferModeTab("post")}
+                                  className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                                    transferModeTab === "post"
+                                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-500/25"
+                                      : "text-slate-600 dark:text-slate-400 hover:text-foreground hover:bg-white/60 dark:hover:bg-white/[0.06]"
+                                  )}
+                                >
+                                  <MessageSquare className="h-3.5 w-3.5" />
+                                  <span>Post</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setTransferModeTab("debug")}
+                                  className={cn(
+                                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                                    transferModeTab === "debug"
+                                      ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-sm shadow-amber-500/25"
+                                      : "text-slate-600 dark:text-slate-400 hover:text-foreground hover:bg-white/60 dark:hover:bg-white/[0.06]"
+                                  )}
+                                >
+                                  <Terminal className="h-3.5 w-3.5" />
+                                  <span>Debug</span>
+                                </button>
+                              </div>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                  "h-8 gap-2 text-xs font-bold transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm cursor-pointer",
+                                  transferModeTab === "email"
+                                    ? "hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 text-blue-600 dark:text-blue-400"
+                                    : transferModeTab === "post"
+                                    ? "hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+                                    : "hover:bg-amber-500/10 hover:text-amber-600 hover:border-amber-500/30 text-amber-600 dark:text-amber-400"
+                                )}
+                                onClick={handleCopyTransferTab}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                                <span>
+                                  {transferModeTab === "email"
+                                    ? "Copy Email"
+                                    : transferModeTab === "post"
+                                    ? "Copy Post"
+                                    : "Copy Debug"}
+                                </span>
                               </Button>
                             </div>
-                            <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-[100px]">
-                              Transfer<br />Debug Info
-                            </CardTitle>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                              Processing Logs
-                            </p>
+
+                            {/* Card Title & Subtitle */}
+                            <div className="mt-1">
+                              <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white">
+                                {transferModeTab === "email" ? (
+                                  <>Transfer<br />Email Dispatch</>
+                                ) : transferModeTab === "post" ? (
+                                  <>Transfer<br />Chatter & Case Post</>
+                                ) : (
+                                  <>Transfer<br />Debug Info</>
+                                )}
+                              </CardTitle>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                                {transferModeTab === "email"
+                                  ? "Formatted Notification for Customer / Team"
+                                  : transferModeTab === "post"
+                                  ? "Salesforce Case / Chatter Feed Update"
+                                  : "Processing Logs & ID Mappings"}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
-                        <div className="flex flex-col overflow-hidden bg-transparent">
-                        <SOQLHighlighter query={transferDebug} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[320px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100" />
-                        </div>
+
+                      <CardContent className="p-4 md:p-5 pt-1 flex-1 flex flex-col min-h-0 relative z-10 gap-3">
+                        {/* 1. EMAIL TAB */}
+                        {transferModeTab === "email" && (
+                          <div className="flex-1 flex flex-col min-h-0 gap-3">
+                            {/* Subject Preview Bar */}
+                            <div className="flex items-center justify-between gap-2 p-2 px-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-500/30 text-xs shadow-2xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-extrabold text-blue-600 dark:text-blue-400 text-[10px] uppercase tracking-wider shrink-0">
+                                  Subject:
+                                </span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate select-all text-xs">
+                                  Confirmation of Asset Transfer Completion
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 gap-1 rounded-md cursor-pointer"
+                                  onClick={handleCopySubject}
+                                  title="Copy Subject Line"
+                                >
+                                  <Copy className="h-3 w-3" /> Copy Subject
+                                </Button>
+                                <a
+                                  href={`mailto:?subject=${encodeURIComponent("Confirmation of Asset Transfer Completion")}&body=${encodeURIComponent(transferEmailText)}`}
+                                  className="h-6 px-2 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 rounded-md inline-flex items-center gap-1 transition-colors"
+                                  title="Open in default email app"
+                                >
+                                  <ExternalLink className="h-3 w-3" /> Mail App
+                                </a>
+                              </div>
+                            </div>
+
+                            {/* Email Body */}
+                            <div className="flex-1 min-h-[140px] flex flex-col relative">
+                              <textarea
+                                value={transferEmailText}
+                                onChange={(e) => setCustomTransferEmail(e.target.value)}
+                                className="w-full flex-1 min-h-[150px] p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/70 dark:bg-black/30 font-sans text-xs leading-relaxed text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 resize-none select-text shadow-inner"
+                                placeholder="Generated email will appear here..."
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400 px-1 flex-wrap">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Format:</span>
+                                <div className="inline-flex items-center p-0.5 rounded-lg bg-slate-200/80 dark:bg-black/50 border border-slate-300/80 dark:border-white/[0.1]">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTransferListStyle("bullets");
+                                      setCustomTransferEmail(null);
+                                      setCustomTransferPost(null);
+                                    }}
+                                    className={cn(
+                                      "px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer",
+                                      transferListStyle === "bullets"
+                                        ? "bg-blue-600 text-white shadow-xs"
+                                        : "text-slate-600 dark:text-slate-400 hover:text-foreground"
+                                    )}
+                                  >
+                                    • Bullets
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setTransferListStyle("numbered");
+                                      setCustomTransferEmail(null);
+                                      setCustomTransferPost(null);
+                                    }}
+                                    className={cn(
+                                      "px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer",
+                                      transferListStyle === "numbered"
+                                        ? "bg-blue-600 text-white shadow-xs"
+                                        : "text-slate-600 dark:text-slate-400 hover:text-foreground"
+                                    )}
+                                  >
+                                    1. Numbered
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">
+                                  {activeTransferPairs.length} Component{activeTransferPairs.length === 1 ? "" : "s"}
+                                </span>
+                                {customTransferEmail !== null && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setCustomTransferEmail(null)}
+                                    className="text-blue-600 dark:text-blue-400 hover:underline font-bold text-[10px] cursor-pointer"
+                                  >
+                                    Reset Default
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 2. POST TAB */}
+                        {transferModeTab === "post" && (
+                          <div className="flex-1 flex flex-col min-h-0 gap-3">
+                            <div className="flex items-center justify-between gap-2 p-2 px-3 rounded-xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-500/30 text-xs shadow-2xs">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 text-[10px] uppercase tracking-wider shrink-0">
+                                  Channel:
+                                </span>
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate select-all text-xs">
+                                  Salesforce Chatter / Case Comments
+                                </span>
+                              </div>
+                              <div className="inline-flex items-center p-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTransferListStyle("bullets");
+                                    setCustomTransferEmail(null);
+                                    setCustomTransferPost(null);
+                                  }}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer",
+                                    transferListStyle === "bullets"
+                                      ? "bg-emerald-600 text-white shadow-xs"
+                                      : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                                  )}
+                                >
+                                  • Bullets
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTransferListStyle("numbered");
+                                    setCustomTransferEmail(null);
+                                    setCustomTransferPost(null);
+                                  }}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer",
+                                    transferListStyle === "numbered"
+                                      ? "bg-emerald-600 text-white shadow-xs"
+                                      : "text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+                                  )}
+                                >
+                                  1. Numbered
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Post Body */}
+                            <div className="flex-1 min-h-[140px] flex flex-col relative">
+                              <textarea
+                                value={transferPostText}
+                                onChange={(e) => setCustomTransferPost(e.target.value)}
+                                className="w-full flex-1 min-h-[150px] p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/70 dark:bg-black/30 font-sans text-xs leading-relaxed text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 resize-none select-text shadow-inner"
+                                placeholder="Generated post will appear here..."
+                              />
+                            </div>
+
+                            <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                              <span className="font-medium">
+                                {activeTransferPairs.length} Component{activeTransferPairs.length === 1 ? "" : "s"} in Feed Post
+                              </span>
+                              {customTransferPost !== null && (
+                                <button
+                                  type="button"
+                                  onClick={() => setCustomTransferPost(null)}
+                                  className="text-emerald-600 dark:text-emerald-400 hover:underline font-bold text-[10px] cursor-pointer"
+                                >
+                                  Reset Default
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. DEBUG TAB */}
+                        {transferModeTab === "debug" && (
+                          <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-transparent">
+                            <SOQLHighlighter
+                              query={transferDebug}
+                              className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-amber-200 max-h-[320px] min-h-[100px] selection:bg-amber-500/20 selection:text-amber-900 dark:selection:text-amber-100"
+                            />
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>

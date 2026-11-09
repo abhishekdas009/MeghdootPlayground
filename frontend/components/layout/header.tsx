@@ -23,6 +23,9 @@ import {
   Layers3,
   Sun,
   Moon,
+  Layers,
+  Palette,
+  Keyboard,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDashboardStore, type ActivityEntry } from "@/lib/dashboard-store";
@@ -78,6 +81,11 @@ export function Header() {
     onSidebarHoverStart,
     onMenuButtonMouseLeave,
     setMobileSidebarOpen,
+    dockOpen,
+    toggleDock,
+    setShortcutsModalOpen,
+    wallpaperModalOpen,
+    setWallpaperModalOpen,
   } = useUIStore();
   const activity = useDashboardStore((s) => s.activity);
 
@@ -125,7 +133,7 @@ export function Header() {
     setTheme(nextTheme);
   }, []);
 
-  const toggleTheme = (event?: React.MouseEvent) => {
+  const toggleTheme = React.useCallback((event?: React.MouseEvent) => {
     const nextTheme: ThemeMode = theme === "dark" ? "light" : "dark";
     const root = document.documentElement;
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -181,7 +189,7 @@ export function Header() {
     if (!prefersReducedMotion) {
       window.setTimeout(() => root.classList.remove("theme-transition"), 480);
     }
-  };
+  }, [theme, applyTheme]);
 
   const unreadActivityIds = React.useMemo(() => {
     if (!notificationReadStateLoaded || !lastSeenActivityAt) return new Set<string>();
@@ -203,18 +211,30 @@ export function Header() {
     setLastSeenActivityAt(marker);
   }, []);
 
-  // Enable the Cmd+K / Ctrl+K keyboard shortcut for global search
+  // Enable universal global shortcuts: Ctrl+K, Alt+D (Dock), Alt+T (Theme), ? (Shortcuts)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         setSearchOpen((prev) => !prev);
+      } else if ((e.key === "d" && e.altKey) || (e.key === "\\" && (e.ctrlKey || e.metaKey))) {
+        e.preventDefault();
+        toggleDock();
+      } else if (e.key === "t" && e.altKey) {
+        e.preventDefault();
+        toggleTheme();
+      } else if (e.key === "?" && !isInput && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        setShortcutsModalOpen(true);
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [toggleDock, setShortcutsModalOpen, toggleTheme]);
 
   return (
     <header className="desktop-command-bar fixed top-0 left-0 right-0 z-50 h-14 w-full border-b border-border/40 bg-background/65 backdrop-blur-xl shadow-[0_1px_0_rgb(255_255_255_/_0.04)] transition-all duration-200" suppressHydrationWarning>
@@ -468,6 +488,49 @@ export function Header() {
                     />
                 </motion.span>
               </button>
+
+            {/* Ambient Wallpaper & Background Picker Button */}
+            <button
+              type="button"
+              onClick={() => setWallpaperModalOpen(true)}
+              className={cn(
+                "relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border transition-all shadow-xs",
+                wallpaperModalOpen
+                  ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white border-indigo-500 shadow-indigo-500/25 ring-2 ring-indigo-400/40"
+                  : "border-border/70 bg-card/60 hover:bg-card hover:border-primary/40 text-muted-foreground hover:text-foreground"
+              )}
+              title="Ambient Wallpaper & Backgrounds (Alt+B)"
+              aria-label="Open wallpaper and ambient background selector"
+            >
+              <Palette className="h-4 w-4" />
+            </button>
+
+            {/* Multi-Tasking Split Dock Toggle Button */}
+            <button
+              type="button"
+              onClick={() => toggleDock()}
+              className={cn(
+                "relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border transition-all shadow-xs",
+                dockOpen
+                  ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/25 ring-2 ring-blue-400/40"
+                  : "border-border/70 bg-card/60 hover:bg-card hover:border-primary/40 text-muted-foreground hover:text-foreground"
+              )}
+              title="Toggle Multi-Tasking Split Dock (Alt+D or Ctrl+\\)"
+              aria-label="Toggle Multi-Tasking Split Dock"
+            >
+              <Layers className="h-4 w-4" />
+            </button>
+
+            {/* Universal Keyboard Shortcuts Modal Button */}
+            <button
+              type="button"
+              onClick={() => setShortcutsModalOpen(true)}
+              className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/60 hover:bg-card hover:border-primary/40 text-muted-foreground hover:text-foreground transition-all shadow-xs"
+              title="Keyboard Shortcuts Cheat Sheet (?)"
+              aria-label="Open keyboard shortcuts cheat sheet"
+            >
+              <Keyboard className="h-4 w-4" />
+            </button>
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

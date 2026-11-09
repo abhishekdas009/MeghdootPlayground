@@ -38,6 +38,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 import Editor from "@monaco-editor/react";
+import { SOQLSyntaxValidatorPanel } from "@/components/soql/soql-syntax-validator-panel";
+import { SOQLRelationshipGraph } from "@/components/soql/soql-relationship-graph";
+import { SOQLVariableForm } from "@/components/soql/soql-variable-form";
+import { WorkbenchBridgeButton } from "@/components/soql/workbench-bridge-button";
+import { Network, SlidersHorizontal } from "lucide-react";
 
 interface LibraryQuery {
   id: string;
@@ -348,6 +353,8 @@ export default function QueryLibraryPage() {
 
   const [search, setSearch] = React.useState("");
   const [showForm, setShowForm] = React.useState(false);
+  const [showSchemaGraph, setShowSchemaGraph] = React.useState(false);
+  const [runnerQuery, setRunnerQuery] = React.useState<LibraryQuery | null>(null);
   const [editing, setEditing] = React.useState<LibraryQuery | null>(null);
   const [form, setForm] = React.useState<FormState>(defaultForm);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -1222,6 +1229,16 @@ export default function QueryLibraryPage() {
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 ml-1">SOQL Query Syntax *</label>
                     <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowSchemaGraph(!showSchemaGraph)}
+                        className="h-7 px-2.5 text-[10px] font-bold text-sky-600 dark:text-sky-400 border-sky-500/30 hover:bg-sky-500/10 gap-1 rounded-md"
+                      >
+                        <Network className="h-3 w-3" />
+                        <span>{showSchemaGraph ? "Hide Schema Graph" : "Visual Schema Linker"}</span>
+                      </Button>
                       <button 
                         onClick={handleTestSOQL}
                         className="text-[10px] flex items-center gap-1.5 font-bold uppercase tracking-wider text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-md transition-colors"
@@ -1261,6 +1278,22 @@ export default function QueryLibraryPage() {
                       loading={<div className="p-4 text-sm text-slate-500 font-mono">Loading editor...</div>}
                     />
                   </div>
+
+                  {/* Real-time SOQL Syntax Validator Panel */}
+                  <SOQLSyntaxValidatorPanel
+                    query={form.soql}
+                    onApplyFix={(fixedQuery) => setForm((current) => ({ ...current, soql: fixedQuery }))}
+                  />
+
+                  {/* Embedded Visual Schema Relationship Graph */}
+                  {showSchemaGraph && (
+                    <SOQLRelationshipGraph
+                      onInsertQuery={(assembledQuery) => {
+                        setForm((current) => ({ ...current, soql: assembledQuery }));
+                        setShowSchemaGraph(false);
+                      }}
+                    />
+                  )}
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-5 mt-3 border-t border-slate-200/80 dark:border-white/[0.08]">
@@ -1491,6 +1524,16 @@ export default function QueryLibraryPage() {
                   {formatDate(query.updatedAt)}
                 </span>
                 <div className="flex items-center gap-1">
+                  <WorkbenchBridgeButton query={query.soql} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRunnerQuery(query)}
+                    className="h-8 px-2.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 gap-1 rounded-lg transition-colors"
+                    title="Form Runner & Parameters"
+                  >
+                    <SlidersHorizontal className="h-3.5 w-3.5" /> Form
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"

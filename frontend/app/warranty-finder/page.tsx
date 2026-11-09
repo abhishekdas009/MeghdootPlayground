@@ -2,7 +2,10 @@
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 import { TranslucentDatePicker } from "@/components/ui/translucent-date-picker";
 import { NoResultsIllustration } from "@/components/ui/illustrations";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { FuzzyAutocompleteInput } from "@/components/warranty/fuzzy-autocomplete-input";
+import { WarrantyTimelineGauge } from "@/components/warranty/warranty-timeline-gauge";
+import { BLUESTAR_POPULAR_MODELS } from "@/lib/fuzzy-matcher";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -24,6 +27,8 @@ import {
   Clock,
   Building2,
   FileText,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 const BRANCHES = [
   "Mumbai",
@@ -150,6 +155,24 @@ function AutocompleteInput({
     </div>
   );
 }
+
+function getWarrantyCategoryTag(termName: string): { label: string; color: string } {
+  const upper = (termName || "").toUpperCase();
+  if (upper.includes("COMP")) {
+    return { label: "Comprehensive", color: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30" };
+  }
+  if (upper.includes("PCB") || upper.includes("INVERTER")) {
+    return { label: "Inverter / PCB", color: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30" };
+  }
+  if (upper.includes("GAS")) {
+    return { label: "Gas Charging", color: "bg-teal-500/15 text-teal-700 dark:text-teal-300 border-teal-500/30" };
+  }
+  if (upper.includes("PROMOTIONAL") || upper.includes("SCHEME") || upper.includes("OFFER") || upper.includes("80-ON-80") || upper.includes("FESTIVE")) {
+    return { label: "Promotional Scheme", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30" };
+  }
+  return { label: "Warranty Policy", color: "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/30" };
+}
+
 function CopyTermButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
@@ -158,17 +181,33 @@ function CopyTermButton({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <button
-      onClick={handleCopy}
-      title="Copy Warranty Term"
-      className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-gradient-to-b from-sky-400 to-blue-600 hover:from-sky-300 hover:to-blue-500 border border-sky-300/40 text-white shadow-[0_0_15px_rgba(14,165,233,0.5)] transition-all shrink-0 active:scale-90 flex items-center justify-center cursor-pointer"
-    >
-      {copied ? (
-        <Check className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-white stroke-[3.5]" />
-      ) : (
-        <Copy className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-white" />
-      )}
-    </button>
+    <div className="relative inline-flex items-center">
+      <button
+        type="button"
+        onClick={handleCopy}
+        title="Copy Warranty Term"
+        aria-label="Copy Warranty Term"
+        className="h-8 w-8 sm:h-8.5 sm:w-8.5 rounded-full bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#1d4ed8] hover:from-[#60a5fa] hover:to-[#2563eb] text-white shadow-[0_0_16px_rgba(14,165,233,0.6),inset_0_1px_1px_rgba(255,255,255,0.45)] border border-sky-200/50 transition-all shrink-0 active:scale-90 flex items-center justify-center cursor-pointer hover:shadow-[0_0_22px_rgba(14,165,233,0.85)] hover:scale-105"
+      >
+        {copied ? (
+          <Check className="h-4 w-4 text-white stroke-[3.2]" />
+        ) : (
+          <Copy className="h-4 w-4 text-white stroke-[2.2]" />
+        )}
+      </button>
+      <AnimatePresence>
+        {copied && (
+          <motion.span
+            initial={{ opacity: 0, y: 5, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -5, scale: 0.9 }}
+            className="absolute -top-7 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-md bg-slate-900/95 dark:bg-slate-800 text-[10px] font-bold text-white shadow-lg pointer-events-none whitespace-nowrap border border-white/10 z-30"
+          >
+            Copied!
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 export default function WarrantyFinderPage() {
@@ -176,11 +215,16 @@ export default function WarrantyFinderPage() {
   const [installationDate, setInstallationDate] = useState("");
   const [branch, setBranch] = useState("");
   const [activeTab, setActiveTab] = useState<'model' | 'subfamily'>('model');
+  const [resultsView, setResultsView] = useState<'compact' | 'table'>('compact');
   const [subFamily, setSubFamily] = useState("");
   const [dbModels, setDbModels] = useState<string[]>([]);
   const [dbSubFamilies, setDbSubFamilies] = useState<string[]>([]);
+  const allModels = useMemo(() => {
+    return Array.from(new Set([...dbModels, ...BLUESTAR_POPULAR_MODELS]));
+  }, [dbModels]);
   const [searchResult, setSearchResult] = useState<any[] | null>(null);
   const [searchError, setSearchError] = useState("");
+  const [copiedError, setCopiedError] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [csvText, setCsvText] = useState("");
   const [isUploading, setIsUploading] = useState(false);
@@ -239,6 +283,16 @@ export default function WarrantyFinderPage() {
       setInstallationDate(`${match[3]}-${match[2]}-${match[1]}`);
     }
   };
+  
+  const handleClearForm = () => {
+    setModelNumber("");
+    setInstallationDate("");
+    setBranch("");
+    setSubFamily("");
+    setSearchResult(null);
+    setSearchError("");
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSearching(true);
@@ -264,7 +318,7 @@ export default function WarrantyFinderPage() {
           }
         });
       } else {
-        setSearchError(data.message || "No matching warranty term found.");
+        setSearchError(data.message || `Kindly connect with SSG team for Warranty Term Confirmation for the model number : ${modelNumber}`);
       }
     } catch (err) {
       setSearchError("Network error while searching.");
@@ -298,7 +352,7 @@ export default function WarrantyFinderPage() {
           }
         });
       } else {
-        setSearchError(data.message || "No matching warranty term found.");
+        setSearchError(data.message || `Kindly connect with SSG team for Warranty Term Confirmation for the sub family : ${subFamily}`);
       }
     } catch (err) {
       setSearchError("Network error while searching.");
@@ -466,11 +520,11 @@ export default function WarrantyFinderPage() {
                         <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-sky-200 uppercase tracking-wider mb-1 pl-0.5">
                           Model Number
                         </label>
-                        <AutocompleteInput
-                          options={dbModels}
+                        <FuzzyAutocompleteInput
+                          options={allModels}
                           value={modelNumber}
                           onChange={setModelNumber}
-                          placeholder="Ex: CNHW12GAFU"
+                          placeholder="Ex: 185V Vectra or CNHW12GAFU"
                           required
                         />
                       </div>
@@ -508,7 +562,7 @@ export default function WarrantyFinderPage() {
                         <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-sky-200 uppercase tracking-wider mb-1 pl-0.5">
                           Branch / City
                         </label>
-                        <AutocompleteInput
+                        <FuzzyAutocompleteInput
                           options={BRANCHES}
                           value={branch}
                           onChange={setBranch}
@@ -533,7 +587,7 @@ export default function WarrantyFinderPage() {
                       <label className="block text-[10px] sm:text-[11px] font-black text-slate-700 dark:text-sky-200 uppercase tracking-wider mb-1 pl-0.5">
                         Product Sub Family
                       </label>
-                      <AutocompleteInput
+                      <FuzzyAutocompleteInput
                         options={dbSubFamilies}
                         value={subFamily}
                         onChange={setSubFamily}
@@ -570,295 +624,288 @@ export default function WarrantyFinderPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="mb-8 p-8 bg-muted/30 border border-border/50 rounded-2xl flex flex-col items-center justify-center text-center backdrop-blur-sm shadow-sm"
+              className="mb-8 p-6 sm:p-8 bg-amber-500/[0.04] dark:bg-amber-950/[0.15] border border-amber-500/30 rounded-2xl flex flex-col items-center justify-center text-center backdrop-blur-md shadow-sm"
             >
               <NoResultsIllustration className="mb-4 text-slate-400 dark:text-slate-500 drop-shadow-sm" />
-              <h3 className="text-base font-bold text-foreground">No Results Found</h3>
-              <p className="text-sm font-medium text-muted-foreground mt-1 max-w-sm">{searchError}</p>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 rounded-2xl bg-amber-500/10 dark:bg-amber-500/10 border border-amber-500/30 w-full max-w-2xl text-center sm:text-left shadow-xs">
+                <p className="text-xs sm:text-sm font-bold text-amber-800 dark:text-amber-200 leading-relaxed flex-1">
+                  {searchError}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(searchError);
+                    setCopiedError(true);
+                    setTimeout(() => setCopiedError(false), 2000);
+                  }}
+                  title="Copy Message"
+                  className="px-3.5 py-1.5 rounded-full bg-gradient-to-b from-[#38bdf8] via-[#0284c7] to-[#1d4ed8] hover:from-[#60a5fa] hover:to-[#2563eb] text-white shadow-[0_0_16px_rgba(14,165,233,0.55),inset_0_1px_1px_rgba(255,255,255,0.4)] border border-sky-200/50 transition-all shrink-0 flex items-center gap-1.5 text-xs font-bold active:scale-95 cursor-pointer hover:shadow-[0_0_20px_rgba(14,165,233,0.8)]"
+                >
+                  {copiedError ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-white stroke-[3]" />
+                      <span>Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5 text-white stroke-[2.2]" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           )}{" "}
           {searchResult && searchResult.length > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
+              exit={{ opacity: 0, y: -15 }}
+              className="space-y-4"
             >
-              <div className="flex items-center gap-3 mb-5">
-                <div className="h-2.5 w-2.5 rounded-full bg-sky-500 dark:bg-cyan-400 shadow-[0_0_8px_rgba(14,165,233,0.6)] dark:shadow-[0_0_10px_#22d3ee] shrink-0" />
-                <h3 className="text-xs sm:text-sm font-black text-slate-800 dark:text-sky-100 tracking-[0.2em] uppercase shrink-0">
-                  {searchResult.length} MATCH{searchResult.length !== 1 ? "ES" : ""} FOUND
-                </h3>
-                <div className="h-px flex-1 bg-gradient-to-r from-sky-400/50 via-slate-200 to-transparent dark:from-sky-400/40 dark:via-sky-500/20 dark:to-transparent" />
-              </div>
+              {/* Header with Matches Count, SSG note, and View Toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(14,165,233,0.8)] shrink-0" />
+                    <h3 className="text-xs font-black text-slate-800 dark:text-sky-100 tracking-[0.16em] uppercase shrink-0">
+                      {searchResult.length} MATCH{searchResult.length !== 1 ? "ES" : ""} FOUND
+                    </h3>
+                  </div>
+                </div>
 
-              <div className="space-y-6">
-                {searchResult.map((result, idx) => (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, delay: idx * 0.1 }}
-                    key={idx}
-                    className="relative rounded-3xl p-6 sm:p-8 overflow-hidden bg-gradient-to-b from-white/75 via-sky-50/40 to-blue-50/50 dark:from-[#091738]/50 dark:via-[#061026]/42 dark:to-[#030816]/45 border border-sky-200/90 dark:border-sky-400/50 shadow-[0_20px_45px_rgba(14,165,233,0.12),0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_0_35px_rgba(14,165,233,0.22),0_20px_50px_rgba(0,0,0,0.6),inset_0_1px_1px_rgba(255,255,255,0.2)] backdrop-blur-2xl transition-all group"
+                {/* View Mode Toggle: Compact Cards vs Table */}
+                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-200/80 dark:bg-white/5 border border-slate-300/80 dark:border-white/10 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setResultsView('compact')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all text-[11px]",
+                      resultsView === 'compact'
+                        ? "bg-white dark:bg-sky-600 text-slate-900 dark:text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
                   >
-                    {/* Top specular edge highlight */}
-                    <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/60 dark:via-sky-300/70 to-transparent pointer-events-none" />
-
-                    {/* Cyber wave background overlay on top-right (Light Mode) */}
-                    <div className="dark:hidden absolute top-0 right-0 w-80 h-48 pointer-events-none overflow-hidden select-none">
-                      <svg viewBox="0 0 320 200" fill="none" className="w-full h-full opacity-80">
-                        <defs>
-                          <linearGradient id={`cyberGlow_light_${idx}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.75" />
-                            <stop offset="50%" stopColor="#38bdf8" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="#7dd3fc" stopOpacity="0" />
-                          </linearGradient>
-                          <linearGradient id={`cyberFill_light_${idx}`} x1="100%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.12" />
-                            <stop offset="60%" stopColor="#0284c7" stopOpacity="0.04" />
-                            <stop offset="100%" stopColor="#bae6fd" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d="M 60 0 C 130 70, 200 95, 320 100 L 320 0 Z"
-                          fill={`url(#cyberFill_light_${idx})`}
-                        />
-                        <path
-                          d="M 40 0 C 120 75, 210 105, 320 110"
-                          stroke={`url(#cyberGlow_light_${idx})`}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          className="drop-shadow-[0_2px_8px_rgba(2,132,199,0.3)]"
-                        />
-                        <path
-                          d="M 90 0 C 160 55, 240 80, 320 85"
-                          stroke="#0284c7"
-                          strokeWidth="1.2"
-                          strokeOpacity="0.3"
-                          className="drop-shadow-[0_1px_4px_rgba(2,132,199,0.2)]"
-                        />
-                      </svg>
-                    </div>
-
-                    {/* Cyber wave background overlay on top-right (Dark Mode) */}
-                    <div className="hidden dark:block absolute top-0 right-0 w-80 h-48 pointer-events-none overflow-hidden select-none">
-                      <svg viewBox="0 0 320 200" fill="none" className="w-full h-full opacity-90">
-                        <defs>
-                          <linearGradient id={`cyberGlow_${idx}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.9" />
-                            <stop offset="50%" stopColor="#0284c7" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="#1e3a8a" stopOpacity="0" />
-                          </linearGradient>
-                          <linearGradient id={`cyberFill_${idx}`} x1="100%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.25" />
-                            <stop offset="60%" stopColor="#0369a1" stopOpacity="0.05" />
-                            <stop offset="100%" stopColor="#0369a1" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d="M 60 0 C 130 70, 200 95, 320 100 L 320 0 Z"
-                          fill={`url(#cyberFill_${idx})`}
-                        />
-                        <path
-                          d="M 40 0 C 120 75, 210 105, 320 110"
-                          stroke={`url(#cyberGlow_${idx})`}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          className="drop-shadow-[0_0_10px_rgba(56,189,248,0.9)]"
-                        />
-                        <path
-                          d="M 90 0 C 160 55, 240 80, 320 85"
-                          stroke="#38bdf8"
-                          strokeWidth="1.2"
-                          strokeOpacity="0.4"
-                          className="drop-shadow-[0_0_5px_rgba(56,189,248,0.6)]"
-                        />
-                      </svg>
-                    </div>
-
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-sky-400/10 dark:bg-sky-500/15 rounded-full blur-3xl pointer-events-none" />
-                    <div className="absolute bottom-0 left-10 w-48 h-48 bg-blue-500/5 dark:bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-
-                    {/* Top Row: Shield Avatar + Info on Left, Applicable Badge on Right */}
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-7">
-                      <div className="flex items-center gap-4 sm:gap-5">
-                        {/* Circular Shield Avatar */}
-                        <div className="relative shrink-0">
-                          <div className="w-[74px] h-[74px] sm:w-[82px] sm:h-[82px] rounded-full p-[2.5px] bg-gradient-to-b from-sky-400 via-blue-500 to-sky-600 dark:to-sky-700 shadow-[0_4px_20px_rgba(14,165,233,0.35)] dark:shadow-[0_0_25px_rgba(14,165,233,0.45),inset_0_0_15px_rgba(14,165,233,0.3)]">
-                            <div className="w-full h-full rounded-full bg-gradient-to-b from-sky-50 to-blue-100/90 dark:from-[#0b224d] dark:to-[#040e22] flex items-center justify-center border border-sky-200 dark:border-sky-400/40">
-                              <Shield className="w-9 h-9 sm:w-10 sm:h-10 text-sky-600 fill-sky-500/15 drop-shadow-[0_2px_8px_rgba(14,165,233,0.35)] dark:text-sky-400 dark:fill-sky-400/10 stroke-[1.8] dark:drop-shadow-[0_0_10px_rgba(56,189,248,0.85)]" />
-                            </div>
-                          </div>
-                          {/* Attached Green Check Badge */}
-                          <div className="absolute -bottom-1 -right-1 sm:bottom-0 sm:right-0 h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 border-2 border-white dark:border-[#061026] flex items-center justify-center shadow-[0_2px_8px_rgba(16,185,129,0.5)] dark:shadow-[0_0_12px_rgba(16,185,129,0.8)]">
-                            <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white stroke-[3.5]" />
-                          </div>
-                        </div>
-
-                        {/* Title & Badge */}
-                        <div>
-                          <div className="inline-flex items-center px-3.5 py-1 rounded-full bg-sky-100 dark:bg-sky-950/80 border border-sky-300/80 dark:border-sky-400/40 text-[11px] font-black uppercase tracking-[0.16em] text-sky-700 dark:text-sky-400 shadow-xs dark:shadow-[0_0_10px_rgba(14,165,233,0.2)] mb-2">
-                            WARRANTY TERM
-                          </div>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <h4 className="text-2xl sm:text-3xl lg:text-3.5xl font-black text-slate-900 dark:text-white tracking-tight drop-shadow-none dark:drop-shadow-sm">
-                              {result.termName}
-                            </h4>
-                            <CopyTermButton text={result.termName} />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* APPLICABLE Badge */}
-                      <div className="shrink-0 self-start md:self-center">
-                        <div className="inline-flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-emerald-50 dark:bg-[#031d13]/85 border-2 border-emerald-500/80 dark:border-emerald-500/70 shadow-[0_4px_16px_rgba(16,185,129,0.18)] dark:shadow-[0_0_24px_rgba(16,185,129,0.35),inset_0_0_12px_rgba(16,185,129,0.2)] backdrop-blur-md">
-                          <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shadow-[0_2px_8px_rgba(16,185,129,0.5)] dark:shadow-[0_0_10px_rgba(16,185,129,0.9)]">
-                            <Check className="w-3.5 h-3.5 text-white stroke-[3.5]" />
-                          </div>
-                          <span className="text-xs sm:text-sm font-black tracking-widest text-emerald-800 dark:text-emerald-300 uppercase">
-                            APPLICABLE
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Recessed Stats Container */}
-                    <div className="relative z-10 p-4 sm:p-5 rounded-2xl bg-sky-50/70 dark:bg-[#030919]/75 border border-sky-200/80 dark:border-sky-500/25 shadow-inner backdrop-blur-xl">
-                      {activeTab === 'model' ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 divide-y md:divide-y-0 md:divide-x divide-sky-200/80 dark:divide-sky-500/15">
-                          {/* Duration */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <Clock className="w-5 h-5 text-sky-600 dark:text-sky-300 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                DURATION
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
-                                {result.duration} {result.unitOfTime}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Valid From */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <CalendarDays className="w-5 h-5 text-sky-600 dark:text-sky-300 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                VALID FROM
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
-                                {result.installationFrom
-                                  ? new Date(result.installationFrom).toLocaleDateString("en-GB")
-                                  : "Anytime"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Valid Until */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <CalendarDays className="w-5 h-5 text-sky-600 dark:text-sky-300 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                VALID UNTIL
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
-                                {result.installationTo
-                                  ? new Date(result.installationTo).toLocaleDateString("en-GB")
-                                  : "Anytime"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Branch */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <Building2 className="w-5 h-5 text-sky-600 dark:text-sky-300 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                BRANCH
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
-                                {result.branchOperator
-                                  ? `${result.branchOperator} ${result.branches ? "Specific" : ""}`
-                                  : "All Branches"}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 divide-y md:divide-y-0 md:divide-x divide-sky-200/80 dark:divide-sky-500/15">
-                          {/* Match Rule */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <Box className="w-5 h-5 text-sky-600 dark:text-sky-300 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                MATCH RULE
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
-                                {result.operator || "Equals"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Sub Family */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <FileText className="w-5 h-5 text-sky-600 dark:text-sky-300 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                SUB FAMILY
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
-                                {result.subFamily || subFamily || "All"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Status */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                STATUS
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 tracking-tight truncate">
-                                Active Condition
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Branch */}
-                          <div className="flex items-center gap-3.5 sm:gap-4 px-2 sm:px-3 pt-3 md:pt-0">
-                            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-b from-white to-sky-50 dark:from-[#0a234f] dark:to-[#051126] border border-sky-200 dark:border-sky-400/40 flex items-center justify-center shadow-xs dark:shadow-[0_0_15px_rgba(14,165,233,0.35)] shrink-0">
-                              <Building2 className="w-5 h-5 text-sky-600 dark:text-sky-300 stroke-[2]" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-[10px] sm:text-[11px] font-black uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                                BRANCH
-                              </p>
-                              <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-0.5 tracking-tight truncate">
-                                All Branches
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                ))}
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    <span>Cards</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setResultsView('table')}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all text-[11px]",
+                      resultsView === 'table'
+                        ? "bg-white dark:bg-sky-600 text-slate-900 dark:text-white shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span>Table</span>
+                  </button>
+                </div>
               </div>
+
+              {/* View 1: Compact Cards */}
+              {resultsView === 'compact' ? (
+                <div className="space-y-3">
+                  {searchResult.map((result, idx) => (
+                    <motion.div
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: idx * 0.04 }}
+                      key={idx}
+                      className="relative rounded-2xl p-4 sm:p-4.5 overflow-hidden bg-gradient-to-b from-white/90 via-sky-50/40 to-blue-50/50 dark:from-[#091738]/60 dark:via-[#061026]/50 dark:to-[#030816]/60 border border-sky-200/90 dark:border-sky-500/30 shadow-md dark:shadow-[0_4px_25px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all group hover:border-sky-400/60"
+                    >
+                      {/* Top Specular Line */}
+                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/60 dark:via-sky-300/70 to-transparent pointer-events-none" />
+
+                      {/* Header Row: Shield + Term Title + Copy + Applicable Badge */}
+                      <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Compact Shield Icon */}
+                          <div className="relative shrink-0">
+                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-b from-sky-400/20 to-blue-600/30 border border-sky-400/40 flex items-center justify-center text-sky-600 dark:text-sky-300 shadow-xs">
+                              <Shield className="w-4.5 h-4.5 stroke-[2]" />
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-500 border-2 border-white dark:border-[#061026] flex items-center justify-center shadow-xs">
+                              <Check className="h-2.5 w-2.5 text-white stroke-[3.5]" />
+                            </div>
+                          </div>
+
+                          {/* Term Name */}
+                          <div className="min-w-0">
+                            <span className="text-[9px] font-black tracking-widest text-sky-600 dark:text-sky-400 uppercase">
+                              WARRANTY TERM
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight truncate">
+                                {result.termName}
+                              </h4>
+                              <CopyTermButton text={result.termName} />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* APPLICABLE Badge */}
+                        <div className="shrink-0">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-700 dark:text-emerald-400 text-xs font-bold shadow-xs">
+                            <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            <span>APPLICABLE</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Streamlined Timeline Gauge */}
+                      <div className="relative z-10 mb-3">
+                        <WarrantyTimelineGauge
+                          installationDate={installationDate}
+                          duration={result.duration || 1}
+                          unitOfTime={result.unitOfTime || "Years"}
+                          termName={result.termName}
+                          onDateChange={(newDate) => setInstallationDate(newDate)}
+                        />
+                      </div>
+
+                      {/* Bottom Compact Stats Strip */}
+                      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 sm:p-2.5 rounded-xl bg-sky-50/60 dark:bg-black/30 border border-sky-100 dark:border-white/5">
+                        {activeTab === 'model' ? (
+                          <>
+                            {/* Duration */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <Clock className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">DURATION</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">{result.duration} {result.unitOfTime}</p>
+                              </div>
+                            </div>
+
+                            {/* Valid From */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <CalendarDays className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">VALID FROM</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">
+                                  {result.installationFrom ? new Date(result.installationFrom).toLocaleDateString("en-GB") : "Anytime"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Valid Until */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <CalendarDays className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">VALID UNTIL</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">
+                                  {result.installationTo ? new Date(result.installationTo).toLocaleDateString("en-GB") : "Anytime"}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Branch */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <Building2 className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">BRANCH</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">
+                                  {result.branchOperator ? `${result.branchOperator} ${result.branches ? "Specific" : ""}` : "All Branches"}
+                                </p>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Match Rule */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <Box className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">MATCH RULE</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">{result.operator || "Equals"}</p>
+                              </div>
+                            </div>
+
+                            {/* Sub Family */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <FileText className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">SUB FAMILY</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">{result.subFamily || subFamily || "All"}</p>
+                              </div>
+                            </div>
+
+                            {/* Status */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">STATUS</p>
+                                <p className="text-xs sm:text-sm font-bold text-emerald-600 dark:text-emerald-400 truncate">Active Condition</p>
+                              </div>
+                            </div>
+
+                            {/* Branch */}
+                            <div className="flex items-center gap-2 min-w-0 px-1">
+                              <Building2 className="w-3.5 h-3.5 text-sky-500 dark:text-sky-400 shrink-0 stroke-[2]" />
+                              <div className="min-w-0">
+                                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">BRANCH</p>
+                                <p className="text-xs sm:text-sm font-bold text-foreground truncate">All Branches</p>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              ) : (
+                /* View 2: High-Density Table */
+                <div className="overflow-x-auto rounded-2xl border border-border/80 bg-white/80 dark:bg-[#0a0f1d]/80 backdrop-blur-xl shadow-lg">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-border/80 bg-sky-50/50 dark:bg-white/[0.03] text-muted-foreground font-black text-[10px] uppercase tracking-wider">
+                        <th className="py-2.5 px-4">Warranty Term</th>
+                        <th className="py-2.5 px-4">Duration</th>
+                        <th className="py-2.5 px-4">Valid From</th>
+                        <th className="py-2.5 px-4">Valid Until</th>
+                        <th className="py-2.5 px-4">Branch</th>
+                        <th className="py-2.5 px-4 text-center">Status</th>
+                        <th className="py-2.5 px-4 text-right">Copy</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {searchResult.map((result, idx) => (
+                        <tr key={idx} className="hover:bg-sky-500/5 transition-colors">
+                          <td className="py-2.5 px-4 font-bold text-foreground">
+                            <div className="flex items-center gap-2">
+                              <Shield className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                              <span className="truncate max-w-[240px]">{result.termName}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-4 font-semibold text-foreground whitespace-nowrap">
+                            {result.duration} {result.unitOfTime}
+                          </td>
+                          <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
+                            {result.installationFrom ? new Date(result.installationFrom).toLocaleDateString("en-GB") : "Anytime"}
+                          </td>
+                          <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
+                            {result.installationTo ? new Date(result.installationTo).toLocaleDateString("en-GB") : "Anytime"}
+                          </td>
+                          <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
+                            {result.branchOperator ? `${result.branchOperator} ${result.branches ? "Specific" : ""}` : "All Branches"}
+                          </td>
+                          <td className="py-2.5 px-4 text-center whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              Applicable
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-4 text-right">
+                            <CopyTermButton text={result.termName} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </motion.div>
           )}{" "}
         </AnimatePresence>{" "}

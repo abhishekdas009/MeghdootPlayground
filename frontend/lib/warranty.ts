@@ -143,14 +143,62 @@ function parseDateParts(
   return date ? { date, isoDate: toIsoDate(date) } : null;
 }
 
+const EXTENDED_ISO_PATTERN = /^(\d{4})([-/])(\d{1,2})\2(\d{1,2})(?:[T\s].*)?$/;
+const EXTENDED_FINDER_PATTERN = /^(\d{1,2})([-/])(\d{1,2})\2(\d{4})(?:[T\s].*)?$/;
+
 export function parseImportDate(value: string): ParsedFinderDate | null {
-  return parseDateParts(value, ISO_DATE_PATTERN, 1, 3, 4);
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const isoMatch = trimmed.match(EXTENDED_ISO_PATTERN);
+  if (isoMatch) {
+    const year = Number.parseInt(isoMatch[1] ?? "", 10);
+    const month = Number.parseInt(isoMatch[3] ?? "", 10);
+    const day = Number.parseInt(isoMatch[4] ?? "", 10);
+    const date = createUtcDate(year, month, day);
+    if (date) return { date, isoDate: toIsoDate(date) };
+  }
+
+  const finderMatch = trimmed.match(EXTENDED_FINDER_PATTERN);
+  if (finderMatch) {
+    const day = Number.parseInt(finderMatch[1] ?? "", 10);
+    const month = Number.parseInt(finderMatch[3] ?? "", 10);
+    const year = Number.parseInt(finderMatch[4] ?? "", 10);
+    const date = createUtcDate(year, month, day);
+    if (date) return { date, isoDate: toIsoDate(date) };
+  }
+
+  const parsed = new Date(trimmed);
+  if (!Number.isNaN(parsed.getTime())) {
+    const date = createUtcDate(parsed.getUTCFullYear(), parsed.getUTCMonth() + 1, parsed.getUTCDate());
+    if (date) return { date, isoDate: toIsoDate(date) };
+  }
+
+  return null;
 }
 
 export function parseFinderInstallationDate(value: string): ParsedFinderDate | null {
-  const asIso = parseDateParts(value, ISO_DATE_PATTERN, 1, 3, 4);
-  if (asIso) return asIso;
-  return parseDateParts(value, FINDER_DATE_PATTERN, 4, 3, 1);
+  if (!value || typeof value !== "string") return null;
+  const trimmed = value.trim();
+  // 1. Check DD-MM-YYYY or DD/MM/YYYY anywhere in string (typical Indian format)
+  const dmyMatch = trimmed.match(/(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{4})/);
+  if (dmyMatch && dmyMatch[1] && dmyMatch[2] && dmyMatch[3]) {
+    const day = Number.parseInt(dmyMatch[1], 10);
+    const month = Number.parseInt(dmyMatch[2], 10);
+    const year = Number.parseInt(dmyMatch[3], 10);
+    const date = createUtcDate(year, month, day);
+    if (date) return { date, isoDate: toIsoDate(date) };
+  }
+  // 2. Check YYYY-MM-DD or YYYY/MM/DD anywhere in string
+  const ymdMatch = trimmed.match(/(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})/);
+  if (ymdMatch && ymdMatch[1] && ymdMatch[2] && ymdMatch[3]) {
+    const year = Number.parseInt(ymdMatch[1], 10);
+    const month = Number.parseInt(ymdMatch[2], 10);
+    const day = Number.parseInt(ymdMatch[3], 10);
+    const date = createUtcDate(year, month, day);
+    if (date) return { date, isoDate: toIsoDate(date) };
+  }
+  return null;
 }
 
 /**
@@ -269,50 +317,79 @@ export function isInstallationDateInRange(
 }
 
 export function matchesWarrantyDate(
-  installationDate: Date | null,
+  installationDate: Date | string | null | undefined,
   installationDateOperator: string | null | undefined,
-  installationFrom: Date | null | undefined,
-  installationTo: Date | null | undefined,
+  installationFrom: Date | string | null | undefined,
+  installationTo: Date | string | null | undefined,
 ): boolean {
   if (!installationDate) {
     return true;
   }
 
-  const toCalendarDay = (date: Date) => Date.UTC(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate(),
-  );
+  const parseDay = (val: Date | string | null | undefined): number | null => {
+    if (!val) return null;
+    if (val instanceof Date) {
+      if (isNaN(val.getTime())) return null;
+      // In IST / local or UTC, ensure calendar day UTC
+      return Date.UTC(val.getUTCFullYear(), val.getUTCMonth(), val.getUTCDate());
+    }
+    const str = String(val).trim();
+    // 1. Try DD-MM-YYYY anywhere in string
+    const dmy = str.match(/(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{4})/);
+    if (dmy && dmy[1] && dmy[2] && dmy[3]) {
+      return Date.UTC(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10));
+    }
+    // 2. Try YYYY-MM-DD anywhere in string
+    const iso = str.match(/(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})/);
+    if (iso && iso[1] && iso[2] && iso[3]) {
+      return Date.UTC(parseInt(iso[1], 10), parseInt(iso[2], 10) - 1, parseInt(iso[3], 10));
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+    }
+    return null;
+  };
 
-  const installDay = toCalendarDay(installationDate);
-  const fromDay = installationFrom ? toCalendarDay(installationFrom) : null;
-  const toDay = installationTo ? toCalendarDay(installationTo) : null;
+  const userDay = parseDay(installationDate);
+  if (!userDay) return true;
+
+  const fromDay = parseDay(installationFrom);
+  const toDay = parseDay(installationTo);
 
   const rawOp = (installationDateOperator || "").trim().toUpperCase();
 
-  // "Between"
+  // If no date conditions in row, applies to any date
+  if (!rawOp && !fromDay && !toDay) {
+    return true;
+  }
+
+  // Greater Than / More Than
+  if (rawOp === "GREATER THAN" || rawOp === "MORE THAN" || rawOp === ">" || rawOp === ">=") {
+    if (fromDay !== null) {
+      return userDay >= fromDay;
+    }
+    return true;
+  }
+
+  // Between
   if (rawOp === "BETWEEN") {
-    if (fromDay !== null && installDay < fromDay) return false;
-    if (toDay !== null && installDay > toDay) return false;
+    if (fromDay !== null && userDay < fromDay) return false;
+    if (toDay !== null && userDay > toDay) return false;
     return true;
   }
 
-  // "More Than" / "Greater Than"
-  if (rawOp === "MORE THAN" || rawOp === "GREATER THAN" || rawOp === ">" || rawOp === ">=") {
-    if (fromDay !== null && installDay < fromDay) return false;
-    return true;
-  }
-
-  // "Less Than"
+  // Less Than
   if (rawOp === "LESS THAN" || rawOp === "<" || rawOp === "<=") {
-    if (toDay !== null && installDay > toDay) return false;
-    if (fromDay !== null && installDay > fromDay) return false;
+    if (toDay !== null && userDay > toDay) return false;
+    if (fromDay !== null && userDay > fromDay) return false;
     return true;
   }
 
-  // No operator specified: standard range check if bounds exist
-  if (fromDay !== null && installDay < fromDay) return false;
-  if (toDay !== null && installDay > toDay) return false;
+  // Standard range check if bounds exist without operator
+  if (fromDay !== null && userDay < fromDay) return false;
+  if (toDay !== null && userDay > toDay) return false;
+
   return true;
 }
 
@@ -321,28 +398,31 @@ export function matchesWarrantyBranch(
   branchOperator: string | null | undefined,
   branches: string | null | undefined,
 ): boolean {
-  if (!branch || !branch.trim()) {
+  if (!branch || !branch.trim() || branch.trim().toLowerCase() === "optional branch...") {
     return true;
   }
 
+  const rawUserBranch = branch.trim().toUpperCase().replace(/\s+/g, " ");
   const op = (branchOperator || "").trim().toUpperCase();
+
+  // If no branch restriction, condition applies across all branches (all India)
   if (!op || !branches || !branches.trim()) {
     return true;
   }
 
-  const branchValues = parseWarrantyBranches(branches);
-  const containsBranch = branchValues.includes(normalizeWarrantyBranch(branch));
+  const branchList = branches
+    .split(/[,;\r\n]+/)
+    .map((b) => b.trim().toUpperCase().replace(/\s+/g, " "))
+    .filter(Boolean);
 
-  if (op === "IN") {
+  const containsBranch = branchList.some(
+    (b) => b === rawUserBranch || rawUserBranch.includes(b) || b.includes(rawUserBranch),
+  );
+
+  if (op === "IN" || op === "EQUALS" || op === "=") {
     return containsBranch;
   }
-  if (op === "NOT IN") {
-    return !containsBranch;
-  }
-  if (op === "EQUALS" || op === "=") {
-    return containsBranch;
-  }
-  if (op === "NOT EQUALS" || op === "!=") {
+  if (op === "NOT IN" || op === "NOT EQUALS" || op === "!=") {
     return !containsBranch;
   }
 
@@ -358,37 +438,83 @@ export function matchesWarrantyModel(
     return false;
   }
 
-  const normalizedModel = normalizeWarrantyModel(searchedModel);
-  const strippedModel = normalizedModel.replace(/^(?:BO|BI)-/, "");
+  const rawUser = searchedModel.trim().toUpperCase();
+  const strippedUser = rawUser.replace(/^(?:BO|BI)[-_]?/, "");
+  const normUser = rawUser.replace(/[\s\-_]/g, "");
+  const normStrippedUser = strippedUser.replace(/[\s\-_]/g, "");
 
   const aliases = getWarrantyModelAliases(conditionModels);
-  const containsModel = aliases.includes(normalizedModel) || aliases.includes(strippedModel);
 
-  const op = (modelOperator || "").trim().toUpperCase();
+  let containsModel = false;
+  for (const alias of aliases) {
+    const rawAlias = alias.trim().toUpperCase();
+    const strippedAlias = rawAlias.replace(/^(?:BO|BI)[-_]?/, "");
+    const normAlias = rawAlias.replace(/[\s\-_]/g, "");
+    const normStrippedAlias = strippedAlias.replace(/[\s\-_]/g, "");
 
+    if (
+      rawUser === rawAlias ||
+      strippedUser === strippedAlias ||
+      normUser === normAlias ||
+      normStrippedUser === normStrippedAlias ||
+      normUser === normStrippedAlias ||
+      normStrippedUser === normAlias
+    ) {
+      containsModel = true;
+      break;
+    }
+  }
+
+  const op = (modelOperator || "IN").trim().toUpperCase();
   if (op === "NOT IN" || op === "NOT EQUALS" || op === "!=") {
     return !containsModel;
   }
 
-  // "IN", "EQUALS", "=", or default/empty with models present
+  // IN / Equals / default
   return containsModel;
 }
 
 function validateHeaders(headers: string[]): string | null {
-  const missingHeaders = REQUIRED_WARRANTY_HEADERS.filter(
-    (header) => !headers.includes(header) && !headers.includes(header.split(".").pop()!)
-  );
+  const normalizedHeaders = headers.map((h) => h.trim().toLowerCase());
+  const missingHeaders = REQUIRED_WARRANTY_HEADERS.filter((header) => {
+    const full = header.toLowerCase();
+    const base = header.split(".").pop()!.toLowerCase();
+    return !normalizedHeaders.includes(full) && !normalizedHeaders.includes(base);
+  });
 
   if (missingHeaders.length === 0) return null;
 
   return `The file is missing the following required headers: ${missingHeaders.join(", ")}.`;
 }
 
-function valueAt(row: Record<string, string>, header: string): string {
-  if (row[header] !== undefined) return cleanCell(row[header]);
-  const baseHeader = header.split(".").pop();
-  if (baseHeader && row[baseHeader] !== undefined) return cleanCell(row[baseHeader]);
+function findRowValue(row: Record<string, string>, ...candidateKeys: string[]): string {
+  for (const candidate of candidateKeys) {
+    if (row[candidate] !== undefined && row[candidate] !== null) {
+      return cleanCell(row[candidate]);
+    }
+    const baseCandidate = candidate.split(".").pop()!;
+    if (row[baseCandidate] !== undefined && row[baseCandidate] !== null) {
+      return cleanCell(row[baseCandidate]);
+    }
+  }
+
+  const rowEntries = Object.entries(row);
+  for (const candidate of candidateKeys) {
+    const lowerCandidate = candidate.toLowerCase();
+    const lowerBase = candidate.split(".").pop()!.toLowerCase();
+    for (const [key, rawVal] of rowEntries) {
+      const trimmedLowerKey = key.trim().toLowerCase();
+      if (trimmedLowerKey === lowerCandidate || trimmedLowerKey === lowerBase) {
+        return cleanCell(rawVal);
+      }
+    }
+  }
+
   return "";
+}
+
+function valueAt(row: Record<string, string>, header: string): string {
+  return findRowValue(row, header);
 }
 
 export function parseWarrantyImport(value: unknown): WarrantyImportParseResult {
@@ -446,16 +572,16 @@ export function parseWarrantyImport(value: unknown): WarrantyImportParseResult {
     const sourceRow = index + 2;
     if (!row) continue;
 
-    const termName = valueAt(row, "Warranty_Term__r.WarrantyTermName");
-    const durationValue = valueAt(row, "Warranty_Term__r.WarrantyDuration");
-    const unitOfTime = valueAt(row, "Warranty_Term__r.WarrantyUnitOfTime");
-    const installationDateOperatorValue = valueAt(row, "Installation_date_operator__c");
-    const installationFromValue = valueAt(row, "Installation_From__c");
-    const installationToValue = valueAt(row, "Installation_To__c");
-    const branchOperatorValue = valueAt(row, "Branch_Operator__c");
-    const branchesValue = valueAt(row, "Branch__c");
-    const modelOperatorValue = valueAt(row, "Model_Operator__c");
-    const modelsValue = valueAt(row, "Modals__c");
+    const termName = findRowValue(row, "Warranty_Term__r.WarrantyTermName", "WarrantyTermName", "TermName");
+    const durationValue = findRowValue(row, "Warranty_Term__r.WarrantyDuration", "WarrantyDuration", "Duration");
+    const unitOfTime = findRowValue(row, "Warranty_Term__r.WarrantyUnitOfTime", "WarrantyUnitOfTime", "UnitOfTime");
+    const installationDateOperatorValue = findRowValue(row, "Installation_date_operator__c", "Installation_Date_Operator__c", "InstallationDateOperator__c", "InstallationDateOperator");
+    const installationFromValue = findRowValue(row, "Installation_From__c", "InstallationFrom__c", "Installation_From", "InstallationFrom");
+    const installationToValue = findRowValue(row, "Installation_To__c", "InstallationTo__c", "Installation_To", "InstallationTo");
+    const branchOperatorValue = findRowValue(row, "Branch_Operator__c", "BranchOperator__c", "Branch_Operator", "BranchOperator");
+    const branchesValue = findRowValue(row, "Branch__c", "Branch", "Branches");
+    const modelOperatorValue = findRowValue(row, "Model_Operator__c", "ModelOperator__c", "Model_Operator", "ModelOperator");
+    const modelsValue = findRowValue(row, "Modals__c", "Models__c", "Modals", "Models");
     if (!termName) {
       errors.push(`Row ${sourceRow}: WarrantyTermName is required.`);
     }
