@@ -714,7 +714,7 @@ export default function WarrantyFinderPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.25, delay: idx * 0.04 }}
                       key={idx}
-                      className="relative rounded-2xl p-4 sm:p-4.5 overflow-hidden bg-gradient-to-b from-white/90 via-sky-50/40 to-blue-50/50 dark:from-[#091738]/60 dark:via-[#061026]/50 dark:to-[#030816]/60 border border-sky-200/90 dark:border-sky-500/30 shadow-md dark:shadow-[0_4px_25px_rgba(0,0,0,0.4)] backdrop-blur-xl transition-all group hover:border-sky-400/60"
+                      className="relative rounded-2xl p-4 sm:p-4.5 overflow-hidden bg-gradient-to-b from-white/20 via-sky-50/15 to-blue-50/20 dark:from-[#091738]/20 dark:via-[#061026]/20 dark:to-[#030816]/20 border border-sky-300/40 dark:border-sky-500/25 shadow-md dark:shadow-[0_4px_25px_rgba(0,0,0,0.25)] backdrop-blur-2xl transition-all group hover:border-sky-400/60"
                     >
                       {/* Top Specular Line */}
                       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/60 dark:via-sky-300/70 to-transparent pointer-events-none" />
@@ -767,7 +767,7 @@ export default function WarrantyFinderPage() {
                       </div>
 
                       {/* Bottom Compact Stats Strip */}
-                      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 sm:p-2.5 rounded-xl bg-sky-50/60 dark:bg-black/30 border border-sky-100 dark:border-white/5">
+                      <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 sm:p-2.5 rounded-xl bg-sky-50/25 dark:bg-black/15 border border-sky-100/50 dark:border-white/[0.06] backdrop-blur-sm">
                         {activeTab === 'model' ? (
                           <>
                             {/* Duration */}
@@ -857,7 +857,7 @@ export default function WarrantyFinderPage() {
                 </div>
               ) : (
                 /* View 2: High-Density Table */
-                <div className="overflow-x-auto rounded-2xl border border-border/80 bg-white/80 dark:bg-[#0a0f1d]/80 backdrop-blur-xl shadow-lg">
+                <div className="overflow-x-auto rounded-2xl border border-sky-200/40 dark:border-white/10 bg-white/20 dark:bg-[#0a0f1d]/20 backdrop-blur-2xl shadow-lg">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-border/80 bg-sky-50/50 dark:bg-white/[0.03] text-muted-foreground font-black text-[10px] uppercase tracking-wider">

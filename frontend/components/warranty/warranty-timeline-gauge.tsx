@@ -91,8 +91,8 @@ export function WarrantyTimelineGauge({
       className={cn(
         "rounded-xl border p-2.5 sm:p-3 backdrop-blur-md transition-all shadow-xs",
         isActive
-          ? "border-emerald-500/30 bg-emerald-500/[0.03] dark:bg-emerald-950/[0.15]"
-          : "border-amber-500/30 bg-amber-500/[0.03] dark:bg-amber-950/[0.15]",
+          ? "border-emerald-500/25 bg-emerald-500/[0.02] dark:bg-emerald-950/[0.10]"
+          : "border-amber-500/25 bg-amber-500/[0.02] dark:bg-amber-950/[0.10]",
         className
       )}
     >

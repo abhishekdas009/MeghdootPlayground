@@ -15,8 +15,11 @@ import {
   Sun,
   Moon,
   Layers,
+  Zap,
+  Activity,
 } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
+import { useRefreshRate } from "@/lib/refresh-rate";
 import { WALLPAPER_PRESETS, type WallpaperType } from "@/lib/wallpapers";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -32,6 +35,8 @@ export function WallpaperModal() {
     wallpaperSpeed,
     setWallpaperSpeed,
   } = useUIStore();
+
+  const { fps, isHighRefresh } = useRefreshRate();
 
   const [activeTab, setActiveTab] = React.useState<"all" | WallpaperType>("all");
   const [isDark, setIsDark] = React.useState(true);
@@ -92,7 +97,7 @@ export function WallpaperModal() {
           initial={{ opacity: 0, scale: 0.95, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 12 }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border border-slate-200/80 dark:border-white/15 bg-white/95 dark:bg-[#080d19]/95 backdrop-blur-3xl shadow-2xl overflow-hidden"
           style={{
             boxShadow:
@@ -168,7 +173,7 @@ export function WallpaperModal() {
                 )}
               >
                 <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
-                Animated Canvas (4)
+                Animated Canvas ({WALLPAPER_PRESETS.filter((p) => p.type === "animated").length})
               </button>
               <button
                 type="button"
@@ -181,11 +186,16 @@ export function WallpaperModal() {
                 )}
               >
                 <Layers className="h-3.5 w-3.5 text-indigo-500" />
-                Static Designer (6)
+                Static Designer ({WALLPAPER_PRESETS.filter((p) => p.type === "static").length})
               </button>
             </div>
 
             <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 font-mono text-[11px] font-bold">
+                <Activity className="h-3 w-3 animate-pulse text-emerald-500" />
+                {fps}Hz {isHighRefresh ? "⚡ High Refresh" : "Active"}
+              </span>
+
               <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10">
                 {isDark ? (
                   <>
@@ -295,6 +305,34 @@ export function WallpaperModal() {
                 Motion Speed:
               </span>
               <div className="inline-flex p-0.5 rounded-lg bg-slate-200/80 dark:bg-white/[0.08] text-[11px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setWallpaperSpeed("adaptive")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md transition-all flex items-center gap-1",
+                    wallpaperSpeed === "adaptive"
+                      ? "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white shadow-2xs font-extrabold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                  title={`Automatically synchronizes with your laptop/monitor refresh rate (${fps}Hz detected)`}
+                >
+                  <Sparkles className={cn("h-3 w-3", wallpaperSpeed === "adaptive" ? "text-emerald-200 fill-emerald-200" : "text-emerald-500")} />
+                  Auto ({fps}Hz)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWallpaperSpeed("ultra")}
+                  className={cn(
+                    "px-2.5 py-1 rounded-md transition-all flex items-center gap-1",
+                    wallpaperSpeed === "ultra"
+                      ? "bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-2xs font-extrabold"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  )}
+                  title="High refresh rate 120 FPS buttery smooth motion"
+                >
+                  <Zap className={cn("h-3 w-3", wallpaperSpeed === "ultra" ? "text-amber-200 fill-amber-200" : "text-amber-500")} />
+                  Extra Smooth 120fps
+                </button>
                 <button
                   type="button"
                   onClick={() => setWallpaperSpeed("normal")}

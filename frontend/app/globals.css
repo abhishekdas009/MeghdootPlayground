@@ -44,6 +44,12 @@
   --icon-box-md: clamp(2.5rem, 7vw, 3.5rem);
   --icon-size-sm: clamp(1rem, 3.4vw, 1.25rem);
   --icon-size-md: clamp(1.25rem, 4vw, 1.75rem);
+
+  /* ─── 120Hz / High-Refresh Motion Physics & Curves ─────────────────── */
+  --ease-120hz: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring-smooth: cubic-bezier(0.2, 0.9, 0.2, 1);
+  --motion-duration-swift: 0.18s;
+  --motion-duration-fluid: 0.22s;
 }
 
 .dark {
@@ -79,6 +85,7 @@
 
   html {
     scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
     text-size-adjust: 100%;
     color-scheme: light;
   }
@@ -254,7 +261,7 @@
   position: relative;
   border-radius: 24px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.75) 0%, rgba(248, 250, 252, 0.60) 100%);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.40) 0%, rgba(255, 255, 255, 0.15) 100%);
   box-shadow:
     0 1px 3px 0 rgba(15, 23, 42, 0.03),
     0 10px 30px -4px rgba(15, 23, 42, 0.06),
@@ -352,35 +359,41 @@
    APP CARD & GLASS PANEL ARCHITECTURE
    ========================================================================= */
 
-/* ── Light Mode: Architectural Porcelain Cards ── */
+/* ── Light Mode: Ultra-Translucent Liquid Glass Cards ── */
 .app-card,
 .glass-panel,
 .workspace-page .app-card {
   position: relative;
   isolation: isolate;
   border-radius: 20px;
-  border: 1px solid rgba(15, 23, 42, 0.08) !important;
-  background-color: rgba(255, 255, 255, 0.55) !important;
-  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.72) 0%, rgba(248, 250, 252, 0.45) 100%) !important;
-  backdrop-filter: blur(20px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  background-color: rgba(255, 255, 255, 0.22) !important;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.08) 100%) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
   box-shadow:
-    0 1px 3px 0 rgba(15, 23, 42, 0.03),
-    0 6px 20px -2px rgba(15, 23, 42, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
-  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+    0 1px 3px 0 rgba(15, 23, 42, 0.02),
+    0 8px 30px -4px rgba(15, 23, 42, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.90),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35) !important;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, box-shadow;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .app-card:hover,
 .glass-panel:hover,
 .workspace-page .app-card:hover {
-  border-color: rgba(1, 118, 211, 0.22) !important;
-  background-color: rgba(255, 255, 255, 0.68) !important;
-  background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.82) 0%, rgba(248, 250, 252, 0.58) 100%) !important;
+  border-color: rgba(1, 118, 211, 0.30) !important;
+  background-color: rgba(255, 255, 255, 0.34) !important;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(255, 255, 255, 0.14) 100%) !important;
   box-shadow:
-    0 3px 6px 0 rgba(15, 23, 42, 0.04),
+    0 4px 12px 0 rgba(15, 23, 42, 0.03),
     0 16px 36px -4px rgba(1, 118, 211, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.50) !important;
+  transform: translateY(-2px) translateZ(0);
 }
 
 /* ── Dark Mode: Translucent Obsidian Glass Cards ── */
@@ -407,11 +420,14 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     0 22px 54px -10px rgba(0, 0, 0, 0.65),
     0 0 20px rgba(56, 189, 248, 0.10) !important;
+  transform: translateY(-2px) translateZ(0);
 }
 
 /* Elevated Hero Cards / KPI Panels */
 .glass-panel--elevated {
   border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0.28) !important;
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.40) 0%, rgba(255, 255, 255, 0.10) 100%) !important;
 }
 
 .dark .glass-panel--elevated {
@@ -752,7 +768,7 @@ html.theme-transition *::after {
 .glass-search-bar {
   border-radius: 9999px;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  background: rgba(255, 255, 255, 0.70);
+  background: rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
   box-shadow:
@@ -763,7 +779,7 @@ html.theme-transition *::after {
 
 .dark .glass-search-bar {
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  background: rgba(8, 12, 22, 0.58) !important;
+  background: rgba(8, 12, 22, 0.35) !important;
   backdrop-filter: blur(28px) saturate(160%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
   box-shadow:
@@ -783,7 +799,7 @@ html.theme-transition *::after {
 
 .dark .glass-mode-toggle {
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  background: rgba(8, 12, 22, 0.58) !important;
+  background: rgba(8, 12, 22, 0.35) !important;
   backdrop-filter: blur(24px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
   box-shadow:
@@ -813,4 +829,14 @@ html.theme-transition *::after {
   box-shadow:
     inset 0 1px 2px rgba(0, 0, 0, 0.4),
     0 0 16px rgba(56, 189, 248, 0.28) !important;
+}
+
+
+/* ── 120Hz Hardware-Adaptive GPU Compositing ── */
+.desktop-icon-dock,
+.page-hero,
+.interactive-gpu-surface {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }

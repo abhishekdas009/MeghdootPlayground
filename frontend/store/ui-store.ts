@@ -33,11 +33,11 @@ interface UIState {
   // Wallpaper & Background Atmosphere
   wallpaperId: string;
   wallpaperOpacity: number;
-  wallpaperSpeed: "normal" | "slow" | "paused";
+  wallpaperSpeed: "adaptive" | "ultra" | "normal" | "slow" | "paused";
   wallpaperModalOpen: boolean;
   setWallpaperId: (id: string) => void;
   setWallpaperOpacity: (opacity: number) => void;
-  setWallpaperSpeed: (speed: "normal" | "slow" | "paused") => void;
+  setWallpaperSpeed: (speed: "adaptive" | "ultra" | "normal" | "slow" | "paused") => void;
   setWallpaperModalOpen: (open: boolean) => void;
 }
 
@@ -152,8 +152,8 @@ export const useUIStore = create<UIState>((set) => ({
       : 0.85,
   wallpaperSpeed:
     typeof window !== "undefined"
-      ? ((window.localStorage.getItem("meghdoot_wallpaper_speed") as any) || "normal")
-      : "normal",
+      ? ((window.localStorage.getItem("meghdoot_wallpaper_speed") as any) || "adaptive")
+      : "adaptive",
   wallpaperModalOpen: false,
 
   setWallpaperId: (id: string) => {
@@ -170,7 +170,7 @@ export const useUIStore = create<UIState>((set) => ({
     set({ wallpaperOpacity: opacity });
   },
 
-  setWallpaperSpeed: (speed) => {
+  setWallpaperSpeed: (speed: "adaptive" | "ultra" | "normal" | "slow" | "paused") => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem("meghdoot_wallpaper_speed", speed);
     }

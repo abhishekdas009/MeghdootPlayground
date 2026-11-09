@@ -121,7 +121,7 @@ export function MultiTaskingDock() {
           initial={{ x: "100%", opacity: 0.5 }}
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 350, damping: 32 }}
+          transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
           className={cn(
             "h-full bg-white dark:bg-[#07090e] border-l border-slate-200 dark:border-white/10 flex flex-col backdrop-blur-2xl transition-all duration-200",
             dockWidth === "compact" && "w-[390px]",

@@ -226,7 +226,7 @@ export function Sidebar() {
       <motion.aside
         initial={false}
         animate={{ width: isExpanded ? 256 : 84 }}
-        transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
         data-sidebar-peeking={sidebarCollapsed && sidebarHovered ? "true" : "false"}
         onMouseEnter={onSidebarHoverStart}
@@ -267,7 +267,7 @@ export function Sidebar() {
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               className="fixed inset-y-0 left-0 z-50 flex w-[min(19rem,calc(100vw-2rem))] flex-col overflow-hidden border-r border-border/20 bg-card/90 dark:bg-card dark:border-white/10 backdrop-blur-2xl pt-[env(safe-area-inset-top)] shadow-2xl md:hidden"
             >
               {/* Mobile Header with Logo and Close X */}
