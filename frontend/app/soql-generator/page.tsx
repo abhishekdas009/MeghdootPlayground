@@ -462,6 +462,10 @@ interface CancellationExecutionRow {
 
 
 
+  accountGroup?: string;
+
+
+
   resultStatus?: string;
 
 
@@ -906,7 +910,7 @@ AND Ticket_Number_Read_Only__c IN (
 
 
 
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
+    soql: `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
 
 
 
@@ -1322,7 +1326,7 @@ const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?
 
 
 
-const SALESFORCE_TICKET_REGEX = /(?:^|[^A-Za-z0-9])([BISXCAD]\d{14,})(?![A-Za-z0-9])/gi;
+const SALESFORCE_TICKET_REGEX = /(?:^|[^A-Za-z0-9])([BISXCAD]\d{8,})(?![A-Za-z0-9])/gi;
 
 
 
@@ -1845,6 +1849,20 @@ function cleanValue(value?: string | null): string {
 
 
 
+
+function isNamoGroup(accountGroup?: string, cancellationType?: string): boolean {
+  const grp = (accountGroup || "").trim().toUpperCase();
+  if (grp.includes("NON NAMO") || grp.includes("NON-NAMO") || grp.includes("NONNAMO")) {
+    return false;
+  }
+  if (grp.includes("NAMO")) {
+    return true;
+  }
+  if (cancellationType === "NAMO") {
+    return true;
+  }
+  return false;
+}
 
 function cleanTicket(ticket?: string | null): string {
 
@@ -3654,6 +3672,10 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
 
+    accountGroupIdx: number;
+
+
+
     resultStatusIdx: number;
 
 
@@ -3730,6 +3752,10 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
 
+      t.includes("group") ||
+
+
+
       t.includes("error")
 
 
@@ -3763,6 +3789,10 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
       let approvalIdx = -1;
+
+
+
+      let accountGroupIdx = -1;
 
 
 
@@ -3830,6 +3860,14 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
 
+        } else if (token.includes("group")) {
+
+
+
+          accountGroupIdx = idx;
+
+
+
         } else if (token.includes("error")) {
 
 
@@ -3854,7 +3892,7 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
 
-        currentHeaders = { idIdx, ticketIdx, statusIdx, materialIdx, approvalIdx, resultStatusIdx, errorIdx };
+        currentHeaders = { idIdx, ticketIdx, statusIdx, materialIdx, approvalIdx, accountGroupIdx, resultStatusIdx, errorIdx };
 
 
 
@@ -3891,6 +3929,10 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
     let isApprovalSent = false;
+
+
+
+    let accountGroup = "";
 
 
 
@@ -3987,6 +4029,18 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
         isApprovalSent = val === "true" || val === "1" || val === "yes";
+
+
+
+      }
+
+
+
+      if (currentHeaders.accountGroupIdx !== -1 && tokens[currentHeaders.accountGroupIdx]) {
+
+
+
+        accountGroup = cleanValue(tokens[currentHeaders.accountGroupIdx]);
 
 
 
@@ -4206,6 +4260,26 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
 
+    // Fallback accountGroup detection
+    if (!accountGroup || accountGroup.toLowerCase() === "[account]" || accountGroup === "_") {
+      for (const tok of tokens) {
+        const cleaned = cleanValue(tok).toUpperCase();
+        if (cleaned.includes("NON NAMO") || cleaned.includes("NON-NAMO") || cleaned.includes("NONNAMO")) {
+          accountGroup = "NON NAMO";
+          break;
+        } else if (cleaned.includes("NAMO")) {
+          accountGroup = "NAMO";
+          break;
+        }
+      }
+    }
+
+
+
+
+
+
+
     // 5. Check error message or whole line for MR exists or approval indicators
 
 
@@ -4322,6 +4396,10 @@ function parseCancellationExecutionRows(input: string, expectedTickets: string[]
 
 
 
+          accountGroup,
+
+
+
           resultStatus,
 
 
@@ -4378,6 +4456,10 @@ function buildCancellationCanceledOutput(rows: CancellationExecutionRow[]): stri
 
 
 
+    if (row.ticket.trim().toUpperCase().startsWith("A")) continue;
+
+
+
     outputRows.push(buildTSVRow(["[WorkOrder]", row.id, row.ticket, "Canceled"]));
 
 
@@ -4395,13 +4477,6 @@ function buildCancellationCanceledOutput(rows: CancellationExecutionRow[]): stri
 
 
 }
-
-
-
-
-
-
-
 function buildCaseAssignmentRows(input: string): CaseAssignmentRow[] {
 
 
@@ -11455,7 +11530,16 @@ export default function SOQLGeneratorPage() {
 
 
 
+  const cancellationPmsRows = React.useMemo(
+    () => cancellationExecutionRows.filter((row) => cleanTicket(row.ticket).toUpperCase().startsWith("A")),
+    [cancellationExecutionRows]
+  );
+
   const executableCancellationRows = React.useMemo(() => {
+
+
+
+    let source = cancellationExecutionRows;
 
 
 
@@ -11499,7 +11583,7 @@ export default function SOQLGeneratorPage() {
 
 
 
-      return merged;
+      source = merged;
 
 
 
@@ -11507,7 +11591,7 @@ export default function SOQLGeneratorPage() {
 
 
 
-    return cancellationExecutionRows;
+    return source.filter((row) => !cleanTicket(row.ticket).toUpperCase().startsWith("A"));
 
 
 
@@ -11603,11 +11687,31 @@ export default function SOQLGeneratorPage() {
 
 
 
-    () => new Set(uniqueExecutableCancellationRows.map((row) => cleanTicket(row.ticket)).filter(Boolean)),
+    () => new Set(
 
 
 
-    [uniqueExecutableCancellationRows]
+      [
+
+
+
+        ...uniqueExecutableCancellationRows.map((row) => cleanTicket(row.ticket)),
+
+
+
+        ...cancellationPmsRows.map((row) => cleanTicket(row.ticket)),
+
+
+
+      ].filter(Boolean)
+
+
+
+    ),
+
+
+
+    [uniqueExecutableCancellationRows, cancellationPmsRows]
 
 
 
@@ -12015,6 +12119,10 @@ export default function SOQLGeneratorPage() {
 
 
 
+    lines.push(`PMS tickets (skipped from cancel): ${cancellationPmsRows.length}`);
+
+
+
     lines.push(`Skipped rows: ${skippedCancellationRows.length}`);
 
 
@@ -12075,7 +12183,7 @@ export default function SOQLGeneratorPage() {
 
 
 
-  }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows]);
+  }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows, cancellationPmsRows]);
 
 
 
@@ -12359,7 +12467,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
 
 
 
@@ -12367,7 +12475,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
 
 
 
@@ -12375,7 +12483,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
+      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
 
 
 
@@ -24044,7 +24152,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Is_Material_Consumed__c"   "Is_Approval_Sent__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "true"   "false"   "Cancellation Requested"`}
+                      placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Is_Material_Consumed__c"   "Is_Approval_Sent__c"   "Account.Group__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "true"   "false"   "NAMO"   "Cancellation Requested"`}
 
 
 
@@ -24784,641 +24892,250 @@ BSL22295338      CID-6074821`}
 
 
 
-                const cancellationTotalTickets = parsedTickets.length || uniqueExecutableCancellationRows.length;
-
-
-
                 const hasFailedInput = cancellationFailedInput.trim().length > 0;
 
-
-
-                
-
-
-
                 // Parse Step 5 failed rows
-
-
-
                 const cancellationFailedTicketsRows = parseCancellationExecutionRows(cancellationFailedInput);
-
-
-
                 const actuallyFailedRows = cancellationFailedTicketsRows.filter(
-
-
-
                   (r) => !r.resultStatus || r.resultStatus.toLowerCase() !== "success"
-
-
-
                 );
-
-
-
                 let failedTicketsList = actuallyFailedRows.map((r) => r.ticket.trim()).filter(Boolean);
-
-
-
                 if (failedTicketsList.length === 0 && hasFailedInput) {
-
-
-
                   const matches = cancellationFailedInput.match(SALESFORCE_TICKET_REGEX) || [];
-
-
-
                   failedTicketsList = matches.map((m) => cleanTicket(m)).filter(Boolean);
-
-
-
                 }
-
-
-
                 const cancellationFailedTickets = Array.from(new Set(failedTicketsList));
 
-
-
-                const cancellationFailedCount = cancellationFailedTickets.length;
-
-
-
-                const cancellationSuccessCount = Math.max(0, cancellationTotalTickets - cancellationFailedCount);
-
-
-
-
-
-
-
-                let mailTemplateText = "";
-
-
-
-                let postTemplateText = "";
-
-
-
-                let mailHtmlText = "";
-
-
-
-                let postHtmlText = "";
-
-
-
-
-
-
-
-                if (!hasFailedInput || cancellationFailedTickets.length === 0) {
-
-
-
-                  mailTemplateText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
-
-
-
-                  postTemplateText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
-
-
-
-                  mailHtmlText = `<p>Dear,</p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
-
-
-
-                  postHtmlText = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
-
-
-
-                } else {
-
-
-
-                  // Build Step 3 map by ticket and ID
-
-
-
-                  const step3ByTicket = new Map<string, CancellationExecutionRow>();
-
-
-
-                  const step3ById = new Map<string, CancellationExecutionRow>();
-
-
-
-                  uniqueExecutableCancellationRows.forEach((r) => {
-
-
-
-                    const cleanTkt = cleanTicket(r.ticket).toUpperCase();
-
-
-
-                    if (cleanTkt) step3ByTicket.set(cleanTkt, r);
-
-
-
-                    if (r.id) step3ById.set(r.id.toLowerCase(), r);
-
-
-
-                  });
-
-
-
-
-
-
-
-                  // Categorize failed tickets
-
-
-
-                  const approvalPendingTickets: string[] = [];
-
-
-
-                  const mrRaisedTickets: string[] = [];
-
-
-
-                  const bothApprovalAndMRTickets: string[] = [];
-
-
-
-                  const failedTickets: string[] = [];
-
-
-
-
-
-
-
-                  for (const tkt of cancellationFailedTickets) {
-
-
-
-                    const key = cleanTicket(tkt).toUpperCase();
-
-
-
-                    const failedRow = actuallyFailedRows.find(
-
-
-
-                      (r) => cleanTicket(r.ticket).toUpperCase() === key
-
-
-
-                    );
-
-
-
-                    const sfRow =
-
-
-
-                      step3ByTicket.get(key) ||
-
-
-
-                      (failedRow ? step3ById.get(failedRow.id.toLowerCase()) : undefined);
-
-
-
-
-
-
-
-                    let isApproval = sfRow ? Boolean(sfRow.isApprovalSent) : false;
-
-
-
-                    let isMR = sfRow ? Boolean(sfRow.isMaterialConsumed) : false;
-
-
-
-
-
-
-
-                    if (failedRow) {
-
-
-
-                      if (failedRow.isMaterialConsumed) isMR = true;
-
-
-
-                      if (failedRow.isApprovalSent) isApproval = true;
-
-
-
-                      const errMsg = (failedRow.errorMessage || "").toLowerCase();
-
-
-
-                      if (errMsg.includes("mr exists") || errMsg.includes("cannot be canceled as mr exists")) {
-
-
-
-                        isMR = true;
-
-
-
-                      }
-
-
-
-                      if (errMsg.includes("approval is pending") || errMsg.includes("pending approval")) {
-
-
-
-                        isApproval = true;
-
-
-
-                      }
-
-
-
+                // Map of all PMS tickets (tickets starting with 'A')
+                const pmsTicketMap = new Map<string, { accountGroup?: string; isMaterialConsumed?: boolean }>();
+
+                // 1. From Step 3 rows (parsed and stored)
+                [...cancellationExecutionRows, ...cancellationStoredRows].forEach((r) => {
+                  const tkt = cleanTicket(r.ticket).toUpperCase();
+                  if (tkt.startsWith("A")) {
+                    pmsTicketMap.set(tkt, {
+                      accountGroup: r.accountGroup,
+                      isMaterialConsumed: r.isMaterialConsumed,
+                    });
+                  }
+                });
+
+                // 2. From Step 1 requested tickets
+                parsedTickets.forEach((t) => {
+                  const tkt = cleanTicket(t).toUpperCase();
+                  if (tkt.startsWith("A") && !pmsTicketMap.has(tkt)) {
+                    pmsTicketMap.set(tkt, {
+                      accountGroup: cancellationType === "NAMO" ? "NAMO" : (cancellationType === "NON NAMO" ? "NON NAMO" : undefined),
+                      isMaterialConsumed: false,
+                    });
+                  }
+                });
+
+                // Build Step 3 map by ticket and ID
+                const step3ByTicket = new Map<string, CancellationExecutionRow>();
+                const step3ById = new Map<string, CancellationExecutionRow>();
+                [...cancellationExecutionRows, ...cancellationStoredRows].forEach((r) => {
+                  const cleanTkt = cleanTicket(r.ticket).toUpperCase();
+                  if (cleanTkt) step3ByTicket.set(cleanTkt, r);
+                  if (r.id) step3ById.set(r.id.toLowerCase(), r);
+                });
+
+                // Categorize PMS tickets into NAMO and NON NAMO, plus track if MR exists
+                const pmsNamoTickets: string[] = [];
+                const pmsNonNamoTickets: string[] = [];
+                const mrRaisedTickets: string[] = [];
+
+                pmsTicketMap.forEach((info, tkt) => {
+                  const isNamo = isNamoGroup(info.accountGroup, cancellationType);
+                  if (isNamo) {
+                    pmsNamoTickets.push(tkt);
+                  } else {
+                    pmsNonNamoTickets.push(tkt);
+                  }
+                  if (info.isMaterialConsumed) {
+                    mrRaisedTickets.push(tkt);
+                  }
+                });
+
+                // Categorize failed tickets (excluding PMS tickets as they are handled in PMS sections)
+                const approvalPendingTickets: string[] = [];
+                const bothApprovalAndMRTickets: string[] = [];
+                const failedTickets: string[] = [];
+
+                for (const tkt of cancellationFailedTickets) {
+                  const key = cleanTicket(tkt).toUpperCase();
+                  if (key.startsWith("A")) continue;
+
+                  const failedRow = actuallyFailedRows.find(
+                    (r) => cleanTicket(r.ticket).toUpperCase() === key
+                  );
+                  const sfRow =
+                    step3ByTicket.get(key) ||
+                    (failedRow ? step3ById.get(failedRow.id.toLowerCase()) : undefined);
+
+                  let isApproval = sfRow ? Boolean(sfRow.isApprovalSent) : false;
+                  let isMR = sfRow ? Boolean(sfRow.isMaterialConsumed) : false;
+
+                  if (failedRow) {
+                    if (failedRow.isMaterialConsumed) isMR = true;
+                    if (failedRow.isApprovalSent) isApproval = true;
+                    const errMsg = (failedRow.errorMessage || "").toLowerCase();
+                    if (errMsg.includes("mr exists") || errMsg.includes("cannot be canceled as mr exists")) {
+                      isMR = true;
                     }
-
-
-
-
-
-
-
-                    if (isApproval && isMR) {
-
-
-
-                      bothApprovalAndMRTickets.push(tkt);
-
-
-
-                    } else if (isApproval) {
-
-
-
-                      approvalPendingTickets.push(tkt);
-
-
-
-                    } else if (isMR) {
-
-
-
-                      mrRaisedTickets.push(tkt);
-
-
-
-                    } else {
-
-
-
-                      failedTickets.push(tkt);
-
-
-
+                    if (errMsg.includes("approval is pending") || errMsg.includes("pending approval") || errMsg.includes("recall the pending approval")) {
+                      isApproval = true;
                     }
-
-
-
                   }
 
-
-
-
-
-
-
-                  const sections: string[] = [];
-
-
-
-                  const htmlSections: string[] = [];
-
-
-
-
-
-
-
-                  if (approvalPendingTickets.length > 0) {
-
-
-
-                    sections.push(
-
-
-
-                      `Appoval pending tickets : \n----------------------------------------\n\n${approvalPendingTickets.join("\n")}`
-
-
-
-                    );
-
-
-
-                    htmlSections.push(
-
-
-
-                      `<p><b>Appoval pending tickets :</b><br>----------------------------------------<br>${approvalPendingTickets.join("<br>")}</p>`
-
-
-
-                    );
-
-
-
+                  if (isApproval && isMR) {
+                    bothApprovalAndMRTickets.push(tkt);
+                  } else if (isApproval) {
+                    approvalPendingTickets.push(tkt);
+                  } else if (isMR) {
+                    mrRaisedTickets.push(tkt);
+                  } else {
+                    failedTickets.push(tkt);
                   }
-
-
-
-
-
-
-
-                  if (mrRaisedTickets.length > 0) {
-
-
-
-                    sections.push(
-
-
-
-                      `MR raised tickets:\n----------------------------------------\n${mrRaisedTickets.join("\n")}`
-
-
-
-                    );
-
-
-
-                    htmlSections.push(
-
-
-
-                      `<p><b>MR raised tickets:</b><br>----------------------------------------<br>${mrRaisedTickets.join("<br>")}</p>`
-
-
-
-                    );
-
-
-
-                  }
-
-
-
-
-
-
-
-                  if (bothApprovalAndMRTickets.length > 0) {
-
-
-
-                    sections.push(
-
-
-
-                      `Both approval pending and MR raise\n----------------------------------------\n\n${bothApprovalAndMRTickets.join("\n")}`
-
-
-
-                    );
-
-
-
-                    htmlSections.push(
-
-
-
-                      `<p><b>Both approval pending and MR raise</b><br>----------------------------------------<br>${bothApprovalAndMRTickets.join("<br>")}</p>`
-
-
-
-                    );
-
-
-
-                  }
-
-
-
-
-
-
-
-                  if (failedTickets.length > 0) {
-
-
-
-                    sections.push(
-
-
-
-                      `Failed ticket\n----------------------------------------\n${failedTickets.join("\n")}`
-
-
-
-                    );
-
-
-
-                    htmlSections.push(
-
-
-
-                      `<p><b>Failed ticket</b><br>----------------------------------------<br>${failedTickets.join("<br>")}</p>`
-
-
-
-                    );
-
-
-
-                  }
-
-
-
-
-
-
-
-                  const hasApprovalFailure = approvalPendingTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
-
-
-
-                  const hasMRFailure = mrRaisedTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
-
-
-
-
-
-
-
-                  const instructionLines: string[] = [];
-
-
-
-                  const instructionHtmlLines: string[] = [];
-
-
-
-
-
-
-
-                  if (hasApprovalFailure) {
-
-
-
-                    instructionLines.push(
-
-
-
-                      `*For approval-pending cases:* Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.`
-
-
-
-                    );
-
-
-
-                    instructionHtmlLines.push(
-
-
-
-                      `<p><b>For approval-pending cases:</b> Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.</p>`
-
-
-
-                    );
-
-
-
-                  }
-
-
-
-
-
-
-
-                  if (hasMRFailure) {
-
-
-
-                    instructionLines.push(
-
-
-
-                      `*For MR-raised tickets:* Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.`
-
-
-
-                    );
-
-
-
-                    instructionHtmlLines.push(
-
-
-
-                      `<p><b>For MR-raised tickets:</b> Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.</p>`
-
-
-
-                    );
-
-
-
-                  }
-
-
-
-
-
-
-
-                  const instructionsPlainText = instructionLines.length > 0
-
-
-
-                    ? `\n\n*Kindly note the following instructions:*\n\n${instructionLines.join("\n")}`
-
-
-
-                    : "";
-
-
-
-
-
-
-
-                  const instructionsHtml = instructionHtmlLines.length > 0
-
-
-
-                    ? `\n<p><b>Kindly note the following instructions:</b></p>\n${instructionHtmlLines.join("\n")}`
-
-
-
-                    : "";
-
-
-
-
-
-
-
-                  const bodyText = `Cancellation has been done successfully.\nTotal Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\n\nFailed tickets are mention below:\n\n${sections.join("\n\n")}${instructionsPlainText}`;
-
-
-
-
-
-
-
-                  const bodyHtml = `<p>Cancellation has been done successfully.<br>Total Tickets: ${cancellationTotalTickets}<br>Cancelled Tickets: ${cancellationSuccessCount}</p>\n<p>Failed tickets are mention below:</p>\n${htmlSections.join("<br>")}${instructionsHtml}`;
-
-
-
-
-
-
-
-                  mailTemplateText = `Dear,\n${bodyText}`;
-
-
-
-                  postTemplateText = `@taguser \n${bodyText}`;
-
-
-
-                  mailHtmlText = `<p>Dear,</p>${bodyHtml}`;
-
-
-
-                  postHtmlText = `<p>@taguser </p>${bodyHtml}`;
-
-
-
                 }
 
+                // Deduplicate mrRaisedTickets
+                const uniqueMrTickets = Array.from(new Set(mrRaisedTickets));
 
+                const cancellationTotalTickets = parsedTickets.length || cancellationExecutionRows.length;
+                const nonPmsFailedTickets = cancellationFailedTickets.filter((t) => !cleanTicket(t).toUpperCase().startsWith("A"));
+                const cancellationSuccessCount = Math.max(0, uniqueExecutableCancellationRows.length - nonPmsFailedTickets.length);
 
+                const hasAnyPMS = pmsNamoTickets.length > 0 || pmsNonNamoTickets.length > 0;
+                const hasAnyFailed = cancellationFailedTickets.length > 0 || approvalPendingTickets.length > 0 || uniqueMrTickets.length > 0 || bothApprovalAndMRTickets.length > 0 || failedTickets.length > 0;
 
+                let mailTemplateText = "";
+                let postTemplateText = "";
+                let mailHtmlText = "";
+                let postHtmlText = "";
 
+                if (!hasAnyPMS && !hasAnyFailed) {
+                  mailTemplateText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
+                  postTemplateText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
+                  mailHtmlText = `<p>Dear,</p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
+                  postHtmlText = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
+                } else {
+                  const sections: string[] = [];
+                  const htmlSections: string[] = [];
 
+                  if (pmsNamoTickets.length > 0) {
+                    sections.push(
+                      `PMS tickets (NAMO):\n----------------------------------------\n${pmsNamoTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>PMS tickets (NAMO):</b><br>----------------------------------------<br>${pmsNamoTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (pmsNonNamoTickets.length > 0) {
+                    sections.push(
+                      `PMS tickets (NON NAMO):\n----------------------------------------\n${pmsNonNamoTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>PMS tickets (NON NAMO):</b><br>----------------------------------------<br>${pmsNonNamoTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (approvalPendingTickets.length > 0) {
+                    sections.push(
+                      `Appoval pending tickets : \n----------------------------------------\n\n${approvalPendingTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>Appoval pending tickets :</b><br>----------------------------------------<br>${approvalPendingTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (uniqueMrTickets.length > 0) {
+                    sections.push(
+                      `MR raised tickets:\n----------------------------------------\n${uniqueMrTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>MR raised tickets:</b><br>----------------------------------------<br>${uniqueMrTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (bothApprovalAndMRTickets.length > 0) {
+                    sections.push(
+                      `Both approval pending and MR raise\n----------------------------------------\n\n${bothApprovalAndMRTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>Both approval pending and MR raise</b><br>----------------------------------------<br>${bothApprovalAndMRTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  if (failedTickets.length > 0) {
+                    sections.push(
+                      `Failed ticket\n----------------------------------------\n${failedTickets.join("\n")}`
+                    );
+                    htmlSections.push(
+                      `<p><b>Failed ticket</b><br>----------------------------------------<br>${failedTickets.join("<br>")}</p>`
+                    );
+                  }
+
+                  const hasApprovalFailure = approvalPendingTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
+                  const hasMRFailure = uniqueMrTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
+
+                  const instructionLines: string[] = [];
+                  const instructionHtmlLines: string[] = [];
+
+                  if (pmsNamoTickets.length > 0) {
+                    instructionLines.push(
+                      `*For PMS tickets (NAMO):* Kindly provide approval from Vishal Sir (CPSD) / Suraj Sir (UCPG) before proceeding with cancellation.`
+                    );
+                    instructionHtmlLines.push(
+                      `<p><b>For PMS tickets (NAMO):</b> Kindly provide approval from Vishal Sir (CPSD) / Suraj Sir (UCPG) before proceeding with cancellation.</p>`
+                    );
+                  }
+
+                  if (pmsNonNamoTickets.length > 0) {
+                    instructionLines.push(
+                      `*For PMS tickets (NON NAMO):* Kindly provide RM approval before proceeding with cancellation.`
+                    );
+                    instructionHtmlLines.push(
+                      `<p><b>For PMS tickets (NON NAMO):</b> Kindly provide RM approval before proceeding with cancellation.</p>`
+                    );
+                  }
+
+                  if (hasApprovalFailure) {
+                    instructionLines.push(
+                      `*For approval-pending cases:* Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.`
+                    );
+                    instructionHtmlLines.push(
+                      `<p><b>For approval-pending cases:</b> Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.</p>`
+                    );
+                  }
+
+                  if (hasMRFailure) {
+                    instructionLines.push(
+                      `*For MR-raised tickets:* Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.`
+                    );
+                    instructionHtmlLines.push(
+                      `<p><b>For MR-raised tickets:</b> Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.</p>`
+                    );
+                  }
+
+                  const instructionsPlainText = instructionLines.length > 0
+                    ? `\n\n*Kindly note the following instructions:*\n\n${instructionLines.join("\n")}`
+                    : "";
+
+                  const instructionsHtml = instructionHtmlLines.length > 0
+                    ? `\n<p><b>Kindly note the following instructions:</b></p>\n${instructionHtmlLines.join("\n")}`
+                    : "";
+
+                  const bodyText = `Cancellation has been done successfully.\nTotal Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\n\nFailed / Pending tickets are mentioned below:\n\n${sections.join("\n\n")}${instructionsPlainText}`;
+
+                  const bodyHtml = `<p>Cancellation has been done successfully.<br>Total Tickets: ${cancellationTotalTickets}<br>Cancelled Tickets: ${cancellationSuccessCount}</p>\n<p>Failed / Pending tickets are mentioned below:</p>\n${htmlSections.join("<br>")}${instructionsHtml}`;
+
+                  mailTemplateText = `Dear,\n${bodyText}`;
+                  postTemplateText = `@taguser \n${bodyText}`;
+                  mailHtmlText = `<p>Dear,</p>${bodyHtml}`;
+                  postHtmlText = `<p>@taguser </p>${bodyHtml}`;
+                }
 
                 return (
 
