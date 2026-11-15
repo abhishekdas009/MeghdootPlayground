@@ -9337,80 +9337,45 @@ interface PendingTransferException {
 
 
 const buildPendingAsciiTable = (exceptions: PendingTransferException[]) => {
-
   if (exceptions.length === 0) return "";
-
   const amcIds = exceptions.filter((e) => e.status === "AMC").map((e) => e.componentId);
-
   const draftIds = exceptions.filter((e) => e.status === "Draft").map((e) => e.componentId);
 
-
-
   const maxIdLen = Math.max(12, ...exceptions.map((e) => e.componentId.length));
-
   const col1Width = maxIdLen + 4;
-
   const col2Width = 8;
-
   const col3Width = 84;
 
-
-
-  const pad = (str: string, width: number) => str + " ".repeat(Math.max(0, width - str.length));
-
-
+  const pad = (str?: string, width: number = 0) => {
+    const s = str ?? "";
+    return s + " ".repeat(Math.max(0, width - s.length));
+  };
 
   const border = `+${"-".repeat(col1Width + 2)}+${"-".repeat(col2Width + 2)}+${"-".repeat(col3Width + 2)}+`;
-
   const header = `| ${pad("Component ID", col1Width)} | ${pad("Status", col2Width)} | ${pad("Remarks / Required Action", col3Width)} |`;
-
-
 
   const lines: string[] = [border, header, border];
 
-
-
   if (amcIds.length > 0) {
-
     const remark = "Kindly coordinate with the CBO Team to complete the asset transfer.";
-
-    lines.push(`| ${pad(amcIds[0], col1Width)} | ${pad("AMC", col2Width)} | ${pad(remark, col3Width)} |`);
-
+    lines.push(`| ${pad(amcIds[0] ?? "", col1Width)} | ${pad("AMC", col2Width)} | ${pad(remark, col3Width)} |`);
     for (let i = 1; i < amcIds.length; i++) {
-
-      lines.push(`| ${pad(amcIds[i], col1Width)} | ${pad("", col2Width)} | ${pad("", col3Width)} |`);
-
+      lines.push(`| ${pad(amcIds[i] ?? "", col1Width)} | ${pad("", col2Width)} | ${pad("", col3Width)} |`);
     }
-
     lines.push(border);
-
   }
-
-
 
   if (draftIds.length > 0) {
-
     const remark = "Kindly coordinate with the SSG Team to complete the asset registration before proceeding with the asset transfer.";
-
-    lines.push(`| ${pad(draftIds[0], col1Width)} | ${pad("Draft", col2Width)} | ${pad(remark, col3Width)} |`);
-
+    lines.push(`| ${pad(draftIds[0] ?? "", col1Width)} | ${pad("Draft", col2Width)} | ${pad(remark, col3Width)} |`);
     for (let i = 1; i < draftIds.length; i++) {
-
-      lines.push(`| ${pad(draftIds[i], col1Width)} | ${pad("", col2Width)} | ${pad("", col3Width)} |`);
-
+      lines.push(`| ${pad(draftIds[i] ?? "", col1Width)} | ${pad("", col2Width)} | ${pad("", col3Width)} |`);
     }
-
     lines.push(border);
-
   }
 
-
-
   return lines.join("\n");
-
 };
-
-
 
 const buildPendingHtmlTable = (exceptions: PendingTransferException[]) => {
 
@@ -10771,306 +10736,6 @@ export default function SOQLGeneratorPage() {
 
 
   }, [transferSuccessfulPairs, assetPairs]);
-
-
-
-
-
-
-
-  const buildPendingAsciiTable = (exceptions: PendingTransferException[]) => {
-
-
-
-    if (exceptions.length === 0) return "";
-
-
-
-    const amcIds = exceptions.filter((e) => e.status === "AMC").map((e) => e.componentId);
-
-
-
-    const draftIds = exceptions.filter((e) => e.status === "Draft").map((e) => e.componentId);
-
-
-
-
-
-
-
-    const maxIdLen = Math.max(12, ...exceptions.map((e) => e.componentId.length));
-
-
-
-    const col1Width = maxIdLen + 4;
-
-
-
-    const col2Width = 8;
-
-
-
-    const col3Width = 84;
-
-
-
-
-
-
-
-    const pad = (str: string, width: number) => str + " ".repeat(Math.max(0, width - str.length));
-
-
-
-
-
-
-
-    const border = `+${"-".repeat(col1Width + 2)}+${"-".repeat(col2Width + 2)}+${"-".repeat(col3Width + 2)}+`;
-
-
-
-    const header = `| ${pad("Component ID", col1Width)} | ${pad("Status", col2Width)} | ${pad("Remarks / Required Action", col3Width)} |`;
-
-
-
-
-
-
-
-    const lines: string[] = [border, header, border];
-
-
-
-
-
-
-
-    if (amcIds.length > 0) {
-
-
-
-      const remark = "Kindly coordinate with the CBO Team to complete the asset transfer.";
-
-
-
-      lines.push(`| ${pad(amcIds[0], col1Width)} | ${pad("AMC", col2Width)} | ${pad(remark, col3Width)} |`);
-
-
-
-      for (let i = 1; i < amcIds.length; i++) {
-
-
-
-        lines.push(`| ${pad(amcIds[i], col1Width)} | ${pad("", col2Width)} | ${pad("", col3Width)} |`);
-
-
-
-      }
-
-
-
-      lines.push(border);
-
-
-
-    }
-
-
-
-
-
-
-
-    if (draftIds.length > 0) {
-
-
-
-      const remark = "Kindly coordinate with the SSG Team to complete the asset registration before proceeding with the asset transfer.";
-
-
-
-      lines.push(`| ${pad(draftIds[0], col1Width)} | ${pad("Draft", col2Width)} | ${pad(remark, col3Width)} |`);
-
-
-
-      for (let i = 1; i < draftIds.length; i++) {
-
-
-
-        lines.push(`| ${pad(draftIds[i], col1Width)} | ${pad("", col2Width)} | ${pad("", col3Width)} |`);
-
-
-
-      }
-
-
-
-      lines.push(border);
-
-
-
-    }
-
-
-
-
-
-
-
-    return lines.join("\n");
-
-
-
-  };
-
-
-
-
-
-
-
-  const buildPendingHtmlTable = (exceptions: PendingTransferException[]) => {
-
-
-
-    if (exceptions.length === 0) return "";
-
-
-
-    const amcIds = exceptions.filter((e) => e.status === "AMC").map((e) => e.componentId);
-
-
-
-    const draftIds = exceptions.filter((e) => e.status === "Draft").map((e) => e.componentId);
-
-
-
-
-
-
-
-    const rows: string[] = [];
-
-
-
-
-
-
-
-    if (amcIds.length > 0) {
-
-
-
-      rows.push(`    <tr>
-
-
-
-      <td style="border: 1px solid #444; padding: 6px 12px; vertical-align: top; font-family: monospace, sans-serif;">${amcIds.join("<br/>")}</td>
-
-
-
-      <td style="border: 1px solid #444; padding: 6px 12px; vertical-align: top; font-weight: bold;">AMC</td>
-
-
-
-      <td style="border: 1px solid #444; padding: 6px 12px; vertical-align: top;">Kindly coordinate with the CBO Team to complete the asset transfer.</td>
-
-
-
-    </tr>`);
-
-
-
-    }
-
-
-
-
-
-
-
-    if (draftIds.length > 0) {
-
-
-
-      rows.push(`    <tr>
-
-
-
-      <td style="border: 1px solid #444; padding: 6px 12px; vertical-align: top; font-family: monospace, sans-serif;">${draftIds.join("<br/>")}</td>
-
-
-
-      <td style="border: 1px solid #444; padding: 6px 12px; vertical-align: top; font-weight: bold;">Draft</td>
-
-
-
-      <td style="border: 1px solid #444; padding: 6px 12px; vertical-align: top;">Kindly coordinate with the SSG Team to complete the asset registration before proceeding with the asset transfer.</td>
-
-
-
-    </tr>`);
-
-
-
-    }
-
-
-
-
-
-
-
-    return `<table style="border-collapse: collapse; width: 100%; border: 1px solid #444; font-family: Calibri, Arial, sans-serif; font-size: 13px; margin: 12px 0;">
-
-
-
-  <thead>
-
-
-
-    <tr style="background-color: #f2f2f2;">
-
-
-
-      <th style="border: 1px solid #444; padding: 8px 12px; text-align: left; font-weight: bold; width: 25%;">Component ID</th>
-
-
-
-      <th style="border: 1px solid #444; padding: 8px 12px; text-align: left; font-weight: bold; width: 15%;">Status</th>
-
-
-
-      <th style="border: 1px solid #444; padding: 8px 12px; text-align: left; font-weight: bold;">Remarks / Required Action</th>
-
-
-
-    </tr>
-
-
-
-  </thead>
-
-
-
-  <tbody>
-
-
-
-${rows.join("\n")}
-
-
-
-  </tbody>
-
-
-
-</table>`;
-
-
-
-  };
 
 
 
