@@ -1,3 +1,23 @@
+import { BLUE_STAR_LOGO_BASE64 } from "./branding";
+
+/**
+ * Standard corporate email header with greeting on the left and Blue Star logo
+ * aligned to the top-right on the exact same horizontal level.
+ * Uses 100% table layout for complete cross-client compatibility (Outlook Word engine, Gmail, Apple Mail, Webmail).
+ */
+export function renderEmailHeader(greetingText: string = "Dear Team,"): string {
+  return `<table style="width: 100%; max-width: 650px; border-collapse: collapse; border: 0; margin-bottom: 14px;" border="0" cellpadding="0" cellspacing="0" width="100%">
+    <tr>
+      <td style="vertical-align: middle; text-align: left; padding: 0;" align="left">
+        <p style="margin: 0; font-family: Calibri, Arial, sans-serif; font-size: 14px; font-weight: bold; color: inherit;">${greetingText}</p>
+      </td>
+      <td style="vertical-align: middle; text-align: right; padding: 0;" align="right">
+        <img src="${BLUE_STAR_LOGO_BASE64}" alt="Blue Star" style="height: 34px; width: auto; max-width: 180px; display: inline-block; vertical-align: middle;" border="0" />
+      </td>
+    </tr>
+  </table>`;
+}
+
 /**
  * ALGO 1 – Ticket Classification, CCO Cancellation Filtering & Approval Logic
  *
@@ -1905,6 +1925,8 @@ export interface CcoAlgoResult {
   ccoMailOutputHtml: string;
   ccoPostOutputText: string;
   ccoPostOutputHtml: string;
+  excludedSegmentText: string;
+  excludedSegmentHtml: string;
 }
 
 /**
@@ -1941,6 +1963,8 @@ export function processAlgo1CcoStep3Classification(
       ccoMailOutputHtml: "",
       ccoPostOutputText: "",
       ccoPostOutputHtml: "",
+      excludedSegmentText: "",
+      excludedSegmentHtml: "",
     };
   }
 
@@ -2348,37 +2372,110 @@ export function processAlgo1CcoStep3Classification(
   const totalReady = ccoCancellationTickets.length;
   const totalExcluded = allSkippedTickets.length;
 
-  const breakdownLines: string[] = [];
-  if (autoPmsTickets.length > 0) {
-    breakdownLines.push(`• Skipped Auto PMS Tickets: ${autoPmsTickets.length}`);
-  }
-  if (parentWorkOrderTickets.length > 0) {
-    breakdownLines.push(`• Skipped Child WorkOrders with Parent Present: ${parentWorkOrderTickets.length}`);
-  }
-  if (completedOrCanceledTickets.length > 0) {
-    breakdownLines.push(`• Skipped Completed/Canceled Status: ${completedOrCanceledTickets.length}`);
-  }
-  if (approvalPendingTickets.length > 0) {
-    breakdownLines.push(`• Approval Pending: ${approvalPendingTickets.length}`);
-  }
-  if (mrCreatedTickets.length > 0) {
-    breakdownLines.push(`• Material Request (MR) Created: ${mrCreatedTickets.length}`);
+  let excludedSegmentText = "";
+  let excludedSegmentHtml = "";
+
+  if (allSkippedTickets.length > 0) {
+    const lines: string[] = [];
+    lines.push("Excluded Tickets – Excluded from CCO Cancellation\n");
+    lines.push("| Ticket Number | Reason | Group | Parent WorkOrder | Status |");
+    lines.push("|---|---|---|---|---|");
+    for (const r of allSkippedTickets) {
+      lines.push(
+        `| ${r.ticket} | ${r.skipReason || "Excluded"} | ${r.accountGroupName || "—"} | ${r.parentWorkOrderId || r.parentTicket || "—"} | ${r.status || "—"} |`
+      );
+    }
+    excludedSegmentText = lines.join("\n");
+
+    const htmlRows = allSkippedTickets
+      .map(
+        (r) =>
+          `<tr><td style="padding:6px 10px;border:1px solid #cbd5e1;font-family:monospace;font-weight:bold;">${r.ticket}</td><td style="padding:6px 10px;border:1px solid #cbd5e1;color:#b91c1c;font-weight:600;">${r.skipReason || "Excluded"}</td><td style="padding:6px 10px;border:1px solid #cbd5e1;">${r.accountGroupName || "—"}</td><td style="padding:6px 10px;border:1px solid #cbd5e1;font-family:monospace;">${r.parentWorkOrderId || r.parentTicket || "—"}</td><td style="padding:6px 10px;border:1px solid #cbd5e1;">${r.status || "—"}</td></tr>`
+      )
+      .join("");
+
+    excludedSegmentHtml = `<p><b>Excluded Tickets – Excluded from CCO Cancellation</b></p><table style="border-collapse:collapse;width:100%;max-width:700px;font-family:sans-serif;font-size:12px;" border="1" cellpadding="6"><thead><tr style="background:#f1f5f9;text-align:left;"><th style="padding:6px 10px;border:1px solid #cbd5e1;">Ticket Number</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Reason</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Group</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Parent WorkOrder</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Status</th></tr></thead><tbody>${htmlRows}</tbody></table>`;
   }
 
-  const summaryText = `Cancellation has been processed for CCO tickets.\n\nTotal Tickets: ${total}\nCancelled (CCO): ${totalReady}\n${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}\n` : ""}Total Excluded: ${totalExcluded}${breakdownLines.length > 0 ? `\n${breakdownLines.join("\n")}` : ""}`;
-  const summaryHtml = `<p>Cancellation has been processed for CCO tickets.</p><p>Total Tickets: ${total}<br>Cancelled (CCO): ${totalReady}<br>${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+  let ccoMailOutputText = "";
+  let ccoMailOutputHtml = "";
+  let ccoPostOutputText = "";
+  let ccoPostOutputHtml = "";
 
-  let lockedDetailsText = "";
-  let lockedDetailsHtml = "";
-  if (approvalPendingTickets.length > 0) {
-    lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
-    lockedDetailsHtml = `<br><p><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+  if (records.length > 0) {
+    if (totalExcluded === 0) {
+      ccoMailOutputText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${total}`;
+      ccoMailOutputHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}<p style="margin-top: 0; margin-bottom: 12px;">Cancellation has been done successfully.</p><p style="margin-top: 0; margin-bottom: 12px;">Total Tickets: ${total}</p></div>`;
+      ccoPostOutputText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${total}`;
+      ccoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${total}</p>`;
+    } else {
+      const breakdownLines: string[] = [];
+      if (autoPmsTickets.length > 0) {
+        breakdownLines.push(`• Skipped Auto PMS Tickets: ${autoPmsTickets.length}`);
+      }
+      if (parentWorkOrderTickets.length > 0) {
+        breakdownLines.push(`• Skipped Child WorkOrders with Parent Present: ${parentWorkOrderTickets.length}`);
+      }
+      if (completedOrCanceledTickets.length > 0) {
+        breakdownLines.push(`• Skipped Completed/Canceled Status: ${completedOrCanceledTickets.length}`);
+      }
+      if (mrCreatedTickets.length > 0) {
+        breakdownLines.push(`• Skipped Material Request (MR) Created: ${mrCreatedTickets.length}`);
+      }
+      if (approvalPendingTickets.length > 0) {
+        breakdownLines.push(`• Skipped Approval Pending: ${approvalPendingTickets.length}`);
+      }
+
+      const summaryText = `Cancellation has been processed for CCO tickets.\n\nTotal Tickets: ${total}\nCancelled (CCO): ${totalReady}\n${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}\n` : ""}Total Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
+      const summaryHtml = `<p>Cancellation has been processed for CCO tickets.</p><p>Total Tickets: ${total}<br>Cancelled (CCO): ${totalReady}<br>${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+
+      let lockedDetailsText = "";
+      let lockedDetailsHtml = "";
+      if (approvalPendingTickets.length > 0) {
+        lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        lockedDetailsHtml = `<br><p><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let autoPmsDetailsText = "";
+      let autoPmsDetailsHtml = "";
+      if (autoPmsTickets.length > 0) {
+        autoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${autoPmsTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        autoPmsDetailsHtml = `<br><p><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${autoPmsTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let mrCreatedDetailsText = "";
+      let mrCreatedDetailsHtml = "";
+      if (mrCreatedTickets.length > 0) {
+        mrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        mrCreatedDetailsHtml = `<br><p><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let parentDetailsText = "";
+      let parentDetailsHtml = "";
+      if (parentWorkOrderTickets.length > 0) {
+        parentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+        parentDetailsHtml = `<br><p><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+      }
+
+      let completedDetailsText = "";
+      let completedDetailsHtml = "";
+      if (completedOrCanceledTickets.length > 0) {
+        completedDetailsText = `\n\nAlready Completed / Canceled:\nThe following ticket(s) are already completed or canceled:\n${completedOrCanceledTickets.map((t) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("\n")}`;
+        completedDetailsHtml = `<br><p><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:<br>${completedOrCanceledTickets.map((t) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
+      }
+
+      const detailSectionsText = `${lockedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}${completedDetailsText}`;
+      const detailSectionsHtml = `${lockedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}${completedDetailsHtml}`;
+
+      const tableText = excludedSegmentText ? `\n\n${excludedSegmentText}` : "";
+      const tableHtml = excludedSegmentHtml ? `<br>${excludedSegmentHtml}` : "";
+
+      ccoMailOutputText = `Dear,\n${summaryText}${detailSectionsText}${tableText}`;
+      ccoMailOutputHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}</div>`;
+      ccoPostOutputText = `@taguser \n${summaryText}${detailSectionsText}${tableText}`;
+      ccoPostOutputHtml = `<p>@taguser </p>${summaryHtml}${detailSectionsHtml}${tableHtml}`;
+    }
   }
-
-  const ccoMailOutputText = `Dear,\n${summaryText}${lockedDetailsText}`;
-  const ccoMailOutputHtml = `<p>Dear,</p>${summaryHtml}${lockedDetailsHtml}`;
-  const ccoPostOutputText = `@taguser \n${summaryText}${lockedDetailsText}`;
-  const ccoPostOutputHtml = `<p>@taguser </p>${summaryHtml}${lockedDetailsHtml}`;
 
   return {
     allTickets,
@@ -2394,6 +2491,8 @@ export function processAlgo1CcoStep3Classification(
     ccoMailOutputHtml,
     ccoPostOutputText,
     ccoPostOutputHtml,
+    excludedSegmentText,
+    excludedSegmentHtml,
   };
 }
 // =============================================================================
@@ -3391,9 +3490,9 @@ This is to inform you that the PMS ticket cancellation process has been executed
 ${mailTextTable}${namoApprovalMailText}${exceptionsMailText}`;
 
   // 2. HTML Email
-  const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5;">
-  <p>Dear Team,</p>
-  <p>This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
+  const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">
+  ${renderEmailHeader("Dear Team,")}
+  <p style="margin-top: 0; margin-bottom: 12px;">This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
   
   <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">1. PMS Ticket Cancellation Summary</p>
   <table style="border-collapse: collapse; width: 100%; max-width: 650px; font-size: 13px; border: 1px solid #cbd5e1;">
@@ -3839,9 +3938,9 @@ This is to inform you that the PMS ticket cancellation process has been executed
 ${mailTextTable}${nonNamoApprovalMailText}${exceptionsMailText}`;
 
   // 2. HTML Email
-  const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5;">
-  <p>Dear Team,</p>
-  <p>This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
+  const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">
+  ${renderEmailHeader("Dear Team,")}
+  <p style="margin-top: 0; margin-bottom: 12px;">This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
   
   <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">1. PMS Ticket Cancellation Summary</p>
   <table style="border-collapse: collapse; width: 100%; max-width: 650px; font-size: 13px; border: 1px solid #cbd5e1;">
@@ -4135,13 +4234,17 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
     );
     const unifiedApprovalPendingCount = unifiedApprovalPending.length;
     const cleanOtherFailedCount = cleanOtherFailedTickets.length;
+    const totalCco =
+      ccoResult.allRecords.length > 0
+        ? ccoResult.allRecords.length
+        : totalTickets || (ccoResult.allTickets.length ?? 0);
 
     if (totalFailedCount === 0 && unifiedApprovalPendingCount === 0) {
       if (ccoResult.allSkippedTickets.length === 0) {
-        const mailText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
-        const postText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
-        const mailHtml = `<p>Dear,</p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
-        const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
+        const mailText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${totalCco}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`;
+        const postText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${totalCco}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`;
+        const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}<p style="margin-top: 0; margin-bottom: 12px;">Cancellation has been done successfully.</p><p style="margin-top: 0; margin-bottom: 12px;">Total Tickets: ${totalCco}</p>${ccoApprovalExtra ? `<p style="margin-top: 0; margin-bottom: 12px;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
+        const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalCco}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
         return { mailText, mailHtml, postText, postHtml };
       }
       return {
@@ -4152,12 +4255,8 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
       };
     }
 
-    const totalCco = totalTickets || ccoResult.allRecords.length;
     const totalExcluded = ccoResult.allSkippedTickets.length;
     const breakdownLines: string[] = [];
-    if (ccoResult.blkTickets && ccoResult.blkTickets.length > 0) {
-      breakdownLines.push(`• Skipped BLK / Bulk Tickets: ${ccoResult.blkTickets.length}`);
-    }
     if (ccoResult.autoPmsTickets.length > 0) {
       breakdownLines.push(`• Skipped Auto PMS Tickets: ${ccoResult.autoPmsTickets.length}`);
     }
@@ -4167,11 +4266,11 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
     if (ccoResult.completedOrCanceledTickets.length > 0) {
       breakdownLines.push(`• Skipped Completed/Canceled Status: ${ccoResult.completedOrCanceledTickets.length}`);
     }
-    if (unifiedApprovalPendingCount > 0) {
-      breakdownLines.push(`• Approval Pending: ${unifiedApprovalPendingCount}`);
-    }
     if (ccoResult.mrCreatedTickets && ccoResult.mrCreatedTickets.length > 0) {
-      breakdownLines.push(`• Material Request (MR) Created: ${ccoResult.mrCreatedTickets.length}`);
+      breakdownLines.push(`• Skipped Material Request (MR) Created: ${ccoResult.mrCreatedTickets.length}`);
+    }
+    if (unifiedApprovalPendingCount > 0) {
+      breakdownLines.push(`• Skipped Approval Pending: ${unifiedApprovalPendingCount}`);
     }
     if (cleanOtherFailedCount > 0) {
       breakdownLines.push(`• Failed CCO Tickets: ${cleanOtherFailedCount}`);
@@ -4195,13 +4294,47 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
       otherFailedDetailsHtml = `<br><p><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
     }
 
+    let autoPmsDetailsText = "";
+    let autoPmsDetailsHtml = "";
+    if (ccoResult.autoPmsTickets.length > 0) {
+      autoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
+      autoPmsDetailsHtml = `<br><p><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let mrCreatedDetailsText = "";
+    let mrCreatedDetailsHtml = "";
+    if (ccoResult.mrCreatedTickets && ccoResult.mrCreatedTickets.length > 0) {
+      mrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
+      mrCreatedDetailsHtml = `<br><p><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let parentDetailsText = "";
+    let parentDetailsHtml = "";
+    if (ccoResult.parentWorkOrderTickets.length > 0) {
+      parentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+      parentDetailsHtml = `<br><p><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+    }
+
+    let completedDetailsText = "";
+    let completedDetailsHtml = "";
+    if (ccoResult.completedOrCanceledTickets.length > 0) {
+      completedDetailsText = `\n\nAlready Completed / Canceled:\nThe following ticket(s) are already completed or canceled:\n${ccoResult.completedOrCanceledTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("\n")}`;
+      completedDetailsHtml = `<br><p><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:<br>${ccoResult.completedOrCanceledTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
+    }
+
+    const detailSectionsText = `${lockedDetailsText}${otherFailedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}${completedDetailsText}`;
+    const detailSectionsHtml = `${lockedDetailsHtml}${otherFailedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}${completedDetailsHtml}`;
+
+    const tableText = ccoResult.excludedSegmentText ? `\n\n${ccoResult.excludedSegmentText}` : "";
+    const tableHtml = ccoResult.excludedSegmentHtml ? `<br>${ccoResult.excludedSegmentHtml}` : "";
+
     const approvalExtraBlock = ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : "";
     const approvalExtraHtmlBlock = ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : "";
 
-    const mailText = `Dear,\n${summaryText}${lockedDetailsText}${otherFailedDetailsText}${approvalExtraBlock}`;
-    const mailHtml = `<p>Dear,</p>${summaryHtml}${lockedDetailsHtml}${otherFailedDetailsHtml}${approvalExtraHtmlBlock}`;
-    const postText = `@taguser \n${summaryText}${lockedDetailsText}${otherFailedDetailsText}${approvalExtraBlock}`;
-    const postHtml = `<p>@taguser </p>${summaryHtml}${lockedDetailsHtml}${otherFailedDetailsHtml}${approvalExtraHtmlBlock}`;
+    const mailText = `Dear,\n${summaryText}${detailSectionsText}${tableText}${approvalExtraBlock}`;
+    const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}${approvalExtraHtmlBlock}</div>`;
+    const postText = `@taguser \n${summaryText}${detailSectionsText}${tableText}${approvalExtraBlock}`;
+    const postHtml = `<p>@taguser </p>${summaryHtml}${detailSectionsHtml}${tableHtml}${approvalExtraHtmlBlock}`;
 
     return { mailText, mailHtml, postText, postHtml };
   }
@@ -4210,7 +4343,7 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
   if (totalFailedCount === 0) {
     const mailText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
     const postText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
-    const mailHtml = `<p>Dear,</p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
+    const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}<p style="margin-top: 0; margin-bottom: 12px;">Cancellation has been done successfully.</p><p style="margin-top: 0; margin-bottom: 12px;">Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<p style="margin-top: 0; margin-bottom: 12px;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
     const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
     return { mailText, mailHtml, postText, postHtml };
   }
@@ -4236,7 +4369,7 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
   return {
     mailText: `Dear,\n${bodyText}`,
     postText: `@taguser \n${bodyText}`,
-    mailHtml: `<p>Dear,</p>${bodyHtml}`,
+    mailHtml: `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}${bodyHtml}</div>`,
     postHtml: `<p>@taguser </p>${bodyHtml}`,
   };
 }

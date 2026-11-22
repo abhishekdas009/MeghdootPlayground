@@ -9343,7 +9343,6 @@ function CancellationHandoverModal({
       : isNamo
       ? (namoResult?.completedOrCanceledTickets || [])
       : (nonNamoResult?.completedOrCanceledTickets || []);
-    const blkList = isCco ? (ccoResult?.blkTickets || []) : [];
     const unverifiedList = isCco
       ? []
       : isNamo
@@ -9382,7 +9381,6 @@ function CancellationHandoverModal({
       `• *Approval Requests Pending (Locked in SF):* \`${approvalList.length}\``,
       `• *Material Requests (MR) Created:* \`${mrList.length}\``,
       `• *Parent-Linked WorkOrders (Child WOs):* \`${parentList.length}\``,
-      isCco && blkList.length > 0 ? `• *BLK / Bulk Tickets (Excluded from CCO):* \`${blkList.length}\`` : null,
       isCco
         ? (groupMismatchList.length > 0 ? `• *Auto PMS Tickets (Skipped from CCO):* \`${groupMismatchList.length}\`` : null)
         : `• *Account Group Mismatch (${isNamo ? "NON-NAMO" : "NAMO"}):* \`${groupMismatchList.length}\``,
@@ -9431,7 +9429,6 @@ function CancellationHandoverModal({
       `• Approval Pending          : ${approvalList.length}`,
       `• Material Request (MR)     : ${mrList.length}`,
       `• Parent-Linked Tickets     : ${parentList.length}`,
-      isCco && blkList.length > 0 ? `• BLK / Bulk WorkOrders     : ${blkList.length} (Parent Ticket - Excluded from CCO)` : null,
       isCco
         ? `• Auto PMS Tickets          : ${groupMismatchList.length} (Skipped from CCO - requires approval)`
         : `• Account Group Mismatch    : ${groupMismatchList.length} (${isNamo ? "NON-NAMO" : "NAMO"} Group - ${isNamo ? "Requires RM Approval" : "Requires RM + CPSD/UCPG Approval"})`,
@@ -9458,7 +9455,6 @@ function CancellationHandoverModal({
       approvalList,
       parentList,
       mrList,
-      blkList,
       groupMismatchList,
       completedList,
       unverifiedList,
@@ -9477,7 +9473,6 @@ function CancellationHandoverModal({
     const approvalSet = new Set(summaryData.approvalList.map((t) => t.ticket));
     const parentSet = new Set(summaryData.parentList.map((t) => t.ticket));
     const mrSet = new Set(summaryData.mrList.map((t) => t.ticket));
-    const blkSet = new Set(summaryData.blkList.map((t) => t.ticket));
     const groupSet = new Set(summaryData.groupMismatchList.map((t) => t.ticket));
     const completedSet = new Set(summaryData.completedList.map((t) => t.ticket));
     const unverifiedSet = new Set(summaryData.unverifiedList.map((t) => t.ticket));
@@ -9495,10 +9490,6 @@ function CancellationHandoverModal({
         category = "Approval Pending";
         badgeColor = "amber";
         reason = "Approval Pending";
-      } else if (blkSet.has(item.ticket)) {
-        category = "BLK / Bulk (Excluded)";
-        badgeColor = "purple";
-        reason = "BLK / Bulk WorkOrder (Parent Ticket - Excluded from CCO Cancellation)";
       } else if (parentSet.has(item.ticket)) {
         category = "Parent Tickets";
         badgeColor = "purple";
@@ -9544,9 +9535,7 @@ function CancellationHandoverModal({
         if (selectedCategory === "approval" && row.category !== "Approval Pending") return false;
         if (selectedCategory === "parent" && row.category !== "Parent Tickets") return false;
         if (selectedCategory === "mr" && row.category !== "MR Raised") return false;
-        if (selectedCategory === "group" && !row.category.includes("Group")) return false;
-        if (selectedCategory === "pms" && !row.category.includes("Auto PMS")) return false;
-        if (selectedCategory === "blk" && !row.category.includes("BLK")) return false;
+        if (selectedCategory === "group" && !row.category.includes("Group") && !row.category.includes("Auto PMS")) return false;
         if (selectedCategory === "completed" && row.category !== "Completed/Canceled") return false;
         if (selectedCategory === "unverified" && row.category !== "Unverified") return false;
       }
@@ -9779,8 +9768,7 @@ function CancellationHandoverModal({
                     { id: "mr", label: "MR Raised", count: summaryData.mrList.length },
                     ...(isCco
                       ? [
-                          { id: "pms", label: "Auto PMS (Excluded)", count: summaryData.groupMismatchList.length },
-                          { id: "blk", label: "BLK / Bulk", count: summaryData.blkList.length },
+                          { id: "group", label: "Auto PMS (Excluded)", count: summaryData.groupMismatchList.length },
                         ]
                       : [
                           { id: "group", label: isNamo ? "NON-NAMO Group" : "NAMO Group", count: summaryData.groupMismatchList.length },
@@ -10499,6 +10487,7 @@ export default function SOQLGeneratorPage() {
   const [showDiscrepancyModal, setShowDiscrepancyModal] = React.useState(false);
   const [showAccountCheckHandoverModal, setShowAccountCheckHandoverModal] = React.useState(false);
   const [showCancellationHandoverModal, setShowCancellationHandoverModal] = React.useState(false);
+  const [step5EmailTab, setStep5EmailTab] = React.useState<"preview" | "text">("preview");
 
 
 
@@ -12048,7 +12037,6 @@ export default function SOQLGeneratorPage() {
       return {
         allTickets: [],
         ccoCancellationTickets: [],
-        blkTickets: [],
         autoPmsTickets: [],
         parentWorkOrderTickets: [],
         completedOrCanceledTickets: [],
@@ -12060,6 +12048,8 @@ export default function SOQLGeneratorPage() {
         ccoMailOutputHtml: "",
         ccoPostOutputText: "",
         ccoPostOutputHtml: "",
+        excludedSegmentText: "",
+        excludedSegmentHtml: "",
       };
     }
     return processAlgo1CcoStep3Classification(
@@ -12296,7 +12286,8 @@ export default function SOQLGeneratorPage() {
   const uniqueExecutableCancellationRows = React.useMemo(() => {
     const seen = new Set<string>();
     return executableCancellationRows.filter((row) => {
-      const k = row.id.toLowerCase();
+      const k = ((row.id && row.id.trim()) ? row.id.trim().toLowerCase() : "") || (row.ticket ? row.ticket.trim().toLowerCase() : "");
+      if (!k) return false;
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
@@ -13117,10 +13108,10 @@ AND Ticket_Numbers__c IN (
   const cancellationQueryBatches = React.useMemo<string[]>(() => {
     if (cancellationType === "CCO" && parsedTickets.length > 0) {
       // CCO is for NON-PMS tickets (prefixes like B, C, D, S, I, X, etc.)
-      // Skip any PMS tickets starting with 'A' and BLK tickets starting with 'BLK'
+      // Skip any PMS tickets starting with 'A'
       const ticketsToQuery = parsedTickets
         .map(cleanTicket)
-        .filter((t) => Boolean(t) && !t.toUpperCase().startsWith("A") && !t.toUpperCase().startsWith("BLK"));
+        .filter((t) => Boolean(t) && !t.toUpperCase().startsWith("A"));
       if (ticketsToQuery.length === 0) return [];
       const batches: string[] = [];
       const size = Math.max(10, Math.min(2000, Number(batchSize) || 400));
@@ -20278,13 +20269,13 @@ AND Ticket_Numbers__c IN (
                       {/* Animated Single-Line Typewriter Instruction Placeholder */}
                       {!ticketsInput && (
                         <div className="absolute top-4 left-4 right-4 pointer-events-none z-10 font-mono text-xs leading-relaxed select-none flex items-center">
-                          <span className="font-semibold text-slate-300 dark:text-slate-200 tracking-wide">
+                          <span className="font-light text-slate-400/80 dark:text-slate-400/70 tracking-normal transition-opacity duration-300">
                             {step1TargetPlaceholder.substring(0, placeholderSubIndex)}
                           </span>
                           <span
                             className={cn(
-                              "inline-block w-2.5 h-4 bg-sky-400 dark:bg-sky-400 rounded-[2px] ml-1 transition-opacity duration-100",
-                              placeholderBlink ? "opacity-100 shadow-[0_0_10px_rgba(56,189,248,0.9)]" : "opacity-0"
+                              "inline-block w-[1.5px] h-3.5 bg-sky-400 dark:bg-sky-400 rounded-full ml-0.5 transition-opacity duration-300 ease-in-out",
+                              placeholderBlink ? "opacity-100 shadow-[0_0_6px_rgba(56,189,248,0.7)]" : "opacity-0"
                             )}
                           />
                         </div>
@@ -25233,7 +25224,6 @@ BSL22295338      CID-6074821`}
                         const total = isCco ? ccoAlgoResult.allRecords.length : isNamo ? namoAlgo2Result.allRecords.length : nonNamoAlgo3Result.allRecords.length;
                         const readyList = isCco ? ccoAlgoResult.ccoCancellationTickets : isNamo ? namoAlgo2Result.namoCancellationTickets : nonNamoAlgo3Result.nonNamoCancellationTickets;
                         const skippedList = isCco ? ccoAlgoResult.allSkippedTickets : isNamo ? namoAlgo2Result.allSkippedTickets : nonNamoAlgo3Result.allSkippedTickets;
-                        const blkList = isCco ? ccoAlgoResult.blkTickets : [];
                         const groupMismatchList = isCco ? ccoAlgoResult.autoPmsTickets : isNamo ? namoAlgo2Result.nonNamoTickets : nonNamoAlgo3Result.namoTickets;
                         const parentList = isCco ? ccoAlgoResult.parentWorkOrderTickets : isNamo ? namoAlgo2Result.parentWorkOrderTickets : nonNamoAlgo3Result.parentWorkOrderTickets;
                         const completedList = isCco ? ccoAlgoResult.completedOrCanceledTickets : isNamo ? namoAlgo2Result.completedOrCanceledTickets : nonNamoAlgo3Result.completedOrCanceledTickets;
@@ -25540,29 +25530,6 @@ BSL22295338      CID-6074821`}
                                 <span>Completed: <strong>{completedList.length}</strong></span>
                                 <Copy className="h-3 w-3 opacity-70 ml-0.5" />
                               </div>
-
-                              {/* BLK / Bulk WorkOrders Badge (for CCO) */}
-                              {isCco && (
-                                <div
-                                  onClick={() => {
-                                    const tkts = blkList.map((t) => t.ticket).filter(Boolean);
-                                    if (tkts.length === 0) return;
-                                    navigator.clipboard.writeText(tkts.join("\n"));
-                                    toast.success(`Copied ${tkts.length} BLK tickets!`);
-                                  }}
-                                  className={cn(
-                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
-                                    blkList.length > 0
-                                      ? "border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 cursor-pointer active:scale-95 shadow-xs"
-                                      : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
-                                  )}
-                                  title={blkList.length > 0 ? "Click to copy BLK tickets" : "No BLK tickets"}
-                                >
-                                  <span className="h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
-                                  <span>BLK: <strong>{blkList.length}</strong></span>
-                                  <Copy className="h-3 w-3 opacity-70 ml-0.5" />
-                                </div>
-                              )}
 
                               {/* Unverified / Blank Group Badge */}
                               <div
@@ -26446,7 +26413,14 @@ BSL22295338      CID-6074821`}
               </motion.div>
 
               {(() => {
-                const cancellationTotalTickets = parsedTickets.length || cancellationExecutionRows.length;
+                const cancellationTotalTickets =
+                  cancellationType === "CCO"
+                    ? (ccoAlgoResult.allRecords.length || parsedTickets.length || cancellationExecutionRows.length)
+                    : (cancellationType === "NAMO"
+                        ? (namoAlgo2Result.allRecords.length || parsedTickets.length || cancellationExecutionRows.length)
+                        : (cancellationType === "NON NAMO"
+                            ? (nonNamoAlgo3Result.allRecords.length || parsedTickets.length || cancellationExecutionRows.length)
+                            : (parsedTickets.length || cancellationExecutionRows.length)));
                 let ccoApprovalExtra = "";
                 if (cancellationType === "CCO" && algo1Result.approvalSegmentText) {
                   ccoApprovalExtra = `\n\n${algo1Result.approvalSegmentText}`;
@@ -26527,15 +26501,43 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(mailTemplateText, mailHtmlText)} disabled={!mailTemplateText}>
+                            <div className="flex items-center gap-2 mt-5 md:mt-6">
+                              <div className="flex items-center p-0.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04]">
+                                <button
+                                  type="button"
+                                  onClick={() => setStep5EmailTab("preview")}
+                                  className={cn(
+                                    "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                                    step5EmailTab === "preview"
+                                      ? "bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-xs"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  )}
+                                >
+                                  HTML Preview
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setStep5EmailTab("text")}
+                                  className={cn(
+                                    "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                                    step5EmailTab === "text"
+                                      ? "bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-xs"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  )}
+                                >
+                                  Plain Text
+                                </button>
+                              </div>
+                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm cursor-pointer" onClick={() => handleCopy(mailTemplateText, mailHtmlText)} disabled={!mailTemplateText}>
 
 
 
-                              <Copy className="h-3.5 w-3.5" /> Copy
+                                <Copy className="h-3.5 w-3.5" /> Copy
 
 
 
-                            </Button>
+                              </Button>
+                            </div>
 
 
 
@@ -26549,19 +26551,17 @@ BSL22295338      CID-6074821`}
 
                         <CardContent className="p-6 pt-5 flex-1 flex flex-col min-h-0 relative z-10">
 
-
-
                           <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
 
-
-
-                      <SOQLHighlighter query={mailTemplateText || "// Email template output will appear here after defining your custom algorithm"} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
-
-
+                            {step5EmailTab === "preview" && mailHtmlText ? (
+                              <div className="overflow-auto p-5 rounded-2xl border border-slate-200/80 dark:border-white/10 bg-white text-slate-850 dark:bg-slate-900/90 dark:text-slate-100 min-h-[160px] max-h-[360px] shadow-inner select-text">
+                                <div dangerouslySetInnerHTML={{ __html: mailHtmlText }} />
+                              </div>
+                            ) : (
+                              <SOQLHighlighter query={mailTemplateText || "// Email template output will appear here after defining your custom algorithm"} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
+                            )}
 
                           </div>
-
-
 
                         </CardContent>
 
