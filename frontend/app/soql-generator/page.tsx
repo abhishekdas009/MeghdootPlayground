@@ -46,7 +46,7 @@ import { SOQLRelationshipGraph } from "@/components/soql/soql-relationship-graph
 
 
 
-import { Network } from "lucide-react";
+import { Network, Info } from "lucide-react";
 
 
 
@@ -70,6 +70,7 @@ import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 
 
 
+import { classifyTicketPrefix, processAlgo1TicketClassification, processAlgo1CcoStep3Classification, type CcoAlgoResult, type CcoTicketItem, processAlgo2NamoClassification, type NamoAlgo2Result, processAlgo3NonNamoClassification, type NonNamoAlgo3Result, processAccountCheckClassification, type AccountCheckResult, type AccountCheckRow, buildNonNamoExecutionSummary, buildNamoExecutionSummary, isEntityLockedError, parseCancellationFailedResults, type ParsedFailedResult, buildCancellationStep5Output } from "@/lib/cancellation-algo";
 import { parseAssetTransferPairs } from "@/lib/parsers";
 
 
@@ -910,7 +911,7 @@ AND Ticket_Number_Read_Only__c IN (
 
 
 
-    soql: `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
+    soql: `SELECT Id, Ticket_Number_Read_Only__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`,
 
 
 
@@ -1850,36 +1851,11 @@ function cleanValue(value?: string | null): string {
 
 
 
-function isNamoGroup(accountGroup?: string, cancellationType?: string): boolean {
-  const grp = (accountGroup || "").trim().toUpperCase();
-  if (grp.includes("NON NAMO") || grp.includes("NON-NAMO") || grp.includes("NONNAMO")) {
-    return false;
-  }
-  if (grp.includes("NAMO")) {
-    return true;
-  }
-  if (cancellationType === "NAMO") {
-    return true;
-  }
-  return false;
-}
-
 function cleanTicket(ticket?: string | null): string {
-
-
-
-  return String(ticket ?? "")
-
-
-
+  if (!ticket || isEntityLockedError(ticket)) return "";
+  return String(ticket)
     .replace(/['"\s\u00A0\u200B\uFEFF[\]]+/g, "")
-
-
-
     .toUpperCase();
-
-
-
 }
 
 
@@ -1964,30 +1940,22 @@ function parseCSVLine(line: string): string[] {
 
 
 
-  // 2. Space-separated quotes (Workbench table: "_"   "Id"   "Ticket_Number_Read_Only__c")
-
-
-
-  if (/"\s+"/.test(cleanLine) || /^"[^"]+"\s+/.test(cleanLine)) {
-
-
-
-    const matches = cleanLine.match(/"([^"]*)"/g);
-
-
-
-    if (matches && matches.length > 1) {
-
-
-
-      return matches.map(cleanValue);
-
-
-
+  // 2. Space-separated tokens / Workbench table (e.g. "_" "Id" or _ "Id" or "[WorkOrder]" "0WO...")
+  if (/"\s+"/.test(cleanLine) || /^"[^"]+"\s+/.test(cleanLine) || /\s{2,}/.test(cleanLine)) {
+    const regex = /"([^"]*)"|'([^']*)'|(\S+)/g;
+    const tokens: string[] = [];
+    let m = regex.exec(cleanLine);
+    while (m) {
+      const g1 = m[1];
+      const g2 = m[2];
+      const g3 = m[3];
+      const val = (g1 !== undefined ? g1 : (g2 !== undefined ? g2 : (g3 ?? ""))).trim();
+      tokens.push(val);
+      m = regex.exec(cleanLine);
     }
-
-
-
+    if (tokens.length > 1) {
+      return tokens;
+    }
   }
 
 
@@ -3621,862 +3589,122 @@ function parseAccountResult(input: string): Record<string, string> {
 
 
 function parseCancellationExecutionRows(input: string, expectedTickets: string[] = []): CancellationExecutionRow[] {
-
-
-
   if (!input || !input.trim()) return [];
 
-
-
-
-
-
-
   const expectedSet = new Set(expectedTickets.map(cleanTicket));
-
-
-
   const lines = input.split(/[\r\n]+/).map((l) => l.trim()).filter(Boolean);
-
-
-
   const results: CancellationExecutionRow[] = [];
-
-
-
   const seenIds = new Set<string>();
 
-
-
-  let currentHeaders: {
-
-
-
-    idIdx: number;
-
-
-
-    ticketIdx: number;
-
-
-
-    statusIdx: number;
-
-
-
-    materialIdx: number;
-
-
-
-    approvalIdx: number;
-
-
-
-    accountGroupIdx: number;
-
-
-
-    resultStatusIdx: number;
-
-
-
-    errorIdx: number;
-
-
-
-  } | null = null;
-
-
-
-
-
-
+  let idIdx = -1;
+  let ticketIdx = -1;
+  let statusIdx = -1;
+  let resultStatusIdx = -1;
+  let errorIdx = -1;
 
   for (const line of lines) {
-
-
-
     const tokens = parseCSVLine(line);
-
-
-
     if (tokens.length === 0) continue;
-
-
-
-
-
-
-
     const lowerTokens = tokens.map((t) => cleanHeader(t));
 
-
-
     const isHeader = lowerTokens.some((t) =>
-
-
-
-      t === "id" ||
-
-
-
-      t.endsWith(".id") ||
-
-
-
-      t === "workorderid" ||
-
-
-
-      t.includes("ticket") ||
-
-
-
-      t === "_" ||
-
-
-
-      t === "workorder" ||
-
-
-
-      t.includes("status") ||
-
-
-
-      t.includes("material") ||
-
-
-
-      t.includes("approval") ||
-
-
-
-      t.includes("group") ||
-
-
-
-      t.includes("error")
-
-
-
+      t === "id" || t.endsWith(".id") || t === "workorderid" || t.includes("ticket") || t.includes("status") || t.includes("error")
     );
 
-
-
-
-
-
-
     if (isHeader) {
-
-
-
-      let idIdx = -1;
-
-
-
-      let ticketIdx = -1;
-
-
-
-      let statusIdx = -1;
-
-
-
-      let materialIdx = -1;
-
-
-
-      let approvalIdx = -1;
-
-
-
-      let accountGroupIdx = -1;
-
-
-
-      let resultStatusIdx = -1;
-
-
-
-      let errorIdx = -1;
-
-
-
-
-
-
-
       lowerTokens.forEach((token, idx) => {
-
-
-
-        if (token === "__status" || token === "resultstatus") {
-
-
-
-          resultStatusIdx = idx;
-
-
-
-        } else if (token === "id" || token.endsWith(".id") || token === "workorderid") {
-
-
-
-          if (idIdx === -1) idIdx = idx;
-
-
-
-        } else if (token.includes("ticket") || token.includes("casenumber") || token === "number") {
-
-
-
-          ticketIdx = idx;
-
-
-
-        } else if (token === "status") {
-
-
-
-          statusIdx = idx;
-
-
-
-        } else if (token.includes("material") || token.includes("consumed")) {
-
-
-
-          materialIdx = idx;
-
-
-
-        } else if (token.includes("approval")) {
-
-
-
-          approvalIdx = idx;
-
-
-
-        } else if (token.includes("group")) {
-
-
-
-          accountGroupIdx = idx;
-
-
-
-        } else if (token.includes("error")) {
-
-
-
-          errorIdx = idx;
-
-
-
-        }
-
-
-
+        if (token === "__status" || token === "resultstatus") resultStatusIdx = idx;
+        else if (token === "id" || token.endsWith(".id") || token === "workorderid") { if (idIdx === -1) idIdx = idx; }
+        else if (token.includes("ticket") || token.includes("casenumber") || token === "number") ticketIdx = idx;
+        else if (token === "status") statusIdx = idx;
+        else if (token.includes("error")) errorIdx = idx;
       });
-
-
-
-
-
-
-
-      if (idIdx !== -1 || ticketIdx !== -1) {
-
-
-
-        currentHeaders = { idIdx, ticketIdx, statusIdx, materialIdx, approvalIdx, accountGroupIdx, resultStatusIdx, errorIdx };
-
-
-
-        continue;
-
-
-
-      }
-
-
-
+      continue;
     }
-
-
-
-
-
-
 
     let rowId = "";
-
-
-
     let rowTicket = "";
-
-
-
     let rowStatus = "Canceled";
-
-
-
-    let isMaterialConsumed = false;
-
-
-
-    let isApprovalSent = false;
-
-
-
-    let accountGroup = "";
-
-
-
     let resultStatus = "";
-
-
-
     let errorMessage = "";
 
-
-
-
-
-
-
-    // 1. Try header mapping
-
-
-
-    if (currentHeaders) {
-
-
-
-      if (currentHeaders.idIdx !== -1 && tokens[currentHeaders.idIdx]) {
-
-
-
-        const candidate = cleanSalesforceId(tokens[currentHeaders.idIdx]);
-
-
-
-        if (SALESFORCE_ID_REGEX.test(candidate)) {
-
-
-
-          rowId = candidate;
-
-
-
-        }
-
-
-
-      }
-
-
-
-      if (currentHeaders.ticketIdx !== -1 && tokens[currentHeaders.ticketIdx]) {
-
-
-
-        rowTicket = cleanTicket(tokens[currentHeaders.ticketIdx]);
-
-
-
-      }
-
-
-
-      if (currentHeaders.statusIdx !== -1 && tokens[currentHeaders.statusIdx]) {
-
-
-
-        rowStatus = cleanValue(tokens[currentHeaders.statusIdx]) || "Canceled";
-
-
-
-      }
-
-
-
-      if (currentHeaders.materialIdx !== -1 && tokens[currentHeaders.materialIdx]) {
-
-
-
-        const val = cleanValue(tokens[currentHeaders.materialIdx]).toLowerCase();
-
-
-
-        isMaterialConsumed = val === "true" || val === "1" || val === "yes";
-
-
-
-      }
-
-
-
-      if (currentHeaders.approvalIdx !== -1 && tokens[currentHeaders.approvalIdx]) {
-
-
-
-        const val = cleanValue(tokens[currentHeaders.approvalIdx]).toLowerCase();
-
-
-
-        isApprovalSent = val === "true" || val === "1" || val === "yes";
-
-
-
-      }
-
-
-
-      if (currentHeaders.accountGroupIdx !== -1 && tokens[currentHeaders.accountGroupIdx]) {
-
-
-
-        accountGroup = cleanValue(tokens[currentHeaders.accountGroupIdx]);
-
-
-
-      }
-
-
-
-      if (currentHeaders.resultStatusIdx !== -1 && tokens[currentHeaders.resultStatusIdx]) {
-
-
-
-        resultStatus = cleanValue(tokens[currentHeaders.resultStatusIdx]);
-
-
-
-      }
-
-
-
-      if (currentHeaders.errorIdx !== -1 && tokens[currentHeaders.errorIdx]) {
-
-
-
-        errorMessage = cleanValue(tokens[currentHeaders.errorIdx]);
-
-
-
-      }
-
-
-
+    if (idIdx !== -1 && tokens[idIdx]) {
+      const candidate = cleanSalesforceId(tokens[idIdx]);
+      if (SALESFORCE_ID_REGEX.test(candidate)) rowId = candidate;
+    }
+    if (ticketIdx !== -1 && tokens[ticketIdx]) {
+      const candidate = cleanTicket(tokens[ticketIdx]);
+      if (candidate !== rowId && !candidate.toUpperCase().startsWith("0WO")) rowTicket = candidate;
+    }
+    if (statusIdx !== -1 && tokens[statusIdx]) {
+      const candidate = cleanValue(tokens[statusIdx]);
+      if (candidate && candidate !== rowTicket && candidate !== rowId) rowStatus = candidate;
+    }
+    if (resultStatusIdx !== -1 && tokens[resultStatusIdx]) {
+      resultStatus = cleanValue(tokens[resultStatusIdx]);
+    }
+    if (errorIdx !== -1 && tokens[errorIdx]) {
+      errorMessage = cleanValue(tokens[errorIdx]);
     }
 
-
-
-
-
-
-
-    // 2. Fallback: Scan tokens for Salesforce WorkOrder ID & Ticket Number
-
-
-
-    if (!rowId || !rowTicket) {
-
-
-
-      for (const token of tokens) {
-
-
-
-        const cleanedId = cleanSalesforceId(token);
-
-
-
-        if (!rowId && SALESFORCE_ID_REGEX.test(cleanedId) && (cleanedId.startsWith("0WO") || cleanedId.startsWith("0wo") || !/^[A-Za-z]\d{10,}/.test(cleanedId))) {
-
-
-
-          rowId = cleanedId;
-
-
-
-          continue;
-
-
-
+    // Fallbacks
+    if (!rowId) {
+      for (const tok of tokens) {
+        const cleaned = cleanSalesforceId(tok);
+        if (SALESFORCE_ID_REGEX.test(cleaned)) {
+          rowId = cleaned;
+          break;
         }
-
-
-
-
-
-
-
-        const cleanedTkt = cleanTicket(token);
-
-
-
-        if (cleanedId === rowId) continue;
-
-
-
-
-
-
-
-        if (!rowTicket && expectedSet.has(cleanedTkt)) {
-
-
-
-          rowTicket = cleanedTkt;
-
-
-
-          continue;
-
-
-
-        }
-
-
-
-
-
-
-
-        if (!rowTicket && /^[A-Za-z0-9_-]{6,35}$/.test(cleanedTkt) && !cleanedTkt.startsWith("0WO") && cleanedTkt !== "WORKORDER" && cleanedTkt !== "_") {
-
-
-
-          rowTicket = cleanedTkt;
-
-
-
-        }
-
-
-
       }
-
-
-
     }
-
-
-
-
-
-
-
-    // 3. Fallback ticket assignment if missing
-
-
-
-    if (!rowTicket && tokens.length >= 2) {
-
-
-
-      for (const token of tokens) {
-
-
-
-        const cleaned = cleanTicket(token);
-
-
-
-        if (cleaned !== rowId && cleaned !== "WORKORDER" && cleaned !== "_" && cleaned.length >= 5) {
-
-
-
+    if (!rowTicket) {
+      for (const tok of tokens) {
+        const cleaned = cleanTicket(tok);
+        if (cleaned && cleaned !== rowId && expectedSet.has(cleaned)) {
           rowTicket = cleaned;
-
-
-
-          break;
-
-
-
-        }
-
-
-
-      }
-
-
-
-    }
-
-
-
-
-
-
-
-    // 4. Positional fallback for boolean fields when not found via headers
-
-
-
-    if (!isMaterialConsumed && !isApprovalSent && tokens.length >= 5) {
-
-
-
-      tokens.forEach((tok, idx) => {
-
-
-
-        const lower = cleanValue(tok).toLowerCase();
-
-
-
-        if (lower === "true" || lower === "false") {
-
-
-
-          if (idx === 3) isMaterialConsumed = lower === "true";
-
-
-
-          if (idx === 4) isApprovalSent = lower === "true";
-
-
-
-        }
-
-
-
-      });
-
-
-
-    }
-
-
-
-
-
-
-
-    // Fallback accountGroup detection
-    if (!accountGroup || accountGroup.toLowerCase() === "[account]" || accountGroup === "_") {
-      for (const tok of tokens) {
-        const cleaned = cleanValue(tok).toUpperCase();
-        if (cleaned.includes("NON NAMO") || cleaned.includes("NON-NAMO") || cleaned.includes("NONNAMO")) {
-          accountGroup = "NON NAMO";
-          break;
-        } else if (cleaned.includes("NAMO")) {
-          accountGroup = "NAMO";
           break;
         }
       }
-    }
-
-
-
-
-
-
-
-    // 5. Check error message or whole line for MR exists or approval indicators
-
-
-
-    if (!errorMessage) {
-
-
-
-      for (const tok of tokens) {
-
-
-
-        const cleaned = cleanValue(tok);
-
-
-
-        if (cleaned.toLowerCase().includes("mr exists") || cleaned.toLowerCase().includes("cannot be canceled")) {
-
-
-
-          errorMessage = cleaned;
-
-
-
-          break;
-
-
-
+      if (!rowTicket) {
+        for (const tok of tokens) {
+          const cleaned = cleanTicket(tok);
+          const upper = cleaned.toUpperCase();
+          if (cleaned && cleaned !== rowId && !upper.startsWith("0WO") && upper !== "WORKORDER" && upper !== "[WORKORDER]" && upper !== "_" && /^[A-Za-z0-9_-]{6,35}$/.test(cleaned)) {
+            rowTicket = cleaned;
+            break;
+          }
         }
-
-
-
       }
-
-
-
     }
-
-
-
-
-
-
-
-    const errorLower = (errorMessage + " " + line).toLowerCase();
-
-
-
-    if (errorLower.includes("mr exists") || errorLower.includes("cannot be canceled as mr exists")) {
-
-
-
-      isMaterialConsumed = true;
-
-
-
-    }
-
-
-
-    if (errorLower.includes("approval is pending") || errorLower.includes("pending approval") || errorLower.includes("recall the pending approval")) {
-
-
-
-      isApprovalSent = true;
-
-
-
-    }
-
-
-
-
-
-
 
     if (rowId && rowTicket) {
-
-
-
       const idKey = rowId.toLowerCase();
-
-
-
       if (!seenIds.has(idKey)) {
-
-
-
         seenIds.add(idKey);
-
-
-
         results.push({
-
-
-
           id: rowId,
-
-
-
           ticket: rowTicket,
-
-
-
           status: rowStatus,
-
-
-
-          isMaterialConsumed,
-
-
-
-          isApprovalSent,
-
-
-
-          accountGroup,
-
-
-
           resultStatus,
-
-
-
           errorMessage,
-
-
-
         });
-
-
-
       }
-
-
-
     }
-
-
-
   }
-
-
-
-
-
-
 
   return results;
-
-
-
 }
 
-
-
-
-
-
-
-function buildCancellationCanceledOutput(rows: CancellationExecutionRow[]): string {
-
-
-
+function buildCancellationCanceledOutput(rows: CancellationExecutionRow[], _cancellationType?: string): string {
   const outputRows = [buildTSVRow(["_", "Id", "Ticket_Number_Read_Only__c", "Status"])];
 
-
-
-
-
-
-
   for (const row of rows) {
-
-
-
-    if (row.ticket.trim().toUpperCase().startsWith("A")) continue;
-
-
-
     outputRows.push(buildTSVRow(["[WorkOrder]", row.id, row.ticket, "Canceled"]));
-
-
-
   }
 
-
-
-
-
-
-
   return outputRows.join("\n");
-
-
-
 }
+
 function buildCaseAssignmentRows(input: string): CaseAssignmentRow[] {
 
 
@@ -9526,6 +8754,1232 @@ ${rows.join("\n")}
 
 
 
+// =============================================================================
+// ACCOUNT CHECK: EXECUTIVE SHIFT HANDOVER & ESCALATION MODAL
+// =============================================================================
+function AccountCheckHandoverModal({
+  isOpen,
+  onClose,
+  result,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  result: AccountCheckResult;
+}) {
+  const [activeTab, setActiveTab] = React.useState<"teams" | "email" | "visual">("teams");
+  const [copiedFormat, setCopiedFormat] = React.useState<string | null>(null);
+
+  // Close on Escape
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const summaryData = React.useMemo(() => {
+    if (!result || result.totalCount === 0) return null;
+
+    const total = result.totalCount;
+    const namo = result.namoCount;
+    const nonNamo = result.nonNamoCount;
+    const unclassified = result.unclassifiedGroupCount;
+    const parents = result.parentCount;
+    const children = result.childCount;
+    const pms = result.pmsCount;
+    const nonPms = result.nonPmsCount;
+    const approvals = result.approvalSentCount;
+    const mr = result.mrCreatedCount;
+
+    const bothApprovalAndMr = result.allRows.filter(
+      (r) => r.isApprovalSent && r.isMrCreated
+    ).length;
+
+    const notReturned = result.allRows.filter(
+      (r) => r.status === "Not Returned" || r.accountGroup === "Not Returned by SF"
+    );
+
+    const statusCounts: Record<string, number> = {};
+    for (const r of result.allRows) {
+      const s = r.status || "Unknown";
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    }
+
+    const safeToProcess = result.allRows.filter(
+      (r) =>
+        r.isParent &&
+        !r.isApprovalSent &&
+        !r.isMrCreated &&
+        r.status !== "Completed" &&
+        r.status !== "Canceled" &&
+        r.status !== "Not Returned"
+    ).length;
+
+    const blockedOrActionRequired = total - safeToProcess;
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    const timeStr = now.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const timestamp = `${dateStr}, ${timeStr} IST`;
+
+    // 1. Teams / Slack Markdown Format
+    const teamsMarkdown = [
+      `*📋 ACCOUNT CHECK: EXECUTIVE SHIFT HANDOVER REPORT*`,
+      `_Generated: ${timestamp} | Meghdoot Operations Playground_`,
+      ``,
+      `*📊 Executive Summary:*`,
+      `• *Total WorkOrders Analyzed:* \`${total}\``,
+      `• *Ready to Process (Clean):* \`${safeToProcess}\` (${((safeToProcess / total) * 100).toFixed(1)}%)`,
+      `• *Action Required / Blocked:* \`${blockedOrActionRequired}\` (${((blockedOrActionRequired / total) * 100).toFixed(1)}%)`,
+      ``,
+      `*🏢 Account Group Distribution:*`,
+      `• *NAMO Accounts:* \`${namo}\` (${((namo / total) * 100).toFixed(1)}%)`,
+      `• *NON-NAMO Accounts:* \`${nonNamo}\` (${((nonNamo / total) * 100).toFixed(1)}%)`,
+      unclassified > 0 ? `• *Unclassified / Unknown:* \`${unclassified}\`` : null,
+      ``,
+      `*🔗 Hierarchy & Bundling:*`,
+      `• *Standalone / Parent Tickets:* \`${parents}\` (${((parents / total) * 100).toFixed(1)}%)`,
+      `• *Bundled Child Tickets:* \`${children}\` (${((children / total) * 100).toFixed(1)}%) [Must action parent first]`,
+      ``,
+      `*⚙️ WorkOrder Type:*`,
+      `• *Auto PMS ('A' Prefix):* \`${pms}\` (${((pms / total) * 100).toFixed(1)}%)`,
+      `• *Non-PMS Tickets:* \`${nonPms}\` (${((nonPms / total) * 100).toFixed(1)}%)`,
+      ``,
+      `*⚡ Critical Operational Flags & Risks:*`,
+      `• *Approval Requests Pending:* \`${approvals}\``,
+      `• *Material Requests (MR) Created:* \`${mr}\``,
+      bothApprovalAndMr > 0
+        ? `• ⚠️ *High Risk (Both Approval + MR Active):* \`${bothApprovalAndMr}\``
+        : null,
+      notReturned.length > 0
+        ? `• ❌ *Unmatched / Missing in SF:* \`${notReturned.length}\``
+        : null,
+      ``,
+      `*📈 WorkOrder Lifecycle Status:*`,
+      Object.entries(statusCounts)
+        .map(([st, cnt]) => `• ${st}: \`${cnt}\``)
+        .join("\n"),
+      ``,
+      `*🎯 Operational Next Actions & Recommendations:*`,
+      approvals > 0
+        ? `> • *[APPROVALS]*: Escalate \`${approvals}\` approval requests to Team Lead for sign-off.`
+        : `> • *[APPROVALS]*: No pending approval blockers.`,
+      mr > 0
+        ? `> • *[MATERIAL]*: Verify warehouse parts return before canceling \`${mr}\` Material Request tickets.`
+        : `> • *[MATERIAL]*: No material request blockers.`,
+      children > 0
+        ? `> • *[BUNDLING]*: \`${children}\` child tickets must be processed via their parent WorkOrder.`
+        : null,
+      `> • *[READY]*: \`${safeToProcess}\` clean WorkOrders can proceed directly.`,
+    ]
+      .filter((line) => line !== null)
+      .join("\n");
+
+    // 2. Plain Text / Email Format
+    const emailPlainText = [
+      `================================================================================`,
+      `📋 ACCOUNT CHECK: EXECUTIVE SHIFT HANDOVER & ESCALATION REPORT`,
+      `Generated: ${timestamp}`,
+      `Scope    : Salesforce WorkOrder Classification & Cancellation Audit`,
+      `Source   : Meghdoot Operations Playground`,
+      `================================================================================`,
+      ``,
+      `1. EXECUTIVE OVERVIEW`,
+      `--------------------------------------------------------------------------------`,
+      `• Total WorkOrders Analyzed : ${total}`,
+      `• Safe to Process (Clean)   : ${safeToProcess} (${((safeToProcess / total) * 100).toFixed(1)}%)`,
+      `• Attention / Action Req'd  : ${blockedOrActionRequired} (${((blockedOrActionRequired / total) * 100).toFixed(1)}%)`,
+      ``,
+      `2. ACCOUNT GROUP CLASSIFICATION`,
+      `--------------------------------------------------------------------------------`,
+      `• NAMO Accounts             : ${namo} (${((namo / total) * 100).toFixed(1)}%)`,
+      `• NON-NAMO Accounts         : ${nonNamo} (${((nonNamo / total) * 100).toFixed(1)}%)`,
+      unclassified > 0 ? `• Unclassified Group        : ${unclassified}` : null,
+      ``,
+      `3. HIERARCHY & BUNDLING`,
+      `--------------------------------------------------------------------------------`,
+      `• Standalone / Parent Tickets: ${parents} (${((parents / total) * 100).toFixed(1)}%)`,
+      `• Bundled Child Tickets      : ${children} (${((children / total) * 100).toFixed(1)}%)`,
+      `  * Note: Child tickets require processing via their parent WorkOrder.`,
+      ``,
+      `4. WORKORDER TYPE`,
+      `--------------------------------------------------------------------------------`,
+      `• Auto PMS (Prefix 'A')      : ${pms} (${((pms / total) * 100).toFixed(1)}%)`,
+      `• Non-PMS Tickets            : ${nonPms} (${((nonPms / total) * 100).toFixed(1)}%)`,
+      ``,
+      `5. OPERATIONAL FLAGS & RISKS`,
+      `--------------------------------------------------------------------------------`,
+      `• Approval Requests Sent    : ${approvals}`,
+      `• Material Requests (MR)    : ${mr}`,
+      bothApprovalAndMr > 0
+        ? `• High Risk (Both Flags)    : ${bothApprovalAndMr} [Escalate Immediately]`
+        : null,
+      notReturned.length > 0
+        ? `• Missing / Not in SF       : ${notReturned.length}`
+        : null,
+      ``,
+      `6. STATUS BREAKDOWN`,
+      `--------------------------------------------------------------------------------`,
+      ...Object.entries(statusCounts).map(
+        ([st, cnt]) => `• ${st.padEnd(26)} : ${cnt}`
+      ),
+      ``,
+      notReturned.length > 0
+        ? [
+            `7. MISSING TICKETS DETAIL`,
+            `--------------------------------------------------------------------------------`,
+            `• Not Returned by SF: ${notReturned.map((r) => r.ticket).join(", ")}`,
+            `• Action: Verify ticket numbers for typos or check cross-org sandbox context.`,
+            ``,
+          ].join("\n")
+        : null,
+      `8. NEXT ACTIONS & ESCALATION DIRECTIVES`,
+      `--------------------------------------------------------------------------------`,
+      approvals > 0
+        ? `• [APPROVALS]: Escalate ${approvals} pending approval tickets to Lead/TL for expedited review.`
+        : `• [APPROVALS]: All tickets clear of approval holds.`,
+      mr > 0
+        ? `• [MATERIAL]: Coordinate with logistics/store to verify ${mr} Material Requests before cancellation.`
+        : `• [MATERIAL]: No material request holds detected.`,
+      children > 0
+        ? `• [HIERARCHY]: ${children} child tickets must be bundled; cancel parent tickets to cascade.`
+        : null,
+      `• [OPERATIONS]: ${safeToProcess} clean tickets ready for batch processing now.`,
+      ``,
+      `================================================================================`,
+      `Report automatically compiled by Meghdoot Operations Playground`,
+      `================================================================================`,
+    ]
+      .filter((line) => line !== null)
+      .join("\n");
+
+    return {
+      total,
+      safeToProcess,
+      blockedOrActionRequired,
+      namo,
+      nonNamo,
+      parents,
+      children,
+      pms,
+      nonPms,
+      approvals,
+      mr,
+      bothApprovalAndMr,
+      notReturned,
+      statusCounts,
+      timestamp,
+      teamsMarkdown,
+      emailPlainText,
+    };
+  }, [result]);
+
+  if (!isOpen || !summaryData) return null;
+
+  const handleCopy = (text: string, formatName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedFormat(formatName);
+    toast.success(`Copied ${formatName} Handover Summary to clipboard!`);
+    setTimeout(() => setCopiedFormat(null), 2500);
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([summaryData.emailPlainText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `AccountCheck_Shift_Handover_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Downloaded Handover Summary .txt file!");
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-slate-200/50 dark:border-white/10 bg-background dark:bg-[#07090e] shadow-[0_25px_70px_rgba(0,0,0,0.6)] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-5 sm:p-6 border-b border-border/70 dark:border-white/[0.08] flex items-center justify-between gap-4 bg-muted/20 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-xs">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
+                  Executive Shift Handover & Escalation Summary
+                </h3>
+                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/25 px-2 py-0.5">
+                  Live Report
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Instant operational handover ready for Team Leads, MS Teams, Slack, or Escalation Emails.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 w-8 rounded-xl border border-border/70 dark:border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* KPI Mini-Ribbon */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-4 sm:p-6 pb-2 border-b border-border/40 dark:border-white/[0.05] bg-muted/10 dark:bg-white/[0.01]">
+          <div className="p-3 rounded-2xl border border-slate-200/60 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.02]">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Total Analyzed</span>
+            <div className="text-xl font-black text-foreground mt-0.5 font-mono">{summaryData.total}</div>
+            <span className="text-[10px] text-muted-foreground font-sans">WorkOrders in batch</span>
+          </div>
+          <div className="p-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Ready to Process</span>
+            <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">{summaryData.safeToProcess}</div>
+            <span className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-sans">{((summaryData.safeToProcess / summaryData.total) * 100).toFixed(0)}% clean tickets</span>
+          </div>
+          <div className="p-3 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Action Required</span>
+            <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-0.5 font-mono">{summaryData.blockedOrActionRequired}</div>
+            <span className="text-[10px] text-amber-600/70 dark:text-amber-400/70 font-sans">Appr / MR / Children</span>
+          </div>
+          <div className="p-3 rounded-2xl border border-rose-500/30 bg-rose-500/5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400">Missing in SF</span>
+            <div className="text-xl font-black text-rose-600 dark:text-rose-400 mt-0.5 font-mono">{summaryData.notReturned.length}</div>
+            <span className="text-[10px] text-rose-600/70 dark:text-rose-400/70 font-sans">Unmatched tickets</span>
+          </div>
+        </div>
+
+        {/* Tab Selector & Action Buttons Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pt-3 pb-2">
+          {/* Format Tabs */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200/60 dark:border-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => setActiveTab("teams")}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                activeTab === "teams"
+                  ? "bg-indigo-500 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Teams / Slack Markdown
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("email")}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                activeTab === "email"
+                  ? "bg-indigo-500 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Plain Text / Email
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("visual")}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                activeTab === "visual"
+                  ? "bg-indigo-500 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Visual Breakdown
+            </button>
+          </div>
+
+          {/* Quick Copy Buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleCopy(summaryData.teamsMarkdown, "Teams / Slack")}
+              className="h-8 gap-1.5 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg shadow-xs"
+            >
+              {copiedFormat === "Teams / Slack" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              <span>Copy Teams</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleCopy(summaryData.emailPlainText, "Email / Plain Text")}
+              className="h-8 gap-1.5 text-xs font-bold border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-lg shadow-xs"
+            >
+              {copiedFormat === "Email / Plain Text" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+              <span>Copy Email</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDownload}
+              className="h-8 gap-1.5 text-xs font-bold border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shadow-xs"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>.txt</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Content Body */}
+        <div className="flex-1 overflow-auto p-4 sm:p-6 pt-2">
+          {activeTab === "teams" && (
+            <div className="relative rounded-2xl border border-slate-200/70 dark:border-white/[0.08] bg-slate-950/80 p-4 font-mono text-xs leading-relaxed text-slate-200 shadow-inner overflow-auto max-h-[380px] whitespace-pre-wrap selection:bg-indigo-500/30">
+              {summaryData.teamsMarkdown}
+            </div>
+          )}
+
+          {activeTab === "email" && (
+            <div className="relative rounded-2xl border border-slate-200/70 dark:border-white/[0.08] bg-slate-950/80 p-4 font-mono text-xs leading-relaxed text-slate-200 shadow-inner overflow-auto max-h-[380px] whitespace-pre-wrap selection:bg-indigo-500/30">
+              {summaryData.emailPlainText}
+            </div>
+          )}
+
+          {activeTab === "visual" && (
+            <div className="space-y-4 max-h-[380px] overflow-auto pr-1">
+              {/* Distribution Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* Account Group */}
+                <div className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Account Group</span>
+                    <span className="text-[10px] font-mono text-slate-500">{summaryData.total} Total</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs font-sans">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">NAMO</span>
+                      <span className="font-mono font-bold">{summaryData.namo} ({((summaryData.namo / summaryData.total) * 100).toFixed(0)}%)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sky-600 dark:text-sky-400">NON-NAMO</span>
+                      <span className="font-mono font-bold">{summaryData.nonNamo} ({((summaryData.nonNamo / summaryData.total) * 100).toFixed(0)}%)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hierarchy */}
+                <div className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Hierarchy</span>
+                    <span className="text-[10px] font-mono text-slate-500">{summaryData.total} Total</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs font-sans">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-indigo-600 dark:text-indigo-400">Parents (Standalone)</span>
+                      <span className="font-mono font-bold">{summaryData.parents} ({((summaryData.parents / summaryData.total) * 100).toFixed(0)}%)</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-purple-600 dark:text-purple-400">Bundled Child</span>
+                      <span className="font-mono font-bold">{summaryData.children} ({((summaryData.children / summaryData.total) * 100).toFixed(0)}%)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Operational Flags */}
+                <div className="p-3.5 rounded-2xl border border-slate-200/60 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02]">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">Operational Flags</span>
+                    <span className="text-[10px] font-mono text-slate-500">{summaryData.approvals + summaryData.mr} Flags</span>
+                  </div>
+                  <div className="space-y-1.5 text-xs font-sans">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-orange-600 dark:text-orange-400">Approval Requests</span>
+                      <span className="font-mono font-bold">{summaryData.approvals}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-rose-600 dark:text-rose-400">Material Requests (MR)</span>
+                      <span className="font-mono font-bold">{summaryData.mr}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Directive Box */}
+              <div className="p-4 rounded-2xl border border-indigo-500/30 bg-indigo-500/5 space-y-2">
+                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xs">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Automated Shift Directives:</span>
+                </div>
+                <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300 font-sans list-disc list-inside">
+                  <li>
+                    <strong>Safe to Proceed:</strong> {summaryData.safeToProcess} clean WorkOrders can be processed without risk of cancellation rejection.
+                  </li>
+                  {summaryData.approvals > 0 && (
+                    <li className="text-orange-600 dark:text-orange-300">
+                      <strong>Approvals:</strong> {summaryData.approvals} WorkOrders have approval requests active — escalate to Team Lead.
+                    </li>
+                  )}
+                  {summaryData.mr > 0 && (
+                    <li className="text-rose-600 dark:text-rose-300">
+                      <strong>Material Requests:</strong> {summaryData.mr} WorkOrders have active parts requests — confirm warehouse return.
+                    </li>
+                  )}
+                  {summaryData.children > 0 && (
+                    <li className="text-purple-600 dark:text-purple-300">
+                      <strong>Bundled Children:</strong> {summaryData.children} child tickets must be processed via their parent WorkOrder.
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-4 sm:p-5 border-t border-border/70 dark:border-white/[0.08] flex items-center justify-between gap-3 bg-muted/20 dark:bg-white/[0.02]">
+          <span className="text-[11px] text-muted-foreground font-mono">
+            {summaryData.timestamp}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 text-xs font-bold rounded-lg">
+              Close
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleCopy(activeTab === "teams" ? summaryData.teamsMarkdown : summaryData.emailPlainText, activeTab === "teams" ? "Teams / Slack" : "Email")}
+              className="h-8 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg gap-1.5 shadow-sm"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              <span>Copy Current View</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+// =============================================================================
+// CANCELLATION: EXECUTIVE SHIFT HANDOVER & ALL TICKETS AUDIT MODAL
+// =============================================================================
+function CancellationHandoverModal({
+  isOpen,
+  onClose,
+  type,
+  namoResult,
+  nonNamoResult,
+  ccoResult,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  type: "NAMO" | "NON NAMO" | "CCO";
+  namoResult?: NamoAlgo2Result;
+  nonNamoResult?: NonNamoAlgo3Result;
+  ccoResult?: CcoAlgoResult;
+}) {
+  const [activeTab, setActiveTab] = React.useState<"tickets" | "teams" | "email">("tickets");
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [selectedCategory, setSelectedCategory] = React.useState<string>("all");
+  const [copiedFormat, setCopiedFormat] = React.useState<string | null>(null);
+
+  // Close on Escape key
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const isNamo = type === "NAMO";
+  const isCco = type === "CCO";
+  const result = isCco ? ccoResult : isNamo ? namoResult : nonNamoResult;
+
+  const summaryData = React.useMemo(() => {
+    if (!result || result.allRecords.length === 0) return null;
+
+    const total = result.allRecords.length;
+    const readyList = isCco
+      ? (ccoResult?.ccoCancellationTickets || [])
+      : isNamo
+      ? (namoResult?.namoCancellationTickets || [])
+      : (nonNamoResult?.nonNamoCancellationTickets || []);
+    const approvalList = isCco
+      ? (ccoResult?.approvalPendingTickets || [])
+      : isNamo
+      ? (namoResult?.approvalPendingTickets || [])
+      : (nonNamoResult?.approvalPendingTickets || []);
+    const parentList = isCco
+      ? (ccoResult?.parentWorkOrderTickets || [])
+      : isNamo
+      ? (namoResult?.parentWorkOrderTickets || [])
+      : (nonNamoResult?.parentWorkOrderTickets || []);
+    const mrList = isCco
+      ? (ccoResult?.mrCreatedTickets || [])
+      : isNamo
+      ? (namoResult?.mrCreatedTickets || [])
+      : (nonNamoResult?.mrCreatedTickets || []);
+    const groupMismatchList = isCco
+      ? (ccoResult?.autoPmsTickets || [])
+      : isNamo
+      ? (namoResult?.nonNamoTickets || [])
+      : (nonNamoResult?.namoTickets || []);
+    const completedList = isCco
+      ? (ccoResult?.completedOrCanceledTickets || [])
+      : isNamo
+      ? (namoResult?.completedOrCanceledTickets || [])
+      : (nonNamoResult?.completedOrCanceledTickets || []);
+    const blkList = isCco ? (ccoResult?.blkTickets || []) : [];
+    const unverifiedList = isCco
+      ? []
+      : isNamo
+      ? (namoResult?.unclassifiedTickets || [])
+      : (nonNamoResult?.unclassifiedTickets || []);
+    const skippedList = isCco
+      ? (ccoResult?.allSkippedTickets || [])
+      : isNamo
+      ? (namoResult?.allSkippedTickets || [])
+      : (nonNamoResult?.allSkippedTickets || []);
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    const timeStr = now.toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const timestamp = `${dateStr}, ${timeStr} IST`;
+
+    // Teams / Slack Markdown Format
+    const teamsMarkdown = [
+      `*📋 ${type} CANCELLATION: EXECUTIVE SHIFT HANDOVER REPORT*`,
+      `_Generated: ${timestamp} | Meghdoot Operations Playground_`,
+      ``,
+      `*📊 Executive Summary:*`,
+      `• *Total WorkOrders Analyzed:* \`${total}\``,
+      `• *Ready to Cancel (Clean Payload):* \`${readyList.length}\` (${((readyList.length / total) * 100).toFixed(1)}%)`,
+      `• *Total Excluded / Segregated:* \`${skippedList.length}\` (${((skippedList.length / total) * 100).toFixed(1)}%)`,
+      ``,
+      `*⚡ Critical Segregation & Operational Flags:*`,
+      `• *Approval Requests Pending (Locked in SF):* \`${approvalList.length}\``,
+      `• *Material Requests (MR) Created:* \`${mrList.length}\``,
+      `• *Parent-Linked WorkOrders (Child WOs):* \`${parentList.length}\``,
+      isCco && blkList.length > 0 ? `• *BLK / Bulk Tickets (Excluded from CCO):* \`${blkList.length}\`` : null,
+      isCco
+        ? (groupMismatchList.length > 0 ? `• *Auto PMS Tickets (Skipped from CCO):* \`${groupMismatchList.length}\`` : null)
+        : `• *Account Group Mismatch (${isNamo ? "NON-NAMO" : "NAMO"}):* \`${groupMismatchList.length}\``,
+      completedList.length > 0 ? `• *Already Completed / Canceled:* \`${completedList.length}\`` : null,
+      unverifiedList.length > 0 ? `• *Unverified / Blank Group:* \`${unverifiedList.length}\`` : null,
+      ``,
+      `*🎯 Operational Next Actions & Directives:*`,
+      readyList.length > 0
+        ? `> • *[EXECUTION]*: \`${readyList.length}\` clean WorkOrders are ready for cancellation upload.`
+        : `> • *[EXECUTION]*: No clean tickets eligible for cancellation.`,
+      approvalList.length > 0
+        ? `> • *[APPROVALS]*: Escalate \`${approvalList.length}\` approval requests to Team Lead for sign-off.`
+        : `> • *[APPROVALS]*: No pending approval blockers.`,
+      mrList.length > 0
+        ? `> • *[MATERIAL]*: Verify warehouse parts return before canceling \`${mrList.length}\` MR tickets.`
+        : `> • *[MATERIAL]*: No material request blockers.`,
+      parentList.length > 0
+        ? `> • *[HIERARCHY]*: \`${parentList.length}\` parent tickets must be processed before child tickets.`
+        : null,
+      groupMismatchList.length > 0
+        ? isCco
+          ? `> • *[APPROVALS / ROUTING]*: \`${groupMismatchList.length}\` Auto PMS tickets require departmental approval (Suraj Sir - UCPG / Vishal Sir - CPSD) and must not be cancelled via CCO.`
+          : `> • *[APPROVALS / ROUTING]*: \`${groupMismatchList.length}\` ${isNamo ? "NON-NAMO" : "NAMO"} tickets require ${isNamo ? "RM Approval" : "RM + CPSD/UCPG Approval"} and must not be cancelled.`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    // Email Plain Text Format
+    const emailPlainText = [
+      `================================================================================`,
+      `📋 ${type} CANCELLATION: EXECUTIVE SHIFT HANDOVER REPORT`,
+      `Generated: ${timestamp}`,
+      `Scope    : Salesforce Non-PMS / Auto PMS WorkOrder Segregation & Cancellation Audit`,
+      `Source   : Meghdoot Operations Playground`,
+      `================================================================================`,
+      ``,
+      `1. EXECUTIVE OVERVIEW`,
+      `--------------------------------------------------------------------------------`,
+      `• Total WorkOrders Analyzed : ${total}`,
+      `• Ready to Cancel (Clean)   : ${readyList.length} (${((readyList.length / total) * 100).toFixed(1)}%)`,
+      `• Total Excluded WorkOrders : ${skippedList.length} (${((skippedList.length / total) * 100).toFixed(1)}%)`,
+      ``,
+      `2. OPERATIONAL SEGREGATION BREAKDOWN`,
+      `--------------------------------------------------------------------------------`,
+      `• Approval Pending          : ${approvalList.length}`,
+      `• Material Request (MR)     : ${mrList.length}`,
+      `• Parent-Linked Tickets     : ${parentList.length}`,
+      isCco && blkList.length > 0 ? `• BLK / Bulk WorkOrders     : ${blkList.length} (Parent Ticket - Excluded from CCO)` : null,
+      isCco
+        ? `• Auto PMS Tickets          : ${groupMismatchList.length} (Skipped from CCO - requires approval)`
+        : `• Account Group Mismatch    : ${groupMismatchList.length} (${isNamo ? "NON-NAMO" : "NAMO"} Group - ${isNamo ? "Requires RM Approval" : "Requires RM + CPSD/UCPG Approval"})`,
+      `• Already Completed/Canceled: ${completedList.length}`,
+      `• Unverified / Blank Group  : ${unverifiedList.length}`,
+      ``,
+      `3. NEXT ACTION DIRECTIVES`,
+      `--------------------------------------------------------------------------------`,
+      `• Cancellation Payload : ${readyList.length} tickets can be submitted directly.`,
+      approvalList.length > 0 ? `• Approvals Escalation : ${approvalList.length} tickets pending approval clearance.` : `• Approvals Escalation : Clean (0 pending).`,
+      mrList.length > 0 ? `• Material Check       : ${mrList.length} tickets require warehouse clearance.` : `• Material Check       : Clean (0 MR).`,
+      groupMismatchList.length > 0
+        ? isCco
+          ? `• Group Re-routing     : ${groupMismatchList.length} Auto PMS tickets routed to CPSD/UCPG approval.`
+          : `• Group Re-routing     : ${groupMismatchList.length} tickets routed to ${isNamo ? "NON-NAMO" : "NAMO"} team (${isNamo ? "Requires RM Approval" : "Requires RM + CPSD/UCPG Approval"}).`
+        : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    return {
+      total,
+      readyList,
+      approvalList,
+      parentList,
+      mrList,
+      blkList,
+      groupMismatchList,
+      completedList,
+      unverifiedList,
+      skippedList,
+      timestamp,
+      teamsMarkdown,
+      emailPlainText,
+    };
+  }, [result, isNamo, isCco, type, namoResult, nonNamoResult, ccoResult]);
+
+  // Combine and annotate all tickets for the All Tickets Explorer
+  const allTicketsWithCategory = React.useMemo(() => {
+    if (!summaryData || !result) return [];
+
+    const readySet = new Set(summaryData.readyList.map((t) => t.ticket));
+    const approvalSet = new Set(summaryData.approvalList.map((t) => t.ticket));
+    const parentSet = new Set(summaryData.parentList.map((t) => t.ticket));
+    const mrSet = new Set(summaryData.mrList.map((t) => t.ticket));
+    const blkSet = new Set(summaryData.blkList.map((t) => t.ticket));
+    const groupSet = new Set(summaryData.groupMismatchList.map((t) => t.ticket));
+    const completedSet = new Set(summaryData.completedList.map((t) => t.ticket));
+    const unverifiedSet = new Set(summaryData.unverifiedList.map((t) => t.ticket));
+
+    return result.allRecords.map((item) => {
+      let category = "Excluded";
+      let badgeColor = "rose";
+      let reason = item.skipReason || "Excluded";
+
+      if (readySet.has(item.ticket)) {
+        category = "Ready to Cancel";
+        badgeColor = "emerald";
+        reason = "Eligible for Cancellation";
+      } else if (approvalSet.has(item.ticket)) {
+        category = "Approval Pending";
+        badgeColor = "amber";
+        reason = "Approval Pending";
+      } else if (blkSet.has(item.ticket)) {
+        category = "BLK / Bulk (Excluded)";
+        badgeColor = "purple";
+        reason = "BLK / Bulk WorkOrder (Parent Ticket - Excluded from CCO Cancellation)";
+      } else if (parentSet.has(item.ticket)) {
+        category = "Parent Tickets";
+        badgeColor = "purple";
+        reason = "Parent WorkOrder (Linked to Child WOs)";
+      } else if (mrSet.has(item.ticket)) {
+        category = "MR Raised";
+        badgeColor = "rose";
+        reason = "Material Request (MR) Created";
+      } else if (groupSet.has(item.ticket)) {
+        category = isCco ? "Auto PMS (Excluded)" : isNamo ? "NON-NAMO Group" : "NAMO Group";
+        badgeColor = "sky";
+        reason = isCco
+          ? "Auto PMS ticket (Excluded from CCO Cancellation - requires approval)"
+          : `Account Group Mismatch (${item.accountGroupName || "Opposite Group"})`;
+      } else if (completedSet.has(item.ticket)) {
+        category = "Completed/Canceled";
+        badgeColor = "slate";
+        reason = `Already ${item.status || "Closed"}`;
+      } else if (unverifiedSet.has(item.ticket)) {
+        category = "Unverified";
+        badgeColor = "slate";
+        reason = "Unverified / Blank Account Group";
+      }
+
+      return {
+        ticket: item.ticket,
+        accountName: item.accountName || "—",
+        accountGroup: item.accountGroupName || "—",
+        status: item.status || "—",
+        type: classifyTicketPrefix(item.ticket).type,
+        category,
+        badgeColor,
+        reason,
+      };
+    });
+  }, [summaryData, result, isNamo, isCco]);
+
+  // Filtered tickets based on search query and category filter
+  const filteredTickets = React.useMemo(() => {
+    return allTicketsWithCategory.filter((row) => {
+      if (selectedCategory !== "all") {
+        if (selectedCategory === "ready" && row.category !== "Ready to Cancel") return false;
+        if (selectedCategory === "approval" && row.category !== "Approval Pending") return false;
+        if (selectedCategory === "parent" && row.category !== "Parent Tickets") return false;
+        if (selectedCategory === "mr" && row.category !== "MR Raised") return false;
+        if (selectedCategory === "group" && !row.category.includes("Group")) return false;
+        if (selectedCategory === "pms" && !row.category.includes("Auto PMS")) return false;
+        if (selectedCategory === "blk" && !row.category.includes("BLK")) return false;
+        if (selectedCategory === "completed" && row.category !== "Completed/Canceled") return false;
+        if (selectedCategory === "unverified" && row.category !== "Unverified") return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        return (
+          row.ticket.toLowerCase().includes(q) ||
+          row.accountName.toLowerCase().includes(q) ||
+          row.accountGroup.toLowerCase().includes(q) ||
+          row.reason.toLowerCase().includes(q) ||
+          row.type.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [allTicketsWithCategory, selectedCategory, searchQuery]);
+
+  if (!isOpen || !summaryData) return null;
+
+  const handleCopy = (text: string, formatName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedFormat(formatName);
+    toast.success(`Copied ${formatName} Handover Summary to clipboard!`);
+    setTimeout(() => setCopiedFormat(null), 2500);
+  };
+
+  const handleCopyFilteredTickets = () => {
+    const tkts = filteredTickets.map((t) => t.ticket).filter(Boolean);
+    if (tkts.length === 0) return;
+    navigator.clipboard.writeText(tkts.join("\n"));
+    toast.success(`Copied ${tkts.length} tickets to clipboard!`);
+  };
+
+  const handleDownloadTxt = () => {
+    const blob = new Blob([summaryData.emailPlainText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${type}_Cancellation_Handover_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Downloaded Handover Summary .txt file!");
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-5xl rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white dark:bg-slate-950 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-5 sm:p-6 border-b border-border/70 dark:border-white/[0.08] flex items-center justify-between gap-4 bg-muted/20 dark:bg-white/[0.02]">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-xs">
+              <FileText className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
+                  Executive Shift Handover & Segregation Audit
+                </h3>
+                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/25 px-2 py-0.5">
+                  {type} Live Audit
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Explore all parsed WorkOrders, operational flags, and instant shift reports ready for Team Leads & MS Teams.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 w-8 rounded-xl border border-border/70 dark:border-white/10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* KPI Mini-Ribbon */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 p-4 sm:p-5 pb-2 border-b border-border/40 dark:border-white/[0.05] bg-muted/10 dark:bg-white/[0.01]">
+          {/* Total */}
+          <div className="p-2.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.02]">
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Total Analyzed</span>
+            <div className="text-lg font-black text-foreground mt-0.5 font-mono">{summaryData.total}</div>
+            <span className="text-[9px] text-muted-foreground">WorkOrders parsed</span>
+          </div>
+
+          {/* Ready */}
+          <div className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Ready to Cancel</span>
+            <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">{summaryData.readyList.length}</div>
+            <span className="text-[9px] text-emerald-600/70 dark:text-emerald-400/70">Clean payload</span>
+          </div>
+
+          {/* Approval */}
+          <div className="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Approval Pending</span>
+            <div className="text-lg font-black text-amber-600 dark:text-amber-400 mt-0.5 font-mono">{summaryData.approvalList.length}</div>
+            <span className="text-[9px] text-amber-600/70 dark:text-amber-400/70">Locked in SF</span>
+          </div>
+
+          {/* Parent */}
+          <div className="p-2.5 rounded-xl border border-purple-500/30 bg-purple-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">Parent Tickets</span>
+            <div className="text-lg font-black text-purple-600 dark:text-purple-400 mt-0.5 font-mono">{summaryData.parentList.length}</div>
+            <span className="text-[9px] text-purple-600/70 dark:text-purple-400/70">Parent Linked</span>
+          </div>
+
+          {/* MR Raised */}
+          <div className="p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400">MR Raised</span>
+            <div className="text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5 font-mono">{summaryData.mrList.length}</div>
+            <span className="text-[9px] text-rose-600/70 dark:text-rose-400/70">Material Request</span>
+          </div>
+
+          {/* Group Mismatch */}
+          <div className="p-2.5 rounded-xl border border-sky-500/30 bg-sky-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
+              {isNamo ? "NON-NAMO Group" : "NAMO Group"}
+            </span>
+            <div className="text-lg font-black text-sky-600 dark:text-sky-400 mt-0.5 font-mono">{summaryData.groupMismatchList.length}</div>
+            <span className="text-[9px] text-sky-600/70 dark:text-sky-400/70">Account Mismatch</span>
+          </div>
+        </div>
+
+        {/* Tab Selector & Actions Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pt-3 pb-2 border-b border-border/40 dark:border-white/[0.05]">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200/60 dark:border-white/[0.08]">
+            <button
+              type="button"
+              onClick={() => setActiveTab("tickets")}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                activeTab === "tickets"
+                  ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>All Tickets Explorer ({allTicketsWithCategory.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("teams")}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                activeTab === "teams"
+                  ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>Teams / Slack</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("email")}
+              className={cn(
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                activeTab === "email"
+                  ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              <span>Email Report</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {activeTab === "tickets" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyFilteredTickets}
+                className="h-8 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg gap-1.5 shadow-sm"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                <span>Copy Visible Tickets ({filteredTickets.length})</span>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  handleCopy(
+                    activeTab === "teams" ? summaryData.teamsMarkdown : summaryData.emailPlainText,
+                    activeTab === "teams" ? "Teams / Slack" : "Email"
+                  )
+                }
+                className="h-8 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg gap-1.5 shadow-sm"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                <span>{copiedFormat ? "Copied!" : `Copy ${activeTab === "teams" ? "Teams Markdown" : "Email Text"}`}</span>
+              </Button>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadTxt}
+              className="h-8 text-xs font-bold rounded-lg gap-1.5 shadow-sm"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Download .txt</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Tab Content Body */}
+        <div className="p-4 sm:p-6 overflow-hidden flex-1 flex flex-col min-h-0">
+          {/* TAB 1: ALL TICKETS EXPLORER */}
+          {activeTab === "tickets" && (
+            <div className="flex-1 flex flex-col min-h-0 space-y-3">
+              {/* Category Filter Chips & Search Toolbar */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+                {/* Filter Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { id: "all", label: "All", count: summaryData.total },
+                    { id: "ready", label: "Ready to Cancel", count: summaryData.readyList.length },
+                    { id: "approval", label: "Approval Pending", count: summaryData.approvalList.length },
+                    { id: "parent", label: "Parent Tickets", count: summaryData.parentList.length },
+                    { id: "mr", label: "MR Raised", count: summaryData.mrList.length },
+                    ...(isCco
+                      ? [
+                          { id: "pms", label: "Auto PMS (Excluded)", count: summaryData.groupMismatchList.length },
+                          { id: "blk", label: "BLK / Bulk", count: summaryData.blkList.length },
+                        ]
+                      : [
+                          { id: "group", label: isNamo ? "NON-NAMO Group" : "NAMO Group", count: summaryData.groupMismatchList.length },
+                        ]),
+                    { id: "completed", label: "Completed/Canceled", count: summaryData.completedList.length },
+                    ...(isCco ? [] : [{ id: "unverified", label: "Unverified", count: summaryData.unverifiedList.length }]),
+                  ]
+                    .filter((chip) => chip.id === "all" || chip.count > 0)
+                    .map((chip) => (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        onClick={() => setSelectedCategory(chip.id)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-xs font-bold transition-all border",
+                          selectedCategory === chip.id
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            : "bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-white/[0.08] hover:bg-slate-200 dark:hover:bg-white/[0.08]"
+                        )}
+                      >
+                        {chip.label} <span className="font-mono text-[10px] opacity-80">({chip.count})</span>
+                      </button>
+                    ))}
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative w-full md:w-64 shrink-0">
+                  <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search ticket, account, reason..."
+                    className="w-full h-8 pl-8 pr-3 text-xs rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Tickets Table */}
+              <div className="flex-1 overflow-auto rounded-2xl border border-slate-200/70 dark:border-white/[0.08] bg-slate-950/60 shadow-inner max-h-[420px]">
+                <table className="w-full text-left font-mono text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-md border-b border-white/[0.08]">
+                    <tr className="text-[10px] uppercase font-black text-slate-400 tracking-wider">
+                      <th className="py-2.5 px-3">Ticket Number</th>
+                      <th className="py-2.5 px-3">Type</th>
+                      <th className="py-2.5 px-3">Account Name</th>
+                      <th className="py-2.5 px-3">Account Group</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3">Segregation / Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.04]">
+                    {filteredTickets.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-xs text-muted-foreground font-sans">
+                          No WorkOrders matching current filter or search criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredTickets.map((row) => (
+                        <tr key={row.ticket} className="hover:bg-white/[0.03] transition-colors">
+                          <td className="py-2 px-3 font-bold text-slate-200">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={cn(
+                                  "h-1.5 w-1.5 rounded-full shrink-0",
+                                  row.badgeColor === "emerald"
+                                    ? "bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.8)]"
+                                    : row.badgeColor === "amber"
+                                    ? "bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.8)]"
+                                    : row.badgeColor === "purple"
+                                    ? "bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.8)]"
+                                    : row.badgeColor === "sky"
+                                    ? "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)]"
+                                    : "bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.8)]"
+                                )}
+                              />
+                              <span className="font-mono">{row.ticket}</span>
+                            </div>
+                          </td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={cn(
+                                "font-bold text-xs font-sans",
+                                row.type === "Auto PMS"
+                                  ? "text-amber-400"
+                                  : row.type === "Breakdown"
+                                  ? "text-rose-400"
+                                  : row.type === "Service"
+                                  ? "text-sky-400"
+                                  : "text-slate-300"
+                              )}
+                            >
+                              {row.type}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 font-sans text-slate-300 truncate max-w-[140px]" title={row.accountName}>
+                            {row.accountName}
+                          </td>
+                          <td className="py-2 px-3">
+                            <span className="font-bold text-xs text-sky-400">
+                              {row.accountGroup}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 font-sans text-slate-400 text-[11px]">
+                            {row.status}
+                          </td>
+                          <td className="py-2 px-3">
+                            <span
+                              className={cn(
+                                "text-[11px] font-sans font-semibold",
+                                row.badgeColor === "emerald"
+                                  ? "text-emerald-400"
+                                  : row.badgeColor === "amber"
+                                  ? "text-amber-400"
+                                  : row.badgeColor === "purple"
+                                  ? "text-purple-400"
+                                  : row.badgeColor === "sky"
+                                  ? "text-sky-400"
+                                  : "text-rose-400/90"
+                              )}
+                            >
+                              {row.reason}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: TEAMS / SLACK SUMMARY */}
+          {activeTab === "teams" && (
+            <div className="relative rounded-2xl border border-slate-200/70 dark:border-white/[0.08] bg-slate-950/80 p-4 font-mono text-xs leading-relaxed text-slate-200 shadow-inner overflow-auto max-h-[420px] whitespace-pre-wrap selection:bg-indigo-500/30">
+              {summaryData.teamsMarkdown}
+            </div>
+          )}
+
+          {/* TAB 3: EMAIL REPORT */}
+          {activeTab === "email" && (
+            <div className="relative rounded-2xl border border-slate-200/70 dark:border-white/[0.08] bg-slate-950/80 p-4 font-mono text-xs leading-relaxed text-slate-200 shadow-inner overflow-auto max-h-[420px] whitespace-pre-wrap selection:bg-indigo-500/30">
+              {summaryData.emailPlainText}
+            </div>
+          )}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-4 sm:p-5 border-t border-border/70 dark:border-white/[0.08] flex items-center justify-between gap-3 bg-muted/20 dark:bg-white/[0.02]">
+          <span className="text-[11px] text-muted-foreground font-mono">
+            {summaryData.timestamp}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={onClose} className="h-8 text-xs font-bold rounded-lg">
+              Close
+            </Button>
+            {activeTab === "tickets" ? (
+              <Button
+                size="sm"
+                onClick={handleCopyFilteredTickets}
+                className="h-8 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg gap-1.5 shadow-sm"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                <span>Copy Filtered Tickets ({filteredTickets.length})</span>
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() =>
+                  handleCopy(
+                    activeTab === "teams" ? summaryData.teamsMarkdown : summaryData.emailPlainText,
+                    activeTab === "teams" ? "Teams / Slack" : "Email"
+                  )
+                }
+                className="h-8 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg gap-1.5 shadow-sm"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                <span>Copy Current View</span>
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function SOQLGeneratorPage() {
 
 
@@ -10023,6 +10477,10 @@ export default function SOQLGeneratorPage() {
 
 
   const [cancellationType, setCancellationType] = React.useState<"CCO" | "NAMO" | "NON NAMO" | "Account Check">("CCO");
+  const [accountCheckFilter, setAccountCheckFilter] = React.useState<
+    "all" | "namo" | "non-namo" | "parent" | "child" | "approval" | "mr" | "pms" | "non-pms"
+  >("all");
+  const [accountCheckSearch, setAccountCheckSearch] = React.useState("");
 
 
 
@@ -10039,6 +10497,8 @@ export default function SOQLGeneratorPage() {
 
 
   const [showDiscrepancyModal, setShowDiscrepancyModal] = React.useState(false);
+  const [showAccountCheckHandoverModal, setShowAccountCheckHandoverModal] = React.useState(false);
+  const [showCancellationHandoverModal, setShowCancellationHandoverModal] = React.useState(false);
 
 
 
@@ -10203,6 +10663,69 @@ export default function SOQLGeneratorPage() {
 
 
   const isUpdateAcceptedAndNone = selectedTemplate === "1" || (activeTemplate?.name?.toLowerCase()?.includes("update accepted and none") ?? false);
+
+  // Step 1 animated typewriter placeholder for clean single-line instruction
+  const step1TargetPlaceholder = React.useMemo(() => {
+    if (isCancellation) {
+      if (cancellationType === "NON NAMO") {
+        return "Paste Auto PMS ticket numbers for NON PMS cancelation only";
+      }
+      if (cancellationType === "NAMO") {
+        return "Paste Auto PMS ticket numbers for NAMO cancellation only";
+      }
+      if (cancellationType === "Account Check") {
+        return "Paste all ticket numbers for Account Check (PMS & NON-PMS)";
+      }
+      return "Paste all ticket numbers for CCO cancellation";
+    }
+    if (activeTemplate?.category === "Asset") {
+      return "Paste component IDs here...";
+    }
+    return "Paste ticket numbers here...";
+  }, [isCancellation, cancellationType, activeTemplate?.category]);
+
+  const [placeholderSubIndex, setPlaceholderSubIndex] = React.useState(0);
+  const [placeholderIsDeleting, setPlaceholderIsDeleting] = React.useState(false);
+  const [placeholderBlink, setPlaceholderBlink] = React.useState(true);
+
+  // Blinking cursor toggle
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setPlaceholderBlink((prev) => !prev);
+    }, 500);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Reset typewriter when target text changes
+  React.useEffect(() => {
+    setPlaceholderSubIndex(0);
+    setPlaceholderIsDeleting(false);
+  }, [step1TargetPlaceholder]);
+
+  // Typewriter typing & deleting loop
+  React.useEffect(() => {
+    if (placeholderSubIndex === step1TargetPlaceholder.length && !placeholderIsDeleting) {
+      const timeout = setTimeout(() => {
+        setPlaceholderIsDeleting(true);
+      }, 4000); // Pause for 4 seconds after typing full text
+      return () => clearTimeout(timeout);
+    }
+
+    if (placeholderSubIndex === 0 && placeholderIsDeleting) {
+      setPlaceholderIsDeleting(false);
+      const timeout = setTimeout(() => {
+        setPlaceholderSubIndex(1);
+      }, 400); // Brief pause before restarting typing
+      return () => clearTimeout(timeout);
+    }
+
+    const timer = setTimeout(() => {
+      setPlaceholderSubIndex((prev) => prev + (placeholderIsDeleting ? -1 : 1));
+    }, placeholderIsDeleting ? 25 : 55);
+
+    return () => clearTimeout(timer);
+  }, [placeholderSubIndex, placeholderIsDeleting, step1TargetPlaceholder]);
+
 
 
 
@@ -11510,212 +12033,354 @@ export default function SOQLGeneratorPage() {
 
 
 
-  const cancellationExecutionRows = React.useMemo(
+    // ALGO 1: Centralized Ticket Classification, CCO Cancellation Filtering & Approval Logic
+  const algo1Result = React.useMemo(() => {
+    return processAlgo1TicketClassification(ticketsInput || parsedTickets);
+  }, [ticketsInput, parsedTickets]);
 
+  const allTicketsMaster = algo1Result.allTickets;
+  const ccoCancellationTickets = algo1Result.ccoCancellationTickets;
+  const autoPmsTickets = algo1Result.autoPmsTickets;
 
+  // CCO: Non-PMS Cancellation Step 3 Classification & Segregation Logic
+  const ccoAlgoResult = React.useMemo<CcoAlgoResult>(() => {
+    if (cancellationType !== "CCO") {
+      return {
+        allTickets: [],
+        ccoCancellationTickets: [],
+        blkTickets: [],
+        autoPmsTickets: [],
+        parentWorkOrderTickets: [],
+        completedOrCanceledTickets: [],
+        approvalPendingTickets: [],
+        mrCreatedTickets: [],
+        allRecords: [],
+        allSkippedTickets: [],
+        ccoMailOutputText: "",
+        ccoMailOutputHtml: "",
+        ccoPostOutputText: "",
+        ccoPostOutputHtml: "",
+      };
+    }
+    return processAlgo1CcoStep3Classification(
+      cancellationExecutionInput,
+      parsedTickets
+    );
+  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
 
-    () => parseCancellationExecutionRows(cancellationExecutionInput, parsedTickets),
+  // ALGO 2: NAMO Page Auto PMS Cancellation Filtering & Output Logic
+  const namoAlgo2Result = React.useMemo<NamoAlgo2Result>(() => {
+    if (cancellationType !== "NAMO") {
+      return {
+        allAutoPmsTickets: [],
+        namoCancellationTickets: [],
+        nonNamoTickets: [],
+        parentWorkOrderTickets: [],
+        completedOrCanceledTickets: [],
+        unclassifiedTickets: [],
+        approvalPendingTickets: [],
+        mrCreatedTickets: [],
+        nonAutoPmsTickets: [],
+        allRecords: [],
+        allSkippedTickets: [],
+        nonNamoMailSegmentText: "",
+        nonNamoMailSegmentHtml: "",
+        nonNamoPostSegmentText: "",
+        nonNamoPostSegmentHtml: "",
+        excludedSegmentText: "",
+        excludedSegmentHtml: "",
+        namoMailOutputText: "",
+        namoMailOutputHtml: "",
+        namoPostOutputText: "",
+        namoPostOutputHtml: "",
+      };
+    }
+    return processAlgo2NamoClassification(
+      cancellationExecutionInput,
+      parsedTickets
+    );
+  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
 
+  // ALGO 3: NON-NAMO Page Auto PMS Cancellation Filtering & Output Logic
+  const nonNamoAlgo3Result = React.useMemo<NonNamoAlgo3Result>(() => {
+    if (cancellationType !== "NON NAMO") {
+      return {
+        allAutoPmsTickets: [],
+        nonNamoCancellationTickets: [],
+        namoTickets: [],
+        parentWorkOrderTickets: [],
+        completedOrCanceledTickets: [],
+        unclassifiedTickets: [],
+        approvalPendingTickets: [],
+        mrCreatedTickets: [],
+        nonAutoPmsTickets: [],
+        allRecords: [],
+        allSkippedTickets: [],
+        namoMailSegmentText: "",
+        namoMailSegmentHtml: "",
+        namoPostSegmentText: "",
+        namoPostSegmentHtml: "",
+        excludedSegmentText: "",
+        excludedSegmentHtml: "",
+        nonNamoMailOutputText: "",
+        nonNamoMailOutputHtml: "",
+        nonNamoPostOutputText: "",
+        nonNamoPostOutputHtml: "",
+      };
+    }
+    return processAlgo3NonNamoClassification(
+      cancellationExecutionInput,
+      parsedTickets
+    );
+  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
 
+  // ALGO 4 / Account Check: Classification and Parser Result
+  const accountCheckResult = React.useMemo<AccountCheckResult>(() => {
+    if (cancellationType !== "Account Check" && cancellationType !== "NON NAMO" && cancellationType !== "NAMO") {
+      return {
+        totalCount: 0,
+        allRows: [],
+        namoCount: 0,
+        nonNamoCount: 0,
+        unclassifiedGroupCount: 0,
+        parentCount: 0,
+        childCount: 0,
+        pmsCount: 0,
+        nonPmsCount: 0,
+        approvalSentCount: 0,
+        mrCreatedCount: 0,
+      };
+    }
+    return processAccountCheckClassification(
+      cancellationExecutionInput,
+      parsedTickets
+    );
+  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
 
-    [cancellationExecutionInput, parsedTickets]
-
-
-
-  );
-
-
-
-
-
-
-
-  const cancellationPmsRows = React.useMemo(
-    () => cancellationExecutionRows.filter((row) => cleanTicket(row.ticket).toUpperCase().startsWith("A")),
-    [cancellationExecutionRows]
-  );
-
-  const executableCancellationRows = React.useMemo(() => {
-
-
-
-    let source = cancellationExecutionRows;
-
-
-
-    if (cancellationStoredRows.length > 0) {
-
-
-
-      const seen = new Set(cancellationStoredRows.map((r) => r.id.toLowerCase()));
-
-
-
-      const merged = [...cancellationStoredRows];
-
-
-
-      cancellationExecutionRows.forEach((r) => {
-
-
-
-        const k = r.id.toLowerCase();
-
-
-
-        if (!seen.has(k)) {
-
-
-
-          seen.add(k);
-
-
-
-          merged.push(r);
-
-
-
-        }
-
-
-
-      });
-
-
-
-      source = merged;
-
-
-
+  const filteredAccountCheckRows = React.useMemo(() => {
+    let rows = accountCheckResult.allRows;
+    if (accountCheckFilter === "namo") {
+      rows = rows.filter((r) => r.accountGroupCategory === "NAMO");
+    } else if (accountCheckFilter === "non-namo") {
+      rows = rows.filter((r) => r.accountGroupCategory === "NON-NAMO");
+    } else if (accountCheckFilter === "parent") {
+      rows = rows.filter((r) => r.isParent);
+    } else if (accountCheckFilter === "child") {
+      rows = rows.filter((r) => r.isChild);
+    } else if (accountCheckFilter === "approval") {
+      rows = rows.filter((r) => r.isApprovalSent);
+    } else if (accountCheckFilter === "mr") {
+      rows = rows.filter((r) => r.isMrCreated);
+    } else if (accountCheckFilter === "pms") {
+      rows = rows.filter((r) => r.isPms);
+    } else if (accountCheckFilter === "non-pms") {
+      rows = rows.filter((r) => !r.isPms);
     }
 
+    if (accountCheckSearch.trim()) {
+      const q = accountCheckSearch.trim().toLowerCase();
+      rows = rows.filter(
+        (r) =>
+          r.ticket.toLowerCase().includes(q) ||
+          r.accountGroup.toLowerCase().includes(q) ||
+          r.status.toLowerCase().includes(q) ||
+          (r.parentTicket && r.parentTicket.toLowerCase().includes(q)) ||
+          (r.fgr && r.fgr.toLowerCase().includes(q))
+      );
+    }
+    return rows;
+  }, [accountCheckResult.allRows, accountCheckFilter, accountCheckSearch]);
 
+  const handleDownloadAccountCheckOutput = React.useCallback(() => {
+    if (accountCheckResult.allRows.length === 0) {
+      toast.error("No account check records available to export");
+      return;
+    }
+    const headers = [
+      "Ticket Number",
+      "Account Group Category",
+      "Account Group",
+      "Hierarchy",
+      "Parent Ticket",
+      "Approval Sent",
+      "MR Created",
+      "FGR Status",
+      "PMS Type",
+      "Status",
+      "Salesforce Record ID",
+    ];
+    const rows = accountCheckResult.allRows.map((r) => [
+      r.ticket || "",
+      r.accountGroupCategory || "",
+      r.accountGroup || "",
+      r.isParent ? "Parent" : r.isChild ? "Child" : "Individual",
+      r.parentTicket || r.parentId || "",
+      r.isApprovalSent ? "Yes" : "No",
+      r.isMrCreated ? "Yes" : "No",
+      r.fgr || "",
+      r.isPms ? "Auto PMS" : "Non-PMS",
+      r.status || "",
+      r.id || "",
+    ]);
+    const tsvContent = [headers.join("\t"), ...rows.map((row) => row.join("\t"))].join("\n");
+    downloadTextFile(`account-check-analysis-${Date.now()}.tsv`, tsvContent, "text/tab-separated-values;charset=utf-8;");
+    toast.success(`Exported ${accountCheckResult.allRows.length} records to TSV!`);
+  }, [accountCheckResult.allRows]);
 
-    return source.filter((row) => !cleanTicket(row.ticket).toUpperCase().startsWith("A"));
+  const copySegmentTickets = React.useCallback(
+    (label: string, predicate: (row: AccountCheckRow) => boolean) => {
+      const tkts = accountCheckResult.allRows
+        .filter(predicate)
+        .map((r) => r.ticket)
+        .filter(Boolean)
+        .join("\n");
+      if (!tkts) {
+        toast.error(`No ${label} tickets found to copy`);
+        return;
+      }
+      navigator.clipboard.writeText(tkts);
+      toast.success(
+        `Copied ${accountCheckResult.allRows.filter(predicate).length} ${label} tickets!`
+      );
+    },
+    [accountCheckResult.allRows]
+  );
 
+  const cancellationExecutionRows = React.useMemo<CancellationExecutionRow[]>(
+    () => {
+      if (cancellationType === "NAMO") {
+        return namoAlgo2Result.namoCancellationTickets.map((item) => ({
+          id: item.id || "",
+          ticket: item.ticket,
+          status: "Canceled",
+        }));
+      }
+      if (cancellationType === "NON NAMO") {
+        return nonNamoAlgo3Result.nonNamoCancellationTickets.map((item) => ({
+          id: item.id || "",
+          ticket: item.ticket,
+          status: "Canceled",
+        }));
+      }
+      if (cancellationType === "CCO") {
+        return ccoAlgoResult.ccoCancellationTickets.map((item) => ({
+          id: item.id || "",
+          ticket: item.ticket,
+          status: "Canceled",
+        }));
+      }
+      return [];
+    },
+    [cancellationType, namoAlgo2Result.namoCancellationTickets, nonNamoAlgo3Result.nonNamoCancellationTickets, ccoAlgoResult.ccoCancellationTickets]
+  );
 
+  const cancellationPmsRows = React.useMemo<CancellationExecutionRow[]>(() => [], []);
 
-  }, [cancellationStoredRows, cancellationExecutionRows]);
+  const cancellationNonARows = React.useMemo<CancellationExecutionRow[]>(() => [], []);
 
-
-
-
-
-
+  const executableCancellationRows = React.useMemo<CancellationExecutionRow[]>(
+    () => {
+      if (cancellationType === "NAMO" || cancellationType === "NON NAMO" || cancellationType === "CCO") {
+        return cancellationExecutionRows;
+      }
+      return [];
+    },
+    [cancellationType, cancellationExecutionRows]
+  );
 
   const skippedCancellationRows = React.useMemo(
-
-
-
     () => cancellationExecutionRows.filter((row) => !SALESFORCE_ID_REGEX.test(row.id)),
-
-
-
     [cancellationExecutionRows]
-
-
-
   );
-
-
-
-
-
-
 
   const uniqueExecutableCancellationRows = React.useMemo(() => {
-
-
-
     const seen = new Set<string>();
-
-
-
     return executableCancellationRows.filter((row) => {
-
-
-
       const k = row.id.toLowerCase();
-
-
-
       if (seen.has(k)) return false;
-
-
-
       seen.add(k);
-
-
-
       return true;
-
-
-
     });
-
-
-
   }, [executableCancellationRows]);
 
+  const cancellationCanceledOutput = React.useMemo<string>(() => {
+    if (cancellationType === "NAMO") {
+      if (namoAlgo2Result.namoCancellationTickets.length === 0) return "";
+      const rows = [buildTSVRow(["_", "Id", "Ticket_Number_Read_Only__c", "Status"])];
+      for (const item of namoAlgo2Result.namoCancellationTickets) {
+        rows.push(buildTSVRow(["[WorkOrder]", item.id || "", item.ticket, "Canceled"]));
+      }
+      return rows.join("\n");
+    }
+    if (cancellationType === "NON NAMO") {
+      if (nonNamoAlgo3Result.nonNamoCancellationTickets.length === 0) return "";
+      const rows = [buildTSVRow(["_", "Id", "Ticket_Number_Read_Only__c", "Status"])];
+      for (const item of nonNamoAlgo3Result.nonNamoCancellationTickets) {
+        rows.push(buildTSVRow(["[WorkOrder]", item.id || "", item.ticket, "Canceled"]));
+      }
+      return rows.join("\n");
+    }
+    if (cancellationType === "CCO") {
+      if (ccoAlgoResult.ccoCancellationTickets.length === 0) return "";
+      const rows = [buildTSVRow(["_", "Id", "Ticket_Number_Read_Only__c", "Status"])];
+      for (const item of ccoAlgoResult.ccoCancellationTickets) {
+        rows.push(buildTSVRow(["[WorkOrder]", item.id || "", item.ticket, "Canceled"]));
+      }
+      return rows.join("\n");
+    }
+    return "";
+  }, [cancellationType, namoAlgo2Result.namoCancellationTickets, nonNamoAlgo3Result.nonNamoCancellationTickets, ccoAlgoResult.ccoCancellationTickets]);
 
+  const cancellationStoredTicketKeys = React.useMemo(() => {
+    const keys: string[] = [];
+    if (cancellationType === "NAMO") {
+      namoAlgo2Result.allRecords.forEach((r) => keys.push(cleanTicket(r.ticket)));
+    } else if (cancellationType === "NON NAMO") {
+      nonNamoAlgo3Result.allRecords.forEach((r) => keys.push(cleanTicket(r.ticket)));
+    } else if (cancellationType === "CCO") {
+      ccoAlgoResult.allRecords.forEach((r) => keys.push(cleanTicket(r.ticket)));
+    } else {
+      uniqueExecutableCancellationRows.forEach((r) => keys.push(cleanTicket(r.ticket)));
+      cancellationPmsRows.forEach((r) => keys.push(cleanTicket(r.ticket)));
+    }
+    return new Set(keys.filter(Boolean));
+  }, [cancellationType, namoAlgo2Result.allRecords, nonNamoAlgo3Result.allRecords, ccoAlgoResult.allRecords, uniqueExecutableCancellationRows, cancellationPmsRows]);
 
+  const cancellationIdToTicketMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    const add = (id?: string | null, ticket?: string | null) => {
+      if (!id || !ticket) return;
+      const cleanId = id.trim();
+      const cleanTkt = cleanTicket(ticket);
+      if (!cleanId || !cleanTkt) return;
+      map.set(cleanId.toLowerCase(), cleanTkt);
+      map.set(cleanId, cleanTkt);
+      if (cleanId.length === 18) {
+        map.set(cleanId.substring(0, 15).toLowerCase(), cleanTkt);
+        map.set(cleanId.substring(0, 15), cleanTkt);
+      }
+    };
 
+    for (const row of cancellationExecutionRows) add(row.id, row.ticket);
+    for (const rec of namoAlgo2Result.allRecords) add(rec.id, rec.ticket);
+    for (const rec of nonNamoAlgo3Result.allRecords) add(rec.id, rec.ticket);
+    for (const rec of ccoAlgoResult.allRecords) add(rec.id, rec.ticket);
+    for (const row of accountCheckResult.allRows) add(row.id, row.ticket);
+    for (const row of uniqueExecutableCancellationRows) add(row.id, row.ticket);
 
+    return map;
+  }, [
+    cancellationExecutionRows,
+    namoAlgo2Result.allRecords,
+    nonNamoAlgo3Result.allRecords,
+    ccoAlgoResult.allRecords,
+    accountCheckResult.allRows,
+    uniqueExecutableCancellationRows,
+  ]);
 
-
-  const cancellationCanceledOutput = React.useMemo(
-
-
-
-    () => buildCancellationCanceledOutput(uniqueExecutableCancellationRows),
-
-
-
-    [uniqueExecutableCancellationRows]
-
-
-
-  );
-
-
-
-
-
-
-
-  const cancellationStoredTicketKeys = React.useMemo(
-
-
-
-    () => new Set(
-
-
-
-      [
-
-
-
-        ...uniqueExecutableCancellationRows.map((row) => cleanTicket(row.ticket)),
-
-
-
-        ...cancellationPmsRows.map((row) => cleanTicket(row.ticket)),
-
-
-
-      ].filter(Boolean)
-
-
-
-    ),
-
-
-
-    [uniqueExecutableCancellationRows, cancellationPmsRows]
-
-
-
-  );
+  const parsedCancellationFailed = React.useMemo(() => {
+    return parseCancellationFailedResults(cancellationFailedInput, cancellationIdToTicketMap);
+  }, [cancellationFailedInput, cancellationIdToTicketMap]);
 
 
 
@@ -11847,6 +12512,22 @@ export default function SOQLGeneratorPage() {
 
 
 
+    cancellationPmsRows.forEach((r) => {
+
+
+
+      const k = cleanTicket(r.ticket);
+
+
+
+      if (k && !sfRowMap.has(k)) sfRowMap.set(k, r);
+
+
+
+    });
+
+
+
 
 
 
@@ -11920,44 +12601,14 @@ export default function SOQLGeneratorPage() {
 
 
       if (isMatched) {
-
-
-
         diagnosis = isDupe
-
-
-
-          ? `Matched (WorkOrder: ${sfRow.id}) · Note: Pasted ${count}x in Step 1`
-
-
-
+          ? `Matched (WorkOrder: ${sfRow.id}) · Pasted ${count}x in Step 1`
           : `Ready to cancel (WorkOrder: ${sfRow.id})`;
-
-
-
       } else {
-
-
-
         diagnosis = isDupe
-
-
-
-          ? `Missing from SF · Duplicate ${count}x in Step 1 · Check if already Canceled/Completed`
-
-
-
+          ? `Missing from SF · Duplicate ${count}x in Step 1`
           : `Missing from SF · Excluded by WHERE filter (Already Canceled, Completed, or Child WorkOrder)`;
-
-
-
       }
-
-
-
-
-
-
 
       items.push({
 
@@ -12067,7 +12718,7 @@ export default function SOQLGeneratorPage() {
 
 
 
-  }, [parsedTickets, uniqueExecutableCancellationRows]);
+  }, [parsedTickets, uniqueExecutableCancellationRows, cancellationPmsRows]);
 
 
 
@@ -12119,7 +12770,15 @@ export default function SOQLGeneratorPage() {
 
 
 
-    lines.push(`PMS tickets (skipped from cancel): ${cancellationPmsRows.length}`);
+    if (cancellationType === "CCO") {
+
+
+
+      lines.push(`PMS tickets (skipped from cancel): ${cancellationPmsRows.length}`);
+
+
+
+    }
 
 
 
@@ -12183,7 +12842,7 @@ export default function SOQLGeneratorPage() {
 
 
 
-  }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows, cancellationPmsRows]);
+  }, [cancellationExecutionRows, uniqueExecutableCancellationRows, skippedCancellationRows, cancellationPmsRows, cancellationType]);
 
 
 
@@ -12455,89 +13114,75 @@ AND Ticket_Numbers__c IN (
 
 
 
-  const cancellationQueryBatches = React.useMemo(() => {
-
-
-
-    let templateSoql = "";
-
-
-
-    if (cancellationType === "CCO") {
-
-
-
-      templateSoql = `SELECT Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status\nFROM WorkOrder\nWHERE ParentWorkOrderId = null and Status not in ('Completed','Canceled') AND Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
-
-
-
-    } else if (cancellationType === "NAMO") {
-
-
-
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
-
-
-
-    } else if (cancellationType === "NON NAMO") {
-
-
-
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Is_Material_Consumed__c, Is_Approval_Sent__c, Account.Group__c, Status from WorkOrder Where ParentWorkOrderId = null AND status not in ('Completed','Canceled') and Account.Group__c = 'NON NAMO' and Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
-
-
-
-    } else if (cancellationType === "Account Check") {
-
-
-
-      templateSoql = `Select Id, Ticket_Number_Read_Only__c, Status,Account.Group__c from WorkOrder Where Ticket_Number_Read_Only__c IN (\n{{tickets}}\n)`;
-
-
-
+  const cancellationQueryBatches = React.useMemo<string[]>(() => {
+    if (cancellationType === "CCO" && parsedTickets.length > 0) {
+      // CCO is for NON-PMS tickets (prefixes like B, C, D, S, I, X, etc.)
+      // Skip any PMS tickets starting with 'A' and BLK tickets starting with 'BLK'
+      const ticketsToQuery = parsedTickets
+        .map(cleanTicket)
+        .filter((t) => Boolean(t) && !t.toUpperCase().startsWith("A") && !t.toUpperCase().startsWith("BLK"));
+      if (ticketsToQuery.length === 0) return [];
+      const batches: string[] = [];
+      const size = Math.max(10, Math.min(2000, Number(batchSize) || 400));
+      for (let i = 0; i < ticketsToQuery.length; i += size) {
+        const slice = ticketsToQuery.slice(i, i + size);
+        const formatted = slice.map((t) => `'${t}'`).join(",\n  ");
+        batches.push(
+          `SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  ${formatted}\n)`
+        );
+      }
+      return batches;
     }
-
-
-
-
-
-
-
-    if (parsedTickets.length === 0) {
-
-
-
-      return [templateSoql.replace("{{tickets}}", "")];
-
-
-
+    if (cancellationType === "NON NAMO" && parsedTickets.length > 0) {
+      // Condition 1: Only PMS tickets starting with 'A' (skip non-A)
+      const ticketsToQuery = parsedTickets
+        .map(cleanTicket)
+        .filter((t) => Boolean(t) && t.toUpperCase().startsWith("A"));
+      if (ticketsToQuery.length === 0) return [];
+      const batches: string[] = [];
+      const size = Math.max(10, Math.min(2000, Number(batchSize) || 400));
+      for (let i = 0; i < ticketsToQuery.length; i += size) {
+        const slice = ticketsToQuery.slice(i, i + size);
+        const formatted = slice.map((t) => `'${t}'`).join(",\n  ");
+        batches.push(
+          `SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  ${formatted}\n)`
+        );
+      }
+      return batches;
     }
-
-
-
-
-
-
-
-    return chunkArray(parsedTickets, batchSize).map((tickets) =>
-
-
-
-      templateSoql.replace("{{tickets}}", formatTicketsForSOQL(tickets))
-
-
-
-    );
-
-
-
-  }, [formatTicketsForSOQL, parsedTickets, cancellationType, batchSize]);
-
-
-
-
-
-
+    if (cancellationType === "Account Check" && parsedTickets.length > 0) {
+      const ticketsToQuery = parsedTickets.map(cleanTicket).filter(Boolean);
+      if (ticketsToQuery.length === 0) return [];
+      const batches: string[] = [];
+      const size = Math.max(10, Math.min(2000, Number(batchSize) || 400));
+      for (let i = 0; i < ticketsToQuery.length; i += size) {
+        const slice = ticketsToQuery.slice(i, i + size);
+        const formatted = slice.map((t) => `'${t}'`).join(",\n  ");
+        batches.push(
+          `SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  ${formatted}\n)`
+        );
+      }
+      return batches;
+    }
+    if (cancellationType === "NAMO" && parsedTickets.length > 0) {
+      // Condition 1: Only PMS tickets starting with 'A' (skip non-A)
+      const ticketsToQuery = parsedTickets
+        .map(cleanTicket)
+        .filter((t) => Boolean(t) && t.toUpperCase().startsWith("A"));
+      if (ticketsToQuery.length === 0) return [];
+      const batches: string[] = [];
+      const size = Math.max(10, Math.min(2000, Number(batchSize) || 400));
+      for (let i = 0; i < ticketsToQuery.length; i += size) {
+        const slice = ticketsToQuery.slice(i, i + size);
+        const formatted = slice.map((t) => `'${t}'`).join(",\n  ");
+        batches.push(
+          `SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, Account.Name, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  ${formatted}\n)`
+        );
+      }
+      return batches;
+    }
+    return [];
+  }, [cancellationType, parsedTickets, batchSize]);
 
   const assetTransferComponentSOQL = React.useMemo(() => {
 
@@ -13855,11 +14500,23 @@ AND Ticket_Numbers__c IN (
 
 
 
-      const existingKeys = new Set(cancellationStoredRows.map((row) => row.id.toLowerCase()));
+      const nextMap = new Map<string, CancellationExecutionRow>();
 
 
 
-      const nextRows = [...cancellationStoredRows];
+      cancellationStoredRows.forEach((row) => {
+
+
+
+        nextMap.set(row.id.toLowerCase(), row);
+
+
+
+      });
+
+
+
+
 
 
 
@@ -13867,7 +14524,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-      let duplicateRows = 0;
+      let updatedRows = 0;
 
 
 
@@ -13883,15 +14540,19 @@ AND Ticket_Numbers__c IN (
 
 
 
-        if (existingKeys.has(rowKey)) {
+        if (nextMap.has(rowKey)) {
 
 
 
-          duplicateRows += 1;
+          updatedRows += 1;
 
 
 
-          continue;
+        } else {
+
+
+
+          addedRows += 1;
 
 
 
@@ -13899,19 +14560,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-
-
-
-
-        existingKeys.add(rowKey);
-
-
-
-        nextRows.push(row);
-
-
-
-        addedRows += 1;
+        nextMap.set(rowKey, row);
 
 
 
@@ -13923,6 +14572,10 @@ AND Ticket_Numbers__c IN (
 
 
 
+      const nextRows = Array.from(nextMap.values());
+
+
+
       setCancellationStoredRows(nextRows);
 
 
@@ -13931,7 +14584,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-      if (addedRows === 0) {
+      if (addedRows === 0 && updatedRows === 0) {
 
 
 
@@ -13951,55 +14604,39 @@ AND Ticket_Numbers__c IN (
 
 
 
-      const duplicateMessage = duplicateRows
+      if (addedRows === 0 && updatedRows > 0) {
 
 
 
-        ? " · " + duplicateRows + " duplicate" + (duplicateRows === 1 ? "" : "s") + " ignored"
+        toast.success(`Updated ${updatedRows} existing WorkOrder row${updatedRows === 1 ? "" : "s"}`);
 
 
 
-        : "";
+      } else {
 
 
 
-      toast.success(
+        toast.success(
 
 
 
-        "Stored " +
+          `Stored batch: added ${addedRows} row${addedRows === 1 ? "" : "s"}${
 
 
 
-          addedRows +
+            updatedRows > 0 ? `, updated ${updatedRows}` : ""
 
 
 
-          " cancellation row" +
+          } (${nextRows.length} total stored)`
 
 
 
-          (addedRows === 1 ? "" : "s") +
+        );
 
 
 
-          " as Canceled (Total: " +
-
-
-
-          nextRows.length +
-
-
-
-          ")" +
-
-
-
-          duplicateMessage
-
-
-
-      );
+      }
 
 
 
@@ -14123,7 +14760,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-    appendCancellationResultBatch(pastedText);
+    // appendCancellationResultBatch decoupled
 
 
 
@@ -18487,7 +19124,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                      const label = type === "Account Check" ? "Acct Check" : type;
+                      const label = type === "Account Check" ? "Insight" : type;
 
 
 
@@ -18507,11 +19144,31 @@ AND Ticket_Numbers__c IN (
 
 
 
-                          onClick={() => setCancellationType(type)}
+                          onClick={() => {
 
 
 
-                          title={type === "Account Check" ? "Account Check" : undefined}
+                            if (cancellationType !== type) {
+
+
+
+                              setCancellationType(type);
+
+
+
+                              setCancellationStoredRows([]);
+
+
+
+                            }
+
+
+
+                          }}
+
+
+
+                          title={type === "Account Check" ? "Insight" : undefined}
 
 
 
@@ -18869,9 +19526,13 @@ AND Ticket_Numbers__c IN (
 
                       : isCancellation
 
-
-
-                        ? "Paste Ticket Numbers / Case IDs"
+                        ? (cancellationType === "NAMO"
+                            ? "Paste Auto PMS Tickets for NAMO"
+                            : cancellationType === "NON NAMO"
+                            ? "Paste Auto PMS Tickets for NON-NAMO"
+                            : cancellationType === "Account Check"
+                            ? "Paste Tickets (PMS & NON-PMS) for Account Check"
+                            : "Paste Tickets for CCO Cancellation")
 
 
 
@@ -19515,18 +20176,9 @@ AND Ticket_Numbers__c IN (
 
 
 
-                {!isCaseAssign && (
-
-
-
+                                {!isCaseAssign && (
                   <>
-
-
-
                     <div className="flex-1 flex flex-col space-y-2">
-
-
-
                       <div 
 
 
@@ -19547,7 +20199,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                        className="relative flex-1 flex flex-col group min-h-[320px] rounded-2xl overflow-hidden bg-transparent"
+                        className="relative flex-1 flex flex-col group rounded-2xl overflow-hidden bg-transparent min-h-[320px]"
 
 
 
@@ -19623,51 +20275,27 @@ AND Ticket_Numbers__c IN (
 
 
 
+                      {/* Animated Single-Line Typewriter Instruction Placeholder */}
+                      {!ticketsInput && (
+                        <div className="absolute top-4 left-4 right-4 pointer-events-none z-10 font-mono text-xs leading-relaxed select-none flex items-center">
+                          <span className="font-semibold text-slate-300 dark:text-slate-200 tracking-wide">
+                            {step1TargetPlaceholder.substring(0, placeholderSubIndex)}
+                          </span>
+                          <span
+                            className={cn(
+                              "inline-block w-2.5 h-4 bg-sky-400 dark:bg-sky-400 rounded-[2px] ml-1 transition-opacity duration-100",
+                              placeholderBlink ? "opacity-100 shadow-[0_0_10px_rgba(56,189,248,0.9)]" : "opacity-0"
+                            )}
+                          />
+                        </div>
+                      )}
+
                       <Textarea
+                        placeholder="" 
 
 
 
-                        placeholder={isCancellation ? `Paste ticket numbers or Case IDs here...
-
-
-
-A26060134750678
-
-
-
-A26060134750476
-
-
-
-A26060134750619` : activeTemplate?.category === "Asset" ? `Paste component IDs here...
-
-
-
-CMP-00123
-
-
-
-CMP-00124
-
-
-
-CMP-00125` : `Paste ticket numbers here...
-
-
-
-A26060134750678
-
-
-
-A26060134750476
-
-
-
-A26060134750619`}
-
-
-
-                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y relative z-20 text-foreground"
+                        className="flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y relative z-20 text-foreground caret-sky-400"
 
 
 
@@ -19707,7 +20335,7 @@ A26060134750619`}
 
 
 
-                        Supports spaces, commas, tabs, or newlines. Drag & drop files directly here anytime.
+                        {isCancellation ? (cancellationType === "NAMO" ? "Paste Auto PMS ('A' prefix) ticket numbers for NAMO Cancellation. Account Group Type (NAMO vs NON-NAMO) and Account Name will be classified in Step 3. Supports spaces, commas, tabs, or newlines." : cancellationType === "NON NAMO" ? "Paste Auto PMS ('A' prefix) ticket numbers for NON-NAMO Cancellation. Account Group Type (NON-NAMO vs NAMO) and Account Name will be classified in Step 3. Supports spaces, commas, tabs, or newlines." : cancellationType === "Account Check" ? "Put all tickets that can be PMS and NON PMS. Account Group Type and Account Name details will be verified for all ticket types. Supports spaces, commas, tabs, or newlines." : "Paste NON-PMS ticket numbers for CCO Cancellation. Auto PMS ('A' prefix) tickets are automatically skipped from CCO cancellation if present, but remain safely preserved in master records for approvals, Email Template, and Post outputs. Supports spaces, commas, tabs, or newlines.") : "Supports spaces, commas, tabs, or newlines. Drag & drop files directly here anytime."}
 
 
 
@@ -19717,11 +20345,182 @@ A26060134750619`}
 
                     </div>
 
+                    {/* ALGO 1: Step 1 Ticket Classification, CCO Filtering & Approval Validation */}
+                    {isCancellation && cancellationType === "CCO" && parsedTickets.length > 0 && (
+                      <div className="rounded-2xl border border-slate-200/90 dark:border-white/[0.1] bg-slate-50/80 dark:bg-black/30 p-4 space-y-3.5 shadow-sm">
+                        {/* Header & Badges */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <Filter className="h-4 w-4 text-sky-500" />
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                              ALGO 1: Ticket Classification & CCO Filtering
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                            Master: {algo1Result.allTickets.length} tickets
+                          </span>
+                        </div>
 
+                        {/* Classification Pills */}
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {algo1Result.typeCounts.Breakdown > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                              B: {algo1Result.typeCounts.Breakdown} Breakdown
+                            </span>
+                          )}
+                          {algo1Result.typeCounts.Service > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20">
+                              S: {algo1Result.typeCounts.Service} Service
+                            </span>
+                          )}
+                          {algo1Result.typeCounts.Commissioning > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
+                              C: {algo1Result.typeCounts.Commissioning} Commissioning
+                            </span>
+                          )}
+                          {algo1Result.typeCounts.Demo > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                              D: {algo1Result.typeCounts.Demo} Demo
+                            </span>
+                          )}
+                          {algo1Result.typeCounts["Stock Defective"] > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20">
+                              X: {algo1Result.typeCounts["Stock Defective"]} Stock Defective
+                            </span>
+                          )}
+                          {algo1Result.typeCounts.Installation > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                              I: {algo1Result.typeCounts.Installation} Installation
+                            </span>
+                          )}
+                          {algo1Result.typeCounts["Auto PMS"] > 0 && (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                              A: {algo1Result.typeCounts["Auto PMS"]} Auto PMS (Excluded from CCO)
+                            </span>
+                          )}
+                          {algo1Result.typeCounts.Other > 0 && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20">
+                              Other: {algo1Result.typeCounts.Other}
+                            </span>
+                          )}
+                        </div>
 
+                        {/* CCO Status Summary */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-xl bg-white/60 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/[0.06] text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                            <span className="font-semibold text-slate-700 dark:text-slate-300">
+                              Eligible for CCO Cancellation: <strong className="text-emerald-600 dark:text-emerald-400 font-black">{algo1Result.ccoCancellationTickets.length}</strong> tickets
+                            </span>
+                          </div>
+                          {algo1Result.autoPmsTickets.length > 0 ? (
+                            <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold text-[11px]">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              <span>{algo1Result.autoPmsTickets.length} Auto PMS ticket{algo1Result.autoPmsTickets.length === 1 ? '' : 's'} skipped from CCO</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              <span>All tickets eligible for CCO cancellation</span>
+                            </div>
+                          )}
+                        </div>
 
+                        {/* Notice when ALL pasted tickets are Auto PMS */}
+                        {algo1Result.ccoCancellationTickets.length === 0 && algo1Result.autoPmsTickets.length > 0 && (
+                          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2.5">
+                            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+                            <div className="space-y-1">
+                              <span className="font-bold text-[12px]">All pasted tickets are Auto PMS (&apos;A&apos; prefix)</span>
+                              <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300">
+                                None of these {algo1Result.autoPmsTickets.length} ticket(s) are eligible for CCO cancellation. They have all been automatically skipped from CCO processing and routed for department approval below. All tickets remain preserved in master records.
+                              </p>
+                            </div>
+                          </div>
+                        )}
 
+                        {/* Auto PMS Approval Segment */}
+                        {algo1Result.autoPmsTickets.length > 0 && (
+                          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/20 p-3 space-y-2.5 text-xs">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300 font-extrabold text-xs">
+                                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+                                <span>Auto PMS Approval Required</span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                type="button"
+                                className="h-6 px-2 text-[10px] font-bold border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 rounded-md gap-1"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(algo1Result.approvalSegmentText);
+                                  toast.success("Copied Auto PMS approval notice to clipboard!");
+                                }}
+                              >
+                                <Copy className="h-3 w-3" /> Copy Notice
+                              </Button>
+                            </div>
 
+                            <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                              Note: The following Auto PMS ticket(s) cannot be processed for cancellation through CCO. They are preserved in the master collection (<strong className="font-mono text-slate-800 dark:text-slate-200">ALL_TICKETS</strong>) for Email and Post outputs:
+                            </p>
+
+                            <div className="flex flex-wrap gap-1 font-mono text-[10px] text-amber-700 dark:text-amber-300 bg-amber-500/10 p-1.5 rounded-lg border border-amber-500/20">
+                              {algo1Result.autoPmsTickets.map((t) => (
+                                <span key={t} className="px-1.5 py-0.5 rounded bg-white/70 dark:bg-black/30 font-bold">
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* Department Approvals Mapping */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              {algo1Result.ucpgTickets.length > 0 && (
+                                <div className="p-2 rounded-lg bg-white/70 dark:bg-white/[0.04] border border-amber-500/20 space-y-1">
+                                  <div className="flex items-center justify-between gap-1 text-[11px] font-black text-slate-800 dark:text-slate-200">
+                                    <span>UCPG – Suraj Sir</span>
+                                    <span className="text-[9px] text-slate-400 font-medium">(Dept 52, 43, 58, Blank)</span>
+                                  </div>
+                                  <div className="space-y-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                                    {algo1Result.ucpgTickets.map((item) => (
+                                      <div key={`ucpg-${item.ticket}`} className="flex items-center justify-between">
+                                        <span>• {item.ticket}</span>
+                                        <span className="text-[9px] text-slate-400">
+                                          {item.isBlankDept ? "Dept unavailable" : `Dept ${item.deptCode}`}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {algo1Result.cpsdTickets.length > 0 && (
+                                <div className="p-2 rounded-lg bg-white/70 dark:bg-white/[0.04] border border-amber-500/20 space-y-1">
+                                  <div className="flex items-center justify-between gap-1 text-[11px] font-black text-slate-800 dark:text-slate-200">
+                                    <span>CPSD – Vishal Sir</span>
+                                    <span className="text-[9px] text-slate-400 font-medium">(Other Depts, Blank)</span>
+                                  </div>
+                                  <div className="space-y-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                                    {algo1Result.cpsdTickets.map((item) => (
+                                      <div key={`cpsd-${item.ticket}`} className="flex items-center justify-between">
+                                        <span>• {item.ticket}</span>
+                                        <span className="text-[9px] text-slate-400">
+                                          {item.isBlankDept ? "Dept unavailable" : `Dept ${item.deptCode}`}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            <p className="text-[10px] text-slate-500 italic">
+                              * All {algo1Result.allTickets.length} original tickets remain preserved in master data for Email Template Output and Post Output.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-200/80 dark:border-white/[0.08]">
 
@@ -21751,7 +22550,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                className="grid grid-cols-1 2xl:grid-cols-2 gap-6 w-full"
+                className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full"
 
 
 
@@ -21788,41 +22587,27 @@ BSL22295338      CID-6074821`}
 
 
                       <CardHeader className="pb-3 bg-transparent p-6 relative z-10">
+                      <div className="flex items-center justify-between gap-3 mt-5 md:mt-6 flex-wrap w-full">
+                        <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                          {cancellationType === "Account Check" ? "Account Check SOQL Batches" : "Cancellation SOQL Batches"}
+                        </CardTitle>
 
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-black uppercase tracking-widest whitespace-nowrap text-[10px] text-slate-500 dark:text-slate-400">
+                            {cancellationQueryBatches.length} BATCH{cancellationQueryBatches.length === 1 ? "" : "ES"}
+                          </span>
 
-
-                        <div className="flex flex-col w-full relative mt-5 md:mt-6">
-
-
-
-                            <div className="absolute top-0 right-0 -mt-1">
-
-
-
-                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(assetTransferComponentSOQL)} disabled={!assetTransferComponentSOQL}>
-
-
-
-                                <Copy className="h-3.5 w-3.5" /> Copy
-
-
-
-                              </Button>
-
-
-
-                            </div>
-
-
-
-                            <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground pr-20">Component SOQL Query</CardTitle>
-
-
-
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm"
+                            onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] || "")}
+                            disabled={!cancellationQueryBatches.length || !cancellationQueryBatches[cancellationExecutionBatchIndex]}
+                          >
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </Button>
+                        </div>
                       </div>
-
-
-
                     </CardHeader>
 
 
@@ -23769,69 +24554,40 @@ BSL22295338      CID-6074821`}
 
 
                   <CardHeader className="pb-3 bg-transparent p-6 relative z-10">
+                      <div className="flex items-center justify-between gap-3 mt-5 md:mt-6 flex-wrap w-full">
+                        <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                          {cancellationType === "Account Check" ? "Account Check SOQL Batches" : "Cancellation SOQL Batches"}
+                        </CardTitle>
 
-
-
-                      <div className="flex flex-col w-full relative mt-5 md:mt-6">
-
-
-
-                        <div className="absolute top-0 right-0 -mt-1">
-
-
-
-                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] || "")} disabled={!cancellationQueryBatches.length}>
-
-
-
-                            <Copy className="h-3.5 w-3.5" /> Copy
-
-
-
-                          </Button>
-
-
-
-                        </div>
-
-
-
-                        <div className="flex items-center justify-between gap-4 pr-[80px]">
-
-
-
-                          <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
-
-
-
-                            Cancellation SOQL Batches
-
-
-
-                          </CardTitle>
-
-
-
+                        <div className="flex items-center gap-2.5">
                           <span className="font-black uppercase tracking-widest whitespace-nowrap text-[10px] text-slate-500 dark:text-slate-400">
-
-
-
                             {cancellationQueryBatches.length} BATCH{cancellationQueryBatches.length === 1 ? "" : "ES"}
-
-
-
                           </span>
 
-
-
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 gap-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm"
+                            onClick={() => {
+                              const batchText = cancellationQueryBatches[cancellationExecutionBatchIndex];
+                              if (batchText) {
+                                handleCopy(batchText);
+                              } else if (cancellationType === "CCO") {
+                                handleCopy("SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  // Paste NON-PMS tickets in Step 1 to populate batches\n)");
+                              } else if (cancellationType === "NON NAMO") {
+                                handleCopy("SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  // Paste PMS ('A') tickets in Step 1 to populate batches\n)");
+                              } else if (cancellationType === "Account Check") {
+                                handleCopy("SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  // Paste tickets in Step 1 to populate batches\n)");
+                              } else if (cancellationType === "NAMO") {
+                                handleCopy("SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  // Paste PMS ('A') tickets in Step 1 to populate batches\n)");
+                              }
+                            }}
+                            disabled={!cancellationQueryBatches.length && cancellationType !== "Account Check" && cancellationType !== "NON NAMO" && cancellationType !== "NAMO" && cancellationType !== "CCO"}
+                          >
+                            <Copy className="h-3.5 w-3.5" /> Copy
+                          </Button>
                         </div>
-
-
-
                       </div>
-
-
-
                     </CardHeader>
 
 
@@ -23844,7 +24600,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <SOQLHighlighter query={cancellationQueryBatches[cancellationExecutionBatchIndex]} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100 text-slate-800 dark:text-sky-200" />
+                    <SOQLHighlighter query={cancellationQueryBatches[cancellationExecutionBatchIndex] || (cancellationType === "NON NAMO" || cancellationType === "NAMO" ? "SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  // Paste PMS ('A') tickets in Step 1 to populate batches\n)" : cancellationType === "CCO" ? "SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  // Paste NON-PMS tickets in Step 1 to populate batches\n)" : cancellationType === "Account Check" ? "SELECT Id, Ticket_Number_Read_Only__c, ParentWorkOrderId, ParentWorkOrder.Ticket_Number_Read_Only__c, Is_Approval_Sent__c, Is_MR_Created__c, Account.Group__c, FGR_Approved_Reject_For_CRBF__c, AssetId, Status\nFROM WorkOrder\nWHERE Ticket_Number_Read_Only__c IN (\n  // Paste tickets in Step 1 to populate batches\n)" : "// Query will appear here after defining Step 2 algorithm")} className={cn("overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed selection:bg-rose-500/20 selection:text-rose-900 dark:selection:text-rose-100 text-slate-800 dark:text-sky-200", "max-h-[320px] min-h-[100px]")} />
 
 
 
@@ -24017,13 +24773,7 @@ BSL22295338      CID-6074821`}
 
 
                       <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
-
-
-
-                        Paste SOQL Result Batch
-
-
-
+                        {cancellationType === "Account Check" ? "Account Check SOQL Results" : "Paste SOQL Result Batch"}
                       </CardTitle>
 
 
@@ -24152,11 +24902,11 @@ BSL22295338      CID-6074821`}
 
 
 
-                      placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Is_Material_Consumed__c"   "Is_Approval_Sent__c"   "Account.Group__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "true"   "false"   "NAMO"   "Cancellation Requested"`}
+                      placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "ParentWorkOrderId"   "ParentWorkOrder"   "Is_Approval_Sent__c"   "Is_MR_Created__c"   "Account"   "Account.Group__c"   "FGR_Approved_Reject_For_CRBF__c"   "AssetId"   "Status"   "ParentWorkOrder.Ticket_Number_Read_Only__c"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   ""   ""   "false"   "false"   "[Account]"   "CCO"   ""   "02iNy00000CYGmbIAH"   "Accepted"   ""\n"[WorkOrder]"   "0WONy000004JcKLOA0"   "A23020209204"   ""   ""   "false"   "false"   "[Account]"   "NAMO"   ""   "02iNy00000CYGmbIAH"   "In Progress"   ""\n"[WorkOrder]"   "0WONy000003qBSCOA2"   "A23090340026"   "0WONy00000MkzWsOAJ"   "[WorkOrder]"   "false"   "false"   "[Account]"   "NON NAMO"   ""   "02iNy00000CjSmNIAV"   "Bundled"   "BLK25113030694566"`}
 
 
 
-                      className="flex-1 min-h-[220px] font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y"
+                      className="flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y min-h-[220px]"
 
 
 
@@ -24174,13 +24924,33 @@ BSL22295338      CID-6074821`}
 
                     />
 
+                    {/* Cancellation Parsed Status Bar */}
+                    {((cancellationType === "NAMO" && namoAlgo2Result.allRecords.length > 0) ||
+                      (cancellationType === "NON NAMO" && nonNamoAlgo3Result.allRecords.length > 0) ||
+                      (cancellationType === "CCO" && ccoAlgoResult.allRecords.length > 0) ||
+                      (cancellationType === "Account Check" && accountCheckResult.totalCount > 0)) && (
+                      <div className="flex items-center justify-between p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-xs text-sky-900 dark:text-sky-200 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                          <span className="font-bold">
+                            Successfully parsed{" "}
+                            {cancellationType === "NAMO"
+                              ? namoAlgo2Result.allRecords.length
+                              : cancellationType === "NON NAMO"
+                              ? nonNamoAlgo3Result.allRecords.length
+                              : cancellationType === "CCO"
+                              ? ccoAlgoResult.allRecords.length
+                              : accountCheckResult.totalCount}{" "}
+                            WorkOrders from SOQL results
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold text-sky-600 dark:text-sky-300">
+                          See Multiple Insights in the card below ↓
+                        </span>
+                      </div>
+                    )}
 
-
-
-
-
-
-                    {/* Missing Tickets Reconciliation Banner */}
+                        {/* Missing Tickets Reconciliation Banner */}
 
 
 
@@ -24344,87 +25114,29 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <div className="flex flex-wrap items-center gap-2.5 pt-2 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
-
-
-
-                      <span>Pasted: {parsedTickets.length}{ticketDuplicates.length > 0 ? ` (${cancellationUniqueRequestedTickets.length} unique)` : ""}</span>
-
-
-
-                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-
-
-                      <span>Parsed: {cancellationExecutionRows.length}</span>
-
-
-
-                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-
-
-                      <span>Ready to cancel: {uniqueExecutableCancellationRows.length}</span>
-
-
-
-                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-
-
-                      <span>Matched: {cancellationMatchedTicketCount}</span>
-
-
-
-                      {cancellationMissingTickets.length > 0 && (
-
-
-
-                        <>
-
-
-
-                          <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-
-
-                          <span className="text-amber-500 font-extrabold">Missing from SF: {cancellationMissingTickets.length}</span>
-
-
-
-                        </>
-
-
-
-                      )}
-
-
-
-                      {cancellationUnexpectedResultCount > 0 && (
-
-
-
-                        <>
-
-
-
-                          <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-
-
-                          <span>Outside: {cancellationUnexpectedResultCount}</span>
-
-
-
-                        </>
-
-
-
-                      )}
-
-
-
-                    </div>
+                    {cancellationType !== "NON NAMO" && cancellationType !== "NAMO" && cancellationType !== "CCO" && (
+                      <div className="flex flex-wrap items-center gap-2.5 pt-2 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                        <span>Pasted: {parsedTickets.length}{ticketDuplicates.length > 0 ? ` (${cancellationUniqueRequestedTickets.length} unique)` : ""}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span>Parsed: {cancellationExecutionRows.length}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span>Ready to cancel: {uniqueExecutableCancellationRows.length}</span>
+                        <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                        <span>Matched: {cancellationMatchedTicketCount}</span>
+                        {cancellationMissingTickets.length > 0 && (
+                          <>
+                            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                            <span className="text-amber-500 font-extrabold">Missing from SF: {cancellationMissingTickets.length}</span>
+                          </>
+                        )}
+                        {cancellationUnexpectedResultCount > 0 && (
+                          <>
+                            <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                            <span>Outside: {cancellationUnexpectedResultCount}</span>
+                          </>
+                        )}
+                      </div>
+                    )}
 
 
 
@@ -24438,13 +25150,898 @@ BSL22295338      CID-6074821`}
 
               </motion.div>
 
+              {/* CCO, NAMO & NON-NAMO: FULL-WIDTH MASTER MULTIPLE INSIGHTS CARD */}
+              {(cancellationType === "NAMO" || cancellationType === "NON NAMO" || cancellationType === "CCO") && (
+                <motion.div variants={cardItemVariants} className="col-span-full h-full flex flex-col">
+                  <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                    {/* INSIGHTS Ambient Watermark */}
+                    <div className="absolute top-1 left-3 md:top-2 md:left-4 pointer-events-none select-none z-0 overflow-hidden opacity-70">
+                      <span className="whitespace-nowrap text-[28px] md:text-[34px] lg:text-[40px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/40 dark:to-white/8 bg-clip-text text-transparent">
+                        INSIGHTS
+                      </span>
+                    </div>
 
+                    <CardHeader className="pb-2 bg-transparent p-3.5 sm:p-4 relative z-10">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mt-2 md:mt-3 w-full">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <CardTitle className="text-sm md:text-base font-black tracking-tight leading-tight text-foreground">
+                            {cancellationType === "NAMO" ? "NAMO Operational Insights & Segregation" : cancellationType === "NON NAMO" ? "NON-NAMO Operational Insights & Segregation" : "CCO Operational Insights & Segregation"}
+                          </CardTitle>
+                          {(() => {
+                            const total = cancellationType === "NAMO" ? namoAlgo2Result.allRecords.length : cancellationType === "NON NAMO" ? nonNamoAlgo3Result.allRecords.length : ccoAlgoResult.allRecords.length;
+                            return total > 0 ? (
+                              <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/25 px-2 py-0.5">
+                                {total} Analyzed WorkOrders
+                              </Badge>
+                            ) : null;
+                          })()}
+                        </div>
 
+                        {/* Top Actions */}
+                        {(() => {
+                          const readyList = cancellationType === "NAMO" ? namoAlgo2Result.namoCancellationTickets : cancellationType === "NON NAMO" ? nonNamoAlgo3Result.nonNamoCancellationTickets : ccoAlgoResult.ccoCancellationTickets;
+                          const skippedList = cancellationType === "NAMO" ? namoAlgo2Result.allSkippedTickets : cancellationType === "NON NAMO" ? nonNamoAlgo3Result.allSkippedTickets : ccoAlgoResult.allSkippedTickets;
+                          return (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg shadow-sm"
+                                onClick={() => setShowCancellationHandoverModal(true)}
+                                title="Open Executive Shift Handover & Segregation Audit"
+                              >
+                                <FileText className="h-3.5 w-3.5" /> Handover Report
+                              </Button>
+                              {readyList.length > 0 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shadow-sm"
+                                  onClick={() => {
+                                    const tkts = readyList.map((t) => t.ticket).filter(Boolean);
+                                    navigator.clipboard.writeText(tkts.join("\n"));
+                                    toast.success(`Copied ${tkts.length} Ready to Cancel tickets!`);
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" /> Copy Ready ({readyList.length})
+                                </Button>
+                              )}
+                              {skippedList.length > 0 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 rounded-lg shadow-sm"
+                                  onClick={() => {
+                                    const tkts = skippedList.map((t) => t.ticket).filter(Boolean);
+                                    navigator.clipboard.writeText(tkts.join("\n"));
+                                    toast.success(`Copied all ${tkts.length} excluded tickets!`);
+                                  }}
+                                >
+                                  <Copy className="h-3.5 w-3.5" /> Copy All Excluded ({skippedList.length})
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </CardHeader>
 
+                    <CardContent className="p-3.5 sm:p-4 pt-1 space-y-3 relative z-10">
+                      {(() => {
+                        const isNamo = cancellationType === "NAMO";
+                        const isCco = cancellationType === "CCO";
+                        const total = isCco ? ccoAlgoResult.allRecords.length : isNamo ? namoAlgo2Result.allRecords.length : nonNamoAlgo3Result.allRecords.length;
+                        const readyList = isCco ? ccoAlgoResult.ccoCancellationTickets : isNamo ? namoAlgo2Result.namoCancellationTickets : nonNamoAlgo3Result.nonNamoCancellationTickets;
+                        const skippedList = isCco ? ccoAlgoResult.allSkippedTickets : isNamo ? namoAlgo2Result.allSkippedTickets : nonNamoAlgo3Result.allSkippedTickets;
+                        const blkList = isCco ? ccoAlgoResult.blkTickets : [];
+                        const groupMismatchList = isCco ? ccoAlgoResult.autoPmsTickets : isNamo ? namoAlgo2Result.nonNamoTickets : nonNamoAlgo3Result.namoTickets;
+                        const parentList = isCco ? ccoAlgoResult.parentWorkOrderTickets : isNamo ? namoAlgo2Result.parentWorkOrderTickets : nonNamoAlgo3Result.parentWorkOrderTickets;
+                        const completedList = isCco ? ccoAlgoResult.completedOrCanceledTickets : isNamo ? namoAlgo2Result.completedOrCanceledTickets : nonNamoAlgo3Result.completedOrCanceledTickets;
+                        const unverifiedList = isCco ? [] : isNamo ? namoAlgo2Result.unclassifiedTickets : nonNamoAlgo3Result.unclassifiedTickets;
+                        const nonPmsList = isCco ? [] : isNamo ? namoAlgo2Result.nonAutoPmsTickets : nonNamoAlgo3Result.nonAutoPmsTickets;
+                        const approvalPendingList = isCco ? ccoAlgoResult.approvalPendingTickets : isNamo ? namoAlgo2Result.approvalPendingTickets : nonNamoAlgo3Result.approvalPendingTickets;
+                        const mrCreatedList = isCco ? ccoAlgoResult.mrCreatedTickets : isNamo ? namoAlgo2Result.mrCreatedTickets : nonNamoAlgo3Result.mrCreatedTickets;
 
+                        if (total === 0) {
+                          return (
+                            <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center rounded-2xl border border-dashed border-slate-200/80 dark:border-white/[0.08] bg-slate-50/40 dark:bg-black/15">
+                              <Sparkles className="h-8 w-8 text-sky-400 mb-3 opacity-80 animate-pulse" />
+                              <h4 className="text-sm font-bold text-foreground">
+                                No SOQL Results Parsed Yet
+                              </h4>
+                              <p className="text-xs text-muted-foreground max-w-md mt-1 leading-relaxed">
+                                Paste your Salesforce SOQL query results into the card above to view multiple operational insights, segregation metrics, and the excluded workorders breakdown.
+                              </p>
+                            </div>
+                          );
+                        }
 
+                        return (
+                          <>
+                            {/* KPI Metrics Grid with 1-click Copy: 5 Compact Cards (No Category Icons) */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                              {/* 1. Ready to Cancel */}
+                              <div
+                                onClick={() => {
+                                  const tkts = readyList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} Ready tickets!`);
+                                }}
+                                className="relative rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-emerald-400/50 hover:bg-emerald-500/10 hover:shadow-[0_4px_16px_rgba(16,185,129,0.12)] group select-none active:scale-[0.98]"
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 leading-none truncate">
+                                    Ready to Cancel
+                                  </span>
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] shrink-0" />
+                                </div>
+                                <div className="flex items-baseline justify-between mt-2 gap-1">
+                                  <div className="flex items-baseline gap-1 min-w-0">
+                                    <span className="text-xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-300 leading-none">
+                                      {readyList.length.toLocaleString()}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                      {total > 0 ? ((readyList.length / total) * 100).toFixed(0) : "0"}%
+                                    </span>
+                                  </div>
+                                  <button
+                                    disabled={readyList.length === 0}
+                                    className="h-6 w-6 rounded-md bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-500 dark:text-emerald-400 hover:bg-emerald-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const tkts = readyList.map((t) => t.ticket).filter(Boolean);
+                                      if (tkts.length === 0) return;
+                                      navigator.clipboard.writeText(tkts.join("\n"));
+                                      toast.success(`Copied ${tkts.length} Ready tickets!`);
+                                    }}
+                                    title="Copy Ready to Cancel tickets"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
 
-              <motion.div variants={cardItemVariants} className="h-full flex flex-col 2xl:col-span-1">
+                              {/* 2. Approval Pending */}
+                              <div
+                                onClick={() => {
+                                  const tkts = approvalPendingList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} Approval Pending tickets!`);
+                                }}
+                                className="relative rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-amber-400/50 hover:bg-amber-500/10 hover:shadow-[0_4px_16px_rgba(245,158,11,0.12)] group select-none active:scale-[0.98]"
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 leading-none truncate">
+                                    Approval Pending
+                                  </span>
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.8)] shrink-0" />
+                                </div>
+                                <div className="flex items-baseline justify-between mt-2 gap-1">
+                                  <div className="flex items-baseline gap-1 min-w-0">
+                                    <span className="text-xl font-black font-mono tracking-tight text-amber-600 dark:text-amber-300 leading-none">
+                                      {approvalPendingList.length.toLocaleString()}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                      {total > 0 ? ((approvalPendingList.length / total) * 100).toFixed(0) : "0"}%
+                                    </span>
+                                  </div>
+                                  <button
+                                    disabled={approvalPendingList.length === 0}
+                                    className="h-6 w-6 rounded-md bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-500 dark:text-amber-400 hover:bg-amber-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const tkts = approvalPendingList.map((t) => t.ticket).filter(Boolean);
+                                      if (tkts.length === 0) return;
+                                      navigator.clipboard.writeText(tkts.join("\n"));
+                                      toast.success(`Copied ${tkts.length} Approval Pending tickets!`);
+                                    }}
+                                    title="Copy Approval Pending tickets"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* 3. Parent Tickets */}
+                              <div
+                                onClick={() => {
+                                  const tkts = parentList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} Parent Linked tickets!`);
+                                }}
+                                className="relative rounded-xl border border-purple-500/25 bg-purple-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-purple-400/50 hover:bg-purple-500/10 hover:shadow-[0_4px_16px_rgba(168,85,247,0.12)] group select-none active:scale-[0.98]"
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 leading-none truncate">
+                                    Parent Tickets
+                                  </span>
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.8)] shrink-0" />
+                                </div>
+                                <div className="flex items-baseline justify-between mt-2 gap-1">
+                                  <div className="flex items-baseline gap-1 min-w-0">
+                                    <span className="text-xl font-black font-mono tracking-tight text-purple-600 dark:text-purple-300 leading-none">
+                                      {parentList.length.toLocaleString()}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                      {total > 0 ? ((parentList.length / total) * 100).toFixed(0) : "0"}%
+                                    </span>
+                                  </div>
+                                  <button
+                                    disabled={parentList.length === 0}
+                                    className="h-6 w-6 rounded-md bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-500 dark:text-purple-400 hover:bg-purple-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const tkts = parentList.map((t) => t.ticket).filter(Boolean);
+                                      if (tkts.length === 0) return;
+                                      navigator.clipboard.writeText(tkts.join("\n"));
+                                      toast.success(`Copied ${tkts.length} Parent Linked tickets!`);
+                                    }}
+                                    title="Copy Parent Linked tickets"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* 4. MR Raised */}
+                              <div
+                                onClick={() => {
+                                  const tkts = mrCreatedList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} MR Raised tickets!`);
+                                }}
+                                className="relative rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-rose-400/50 hover:bg-rose-500/10 hover:shadow-[0_4px_16px_rgba(244,63,94,0.12)] group select-none active:scale-[0.98]"
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 leading-none truncate">
+                                    MR Raised
+                                  </span>
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)] shrink-0" />
+                                </div>
+                                <div className="flex items-baseline justify-between mt-2 gap-1">
+                                  <div className="flex items-baseline gap-1 min-w-0">
+                                    <span className="text-xl font-black font-mono tracking-tight text-rose-600 dark:text-rose-300 leading-none">
+                                      {mrCreatedList.length.toLocaleString()}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                      {total > 0 ? ((mrCreatedList.length / total) * 100).toFixed(0) : "0"}%
+                                    </span>
+                                  </div>
+                                  <button
+                                    disabled={mrCreatedList.length === 0}
+                                    className="h-6 w-6 rounded-md bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-500 dark:text-rose-400 hover:bg-rose-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const tkts = mrCreatedList.map((t) => t.ticket).filter(Boolean);
+                                      if (tkts.length === 0) return;
+                                      navigator.clipboard.writeText(tkts.join("\n"));
+                                      toast.success(`Copied ${tkts.length} MR Raised tickets!`);
+                                    }}
+                                    title="Copy MR Raised tickets"
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* 5. NAMO GROUP / NON-NAMO GROUP */}
+                              <div
+                                onClick={() => {
+                                  const tkts = groupMismatchList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} tickets!`);
+                                }}
+                                className="relative rounded-xl border border-sky-500/25 bg-sky-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-sky-400/50 hover:bg-sky-500/10 hover:shadow-[0_4px_16px_rgba(56,189,248,0.12)] group select-none active:scale-[0.98]"
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 leading-none truncate">
+                                    {isCco ? "AUTO PMS (EXCLUDED)" : isNamo ? "NON-NAMO GROUP" : "NAMO GROUP"}
+                                  </span>
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_6px_rgba(56,189,248,0.8)] shrink-0" />
+                                </div>
+                                <div className="flex items-baseline justify-between mt-2 gap-1">
+                                  <div className="flex items-baseline gap-1 min-w-0">
+                                    <span className="text-xl font-black font-mono tracking-tight text-sky-600 dark:text-sky-300 leading-none">
+                                      {groupMismatchList.length.toLocaleString()}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                      {total > 0 ? ((groupMismatchList.length / total) * 100).toFixed(0) : "0"}%
+                                    </span>
+                                  </div>
+                                  <button
+                                    disabled={groupMismatchList.length === 0}
+                                    className="h-6 w-6 rounded-md bg-sky-500/15 border border-sky-500/25 flex items-center justify-center text-sky-500 dark:text-sky-400 hover:bg-sky-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const tkts = groupMismatchList.map((t) => t.ticket).filter(Boolean);
+                                      if (tkts.length === 0) return;
+                                      navigator.clipboard.writeText(tkts.join("\n"));
+                                      toast.success(`Copied ${tkts.length} tickets!`);
+                                    }}
+                                    title={isCco ? "Copy Auto PMS tickets" : isNamo ? "Copy Non-Namo tickets" : "Copy NAMO tickets"}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Additional 1-Click Copy Category Badges: NON PMS / Auto PMS, Completed, Unverified */}
+                            <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                              {/* NON PMS (for NAMO/NON NAMO) or Auto PMS (for CCO) Badge */}
+                              {isCco ? (
+                                <div
+                                  onClick={() => {
+                                    const tkts = groupMismatchList.map((t) => t.ticket).filter(Boolean);
+                                    if (tkts.length === 0) return;
+                                    navigator.clipboard.writeText(tkts.join("\n"));
+                                    toast.success(`Copied ${tkts.length} Auto PMS tickets!`);
+                                  }}
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
+                                    groupMismatchList.length > 0
+                                      ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                      : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
+                                  )}
+                                  title={groupMismatchList.length > 0 ? "Click to copy Auto PMS tickets" : "No Auto PMS tickets"}
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500 shrink-0" />
+                                  <span>Auto PMS: <strong>{groupMismatchList.length}</strong></span>
+                                  <Copy className="h-3 w-3 opacity-70 ml-0.5" />
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() => {
+                                    if (nonPmsList.length === 0) return;
+                                    navigator.clipboard.writeText(nonPmsList.join("\n"));
+                                    toast.success(`Copied ${nonPmsList.length} NON PMS tickets!`);
+                                  }}
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
+                                    nonPmsList.length > 0
+                                      ? "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                      : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
+                                  )}
+                                  title={nonPmsList.length > 0 ? "Click to copy NON PMS tickets" : "No NON PMS tickets"}
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                                  <span>NON PMS: <strong>{nonPmsList.length}</strong></span>
+                                  <Copy className="h-3 w-3 opacity-70 ml-0.5" />
+                                </div>
+                              )}
+
+                              {/* Completed Badge */}
+                              <div
+                                onClick={() => {
+                                  const tkts = completedList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} Completed tickets!`);
+                                }}
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
+                                  completedList.length > 0
+                                    ? "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300 hover:bg-slate-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                    : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
+                                )}
+                                title={completedList.length > 0 ? "Click to copy Already Completed tickets" : "No Already Completed tickets"}
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
+                                <span>Completed: <strong>{completedList.length}</strong></span>
+                                <Copy className="h-3 w-3 opacity-70 ml-0.5" />
+                              </div>
+
+                              {/* BLK / Bulk WorkOrders Badge (for CCO) */}
+                              {isCco && (
+                                <div
+                                  onClick={() => {
+                                    const tkts = blkList.map((t) => t.ticket).filter(Boolean);
+                                    if (tkts.length === 0) return;
+                                    navigator.clipboard.writeText(tkts.join("\n"));
+                                    toast.success(`Copied ${tkts.length} BLK tickets!`);
+                                  }}
+                                  className={cn(
+                                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
+                                    blkList.length > 0
+                                      ? "border-purple-500/30 bg-purple-500/10 text-purple-700 dark:text-purple-300 hover:bg-purple-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                      : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
+                                  )}
+                                  title={blkList.length > 0 ? "Click to copy BLK tickets" : "No BLK tickets"}
+                                >
+                                  <span className="h-1.5 w-1.5 rounded-full bg-purple-500 shrink-0" />
+                                  <span>BLK: <strong>{blkList.length}</strong></span>
+                                  <Copy className="h-3 w-3 opacity-70 ml-0.5" />
+                                </div>
+                              )}
+
+                              {/* Unverified / Blank Group Badge */}
+                              <div
+                                onClick={() => {
+                                  const tkts = unverifiedList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} Unverified tickets!`);
+                                }}
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
+                                  unverifiedList.length > 0
+                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                    : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
+                                )}
+                                title={unverifiedList.length > 0 ? "Click to copy Unverified tickets" : "No Unverified tickets"}
+                              >
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                                <span>Unverified: <strong>{unverifiedList.length}</strong></span>
+                                <Copy className="h-3 w-3 opacity-70 ml-0.5" />
+                              </div>
+                            </div>
+
+                            {/* Full Segregation Audit & Handover Report Banner */}
+                            <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-indigo-500/8 border border-indigo-500/20 text-xs gap-2.5">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="h-6 w-6 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                                  <FileText className="h-3 w-3" />
+                                </div>
+                                <span className="text-[11px] font-semibold text-muted-foreground truncate">Explore all {total} WorkOrders — Segregation Audit & Handover</span>
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-3 text-[10px] font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg gap-1 shadow-xs shrink-0"
+                                onClick={() => setShowCancellationHandoverModal(true)}
+                              >
+                                <FileText className="h-3 w-3" />
+                                <span>Open Report →</span>
+                              </Button>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+              {/* ACCOUNT CHECK: STEP 4 MASTER OPERATIONAL INSIGHTS CARD */}
+              {cancellationType === "Account Check" && (
+                <motion.div variants={cardItemVariants} className="col-span-full h-full flex flex-col">
+                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                    {/* INSIGHT TABLE Ambient Watermark */}
+                    <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                      <span className="whitespace-nowrap text-[36px] md:text-[46px] lg:text-[54px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                        INSIGHT TABLE
+                      </span>
+                    </div>
+
+                    <CardHeader className="pb-3 bg-transparent p-5 sm:p-6 relative z-10">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 md:mt-5 w-full">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                            Operational Insights & Classification
+                          </CardTitle>
+                          {accountCheckResult.totalCount > 0 && (
+                            <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-300 border-sky-500/25 px-2 py-0.5">
+                              {accountCheckResult.totalCount} Analyzed
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {accountCheckResult.totalCount > 0 && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg shadow-sm"
+                                onClick={() => setShowAccountCheckHandoverModal(true)}
+                                title="Open Executive Shift Handover & Escalation Summary"
+                              >
+                                <FileText className="h-3.5 w-3.5" /> Handover Report
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-lg shadow-sm"
+                                onClick={() => {
+                                  const allTkts = accountCheckResult.allRows.map((r) => r.ticket).filter(Boolean).join("\n");
+                                  navigator.clipboard.writeText(allTkts);
+                                  toast.success(`Copied all ${accountCheckResult.allRows.length} tickets!`);
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" /> Copy All ({accountCheckResult.totalCount})
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shadow-sm"
+                                onClick={handleDownloadAccountCheckOutput}
+                              >
+                                <Download className="h-3.5 w-3.5" /> TSV
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="p-5 sm:p-6 pt-2 flex-1 flex flex-col min-h-0 gap-4 relative z-10">
+                      {accountCheckResult.totalCount === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 px-4 text-center rounded-2xl border border-dashed border-slate-200/80 dark:border-white/[0.08] bg-white/20 dark:bg-white/[0.01]">
+                          <div className="h-12 w-12 rounded-2xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-500 mb-3 shadow-inner">
+                            <CheckCircle2 className="h-6 w-6" />
+                          </div>
+                          <h4 className="text-sm font-bold text-foreground">
+                            Awaiting SOQL Results
+                          </h4>
+                          <p className="text-xs text-muted-foreground max-w-md mt-1 leading-relaxed">
+                            Paste your Salesforce SOQL query results into Step 3 to analyze WorkOrders across Account Group (NAMO vs NON-NAMO), Hierarchy (Parent vs Bundled Child), Approvals, MR, and Lifecycle Status.
+                          </p>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Quick Operational Metrics & Copy Bar - Clean, Compact, Zero Truncation */}
+                          <div className="flex flex-wrap items-center justify-between gap-3 p-3 px-4 rounded-2xl bg-white/40 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.08] backdrop-blur-md shadow-xs">
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
+                              {/* 1. Group */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
+                                  Group:
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.namoCount === 0}
+                                  onClick={() => copySegmentTickets("NAMO", (r) => r.accountGroupCategory === "NAMO")}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-700 rounded-lg disabled:opacity-40"
+                                  title="Click to copy NAMO tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>NAMO ({accountCheckResult.namoCount})</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.nonNamoCount === 0}
+                                  onClick={() => copySegmentTickets("NON-NAMO", (r) => r.accountGroupCategory === "NON-NAMO")}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 hover:text-sky-700 rounded-lg disabled:opacity-40"
+                                  title="Click to copy NON-NAMO tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>NON-NAMO ({accountCheckResult.nonNamoCount})</span>
+                                </Button>
+                              </div>
+
+                              <div className="hidden lg:block h-4 w-px bg-slate-200 dark:bg-white/10" />
+
+                              {/* 2. Hierarchy */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)] shrink-0" />
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
+                                  Hierarchy:
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.parentCount === 0}
+                                  onClick={() => copySegmentTickets("Parent", (r) => r.isParent)}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 rounded-lg disabled:opacity-40"
+                                  title="Click to copy Parent tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>Parents ({accountCheckResult.parentCount})</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.childCount === 0}
+                                  onClick={() => copySegmentTickets("Child", (r) => r.isChild)}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 hover:text-purple-700 rounded-lg disabled:opacity-40"
+                                  title="Click to copy Child tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>Child ({accountCheckResult.childCount})</span>
+                                </Button>
+                              </div>
+
+                              <div className="hidden lg:block h-4 w-px bg-slate-200 dark:bg-white/10" />
+
+                              {/* 3. Flags */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] shrink-0" />
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
+                                  Flags:
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.approvalSentCount === 0}
+                                  onClick={() => copySegmentTickets("Approval Request", (r) => r.isApprovalSent)}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 hover:text-orange-700 rounded-lg disabled:opacity-40"
+                                  title="Click to copy Approval Request tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>Approval Request ({accountCheckResult.approvalSentCount})</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.mrCreatedCount === 0}
+                                  onClick={() => copySegmentTickets("MR Created", (r) => r.isMrCreated)}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-700 rounded-lg disabled:opacity-40"
+                                  title="Click to copy MR Created tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>MR ({accountCheckResult.mrCreatedCount})</span>
+                                </Button>
+                              </div>
+
+                              <div className="hidden lg:block h-4 w-px bg-slate-200 dark:bg-white/10" />
+
+                              {/* 4. Type */}
+                              <div className="flex items-center gap-1.5">
+                                <span className="h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] shrink-0" />
+                                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
+                                  Type:
+                                </span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.pmsCount === 0}
+                                  onClick={() => copySegmentTickets("Auto PMS", (r) => r.isPms)}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 hover:text-amber-700 rounded-lg disabled:opacity-40"
+                                  title="Click to copy Auto PMS tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>Auto PMS ({accountCheckResult.pmsCount})</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={accountCheckResult.nonPmsCount === 0}
+                                  onClick={() => copySegmentTickets("Non-PMS", (r) => !r.isPms)}
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-slate-600 dark:text-slate-400 hover:bg-slate-500/10 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg disabled:opacity-40"
+                                  title="Click to copy Non-PMS tickets"
+                                >
+                                  <Copy className="h-3 w-3" />
+                                  <span>Non-PMS ({accountCheckResult.nonPmsCount})</span>
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Filter Pills + Search Toolbar */}
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 pt-1">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {[
+                                { id: "all", label: "All", count: accountCheckResult.totalCount },
+                                { id: "namo", label: "NAMO", count: accountCheckResult.namoCount },
+                                { id: "non-namo", label: "NON-NAMO", count: accountCheckResult.nonNamoCount },
+                                { id: "parent", label: "Parents", count: accountCheckResult.parentCount },
+                                { id: "child", label: "Child", count: accountCheckResult.childCount },
+                                { id: "approval", label: "Approval Request", count: accountCheckResult.approvalSentCount },
+                                { id: "mr", label: "MR Created", count: accountCheckResult.mrCreatedCount },
+                                { id: "pms", label: "Auto PMS", count: accountCheckResult.pmsCount },
+                                { id: "non-pms", label: "Non-PMS", count: accountCheckResult.nonPmsCount },
+                              ].map((tab) => (
+                                <button
+                                  key={tab.id}
+                                  type="button"
+                                  onClick={() => setAccountCheckFilter(tab.id as any)}
+                                  className={cn(
+                                    "px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center gap-1",
+                                    accountCheckFilter === tab.id
+                                      ? "bg-sky-500 text-white shadow-sm"
+                                      : "bg-slate-100/80 dark:bg-white/[0.05] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                                  )}
+                                >
+                                  {tab.label}
+                                  <span className={cn(
+                                    "px-1 py-0.5 rounded text-[9px] font-mono",
+                                    accountCheckFilter === tab.id ? "bg-white/20 text-white" : "bg-black/10 dark:bg-white/10"
+                                  )}>
+                                    {tab.count}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="relative sm:w-56">
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                              <input
+                                type="text"
+                                placeholder="Search ticket, group..."
+                                value={accountCheckSearch}
+                                onChange={(e) => setAccountCheckSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1 text-xs rounded-lg border border-slate-200/80 dark:border-white/[0.1] bg-white/60 dark:bg-black/30 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500/50"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Unified Master Interactive Table - Pure Printed-on-Glass Aesthetic */}
+                          <div className="overflow-hidden">
+                            <div className="max-h-[420px] overflow-auto">
+                              <table className="w-full text-left text-xs font-mono border-collapse">
+                                <thead className="sticky top-0 bg-slate-100/70 dark:bg-slate-950/60 backdrop-blur-md border-b border-slate-200/50 dark:border-white/[0.08] text-[10px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 z-10">
+                                  <tr>
+                                    <th className="py-2.5 px-3">Ticket Number</th>
+                                    <th className="py-2.5 px-3">Account Group</th>
+                                    <th className="py-2.5 px-3">Hierarchy</th>
+                                    <th className="py-2.5 px-3">Approvals & MR</th>
+                                    <th className="py-2.5 px-3">PMS Type</th>
+                                    <th className="py-2.5 px-3">Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200/40 dark:divide-white/[0.05]">
+                                  {filteredAccountCheckRows.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={6} className="py-8 text-center text-slate-400 text-xs font-sans">
+                                        No matching WorkOrders found.
+                                      </td>
+                                    </tr>
+                                  ) : (
+                                    filteredAccountCheckRows.map((row, idx) => (
+                                      <tr
+                                        key={`acct-row-${row.ticket || row.id}-${idx}`}
+                                        className="hover:bg-white/[0.03] transition-colors group/row"
+                                      >
+                                        <td className="py-2.5 px-3 font-bold text-slate-800 dark:text-slate-200">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(row.ticket);
+                                              toast.success(`Copied ticket: ${row.ticket}`);
+                                            }}
+                                            className="flex items-center gap-1.5 hover:text-sky-400 transition-colors group-hover/row:underline text-left"
+                                            title="Click to copy ticket"
+                                          >
+                                            <span
+                                              className={cn(
+                                                "h-1.5 w-1.5 rounded-full shrink-0",
+                                                row.accountGroupCategory === "NAMO"
+                                                  ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]"
+                                                  : "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)]"
+                                              )}
+                                            />
+                                            <span className="font-mono tracking-tight text-slate-800 dark:text-slate-200 font-bold">{row.ticket || "—"}</span>
+                                            <Copy className="h-3 w-3 opacity-0 group-hover/row:opacity-60 transition-opacity text-slate-400 ml-0.5" />
+                                          </button>
+                                        </td>
+                                        <td className="py-2.5 px-3">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span
+                                              className={cn(
+                                                "text-xs font-bold uppercase tracking-wider",
+                                                row.accountGroupCategory === "NAMO"
+                                                  ? "text-emerald-500 dark:text-emerald-400"
+                                                  : row.accountGroupCategory === "NON-NAMO"
+                                                  ? "text-sky-500 dark:text-sky-400"
+                                                  : "text-slate-400"
+                                              )}
+                                            >
+                                              {row.accountGroupCategory}
+                                            </span>
+                                            {row.accountGroup && (
+                                              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[140px]" title={row.accountGroup}>
+                                                {row.accountGroup}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="py-2.5 px-3">
+                                          {row.isChild ? (
+                                            <button
+                                              type="button"
+                                              className="inline-flex items-center gap-1 text-xs font-bold text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 hover:underline transition-colors text-left"
+                                              onClick={() => {
+                                                if (row.parentTicket) {
+                                                  navigator.clipboard.writeText(row.parentTicket);
+                                                  toast.success(`Copied parent ticket: ${row.parentTicket}`);
+                                                }
+                                              }}
+                                              title={`Click to copy parent ticket: ${row.parentTicket || row.parentId}`}
+                                            >
+                                              <span className="text-purple-400/80">↳</span>
+                                              <span>{row.parentTicket || (row.parentId ? `...${row.parentId.slice(-8)}` : "Child")}</span>
+                                            </button>
+                                          ) : (
+                                            <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                              Parent
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="py-2.5 px-3">
+                                          <div className="flex items-center gap-2 flex-wrap text-xs">
+                                            {row.isApprovalSent && (
+                                              <span className="font-bold text-orange-600 dark:text-orange-400">
+                                                Approval Request
+                                              </span>
+                                            )}
+                                            {row.isMrCreated && (
+                                              <span className="font-bold text-rose-600 dark:text-rose-400">
+                                                MR Created
+                                              </span>
+                                            )}
+                                            {row.fgr && (
+                                              <span className="font-semibold text-amber-600 dark:text-amber-400">
+                                                FGR: {row.fgr}
+                                              </span>
+                                            )}
+                                            {!row.isApprovalSent && !row.isMrCreated && !row.fgr && (
+                                              <span className="text-slate-400 text-xs">—</span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="py-2.5 px-3">
+                                          <span
+                                            className={cn(
+                                              "text-xs font-bold uppercase tracking-wider",
+                                              row.isPms
+                                                ? "text-amber-600 dark:text-amber-400"
+                                                : "text-slate-500 dark:text-slate-400"
+                                            )}
+                                          >
+                                            {row.isPms ? "Auto PMS" : "Non-PMS"}
+                                          </span>
+                                        </td>
+                                        <td className="py-2.5 px-3">
+                                          <span
+                                            className={cn(
+                                              "text-xs font-bold inline-flex items-center gap-1.5",
+                                              row.status === "In Progress"
+                                                ? "text-blue-600 dark:text-blue-400"
+                                                : row.status === "Bundled"
+                                                ? "text-purple-600 dark:text-purple-400"
+                                                : row.status === "On Hold"
+                                                ? "text-amber-600 dark:text-amber-400"
+                                                : row.status === "Canceled"
+                                                ? "text-rose-600 dark:text-rose-400"
+                                                : "text-slate-600 dark:text-slate-400"
+                                            )}
+                                          >
+                                            <span
+                                              className={cn(
+                                                "h-1.5 w-1.5 rounded-full shrink-0",
+                                                row.status === "In Progress"
+                                                  ? "bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]"
+                                                  : row.status === "Bundled"
+                                                  ? "bg-purple-400 shadow-[0_0_6px_rgba(192,132,252,0.8)]"
+                                                  : row.status === "On Hold"
+                                                  ? "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]"
+                                                  : row.status === "Canceled"
+                                                  ? "bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.8)]"
+                                                  : "bg-slate-400"
+                                              )}
+                                            />
+                                            {row.status || "—"}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    ))
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )}
+
+                            {
+              cancellationType !== "Account Check" && (
+                <>
+<motion.div variants={cardItemVariants} className="h-full flex flex-col 2xl:col-span-1">
 
 
 
@@ -24693,46 +26290,21 @@ BSL22295338      CID-6074821`}
 
 
                       <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-
-
-                      <span>Status: Canceled</span>
+                      <span>Status: --</span>
 
 
 
                       {cancellationMissingTickets.length > 0 && (
-
-
-
                         <>
-
-
-
                           <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
-
-
-
                           <span className="text-amber-500 font-extrabold">{cancellationMissingTickets.length} not returned by SF</span>
-
-
-
                         </>
-
-
-
                       )}
-
-
 
                     </div>
 
-
-
                     <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
-
-
-
-                      <SOQLHighlighter query={uniqueExecutableCancellationRows.length > 0 ? cancellationCanceledOutput : "\"_\"   \"Id\"   \"Ticket_Number_Read_Only__c\"   \"Status\"\n\"[WorkOrder]\"   \"0WONy000008eHgfOAE\"   \"B25031925463529\"   \"Canceled\""} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
+                      <SOQLHighlighter query={cancellationCanceledOutput || `"_"   "Id"   "Ticket_Number_Read_Only__c"   "Status"\n// Output will be generated here based on your custom algorithm`} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
 
 
 
@@ -24865,277 +26437,39 @@ BSL22295338      CID-6074821`}
 
 
                       onChange={(event) => setCancellationFailedInput(event.target.value)}
-
-
-
                     />
 
-
-
-                  </CardContent>
-
-
+                    </CardContent>
 
                 </Card>
 
-
-
               </motion.div>
 
-
-
-
-
-
-
               {(() => {
-
-
-
-                const hasFailedInput = cancellationFailedInput.trim().length > 0;
-
-                // Parse Step 5 failed rows
-                const cancellationFailedTicketsRows = parseCancellationExecutionRows(cancellationFailedInput);
-                const actuallyFailedRows = cancellationFailedTicketsRows.filter(
-                  (r) => !r.resultStatus || r.resultStatus.toLowerCase() !== "success"
-                );
-                let failedTicketsList = actuallyFailedRows.map((r) => r.ticket.trim()).filter(Boolean);
-                if (failedTicketsList.length === 0 && hasFailedInput) {
-                  const matches = cancellationFailedInput.match(SALESFORCE_TICKET_REGEX) || [];
-                  failedTicketsList = matches.map((m) => cleanTicket(m)).filter(Boolean);
-                }
-                const cancellationFailedTickets = Array.from(new Set(failedTicketsList));
-
-                // Map of all PMS tickets (tickets starting with 'A')
-                const pmsTicketMap = new Map<string, { accountGroup?: string; isMaterialConsumed?: boolean }>();
-
-                // 1. From Step 3 rows (parsed and stored)
-                [...cancellationExecutionRows, ...cancellationStoredRows].forEach((r) => {
-                  const tkt = cleanTicket(r.ticket).toUpperCase();
-                  if (tkt.startsWith("A")) {
-                    pmsTicketMap.set(tkt, {
-                      accountGroup: r.accountGroup,
-                      isMaterialConsumed: r.isMaterialConsumed,
-                    });
-                  }
-                });
-
-                // 2. From Step 1 requested tickets
-                parsedTickets.forEach((t) => {
-                  const tkt = cleanTicket(t).toUpperCase();
-                  if (tkt.startsWith("A") && !pmsTicketMap.has(tkt)) {
-                    pmsTicketMap.set(tkt, {
-                      accountGroup: cancellationType === "NAMO" ? "NAMO" : (cancellationType === "NON NAMO" ? "NON NAMO" : undefined),
-                      isMaterialConsumed: false,
-                    });
-                  }
-                });
-
-                // Build Step 3 map by ticket and ID
-                const step3ByTicket = new Map<string, CancellationExecutionRow>();
-                const step3ById = new Map<string, CancellationExecutionRow>();
-                [...cancellationExecutionRows, ...cancellationStoredRows].forEach((r) => {
-                  const cleanTkt = cleanTicket(r.ticket).toUpperCase();
-                  if (cleanTkt) step3ByTicket.set(cleanTkt, r);
-                  if (r.id) step3ById.set(r.id.toLowerCase(), r);
-                });
-
-                // Categorize PMS tickets into NAMO and NON NAMO, plus track if MR exists
-                const pmsNamoTickets: string[] = [];
-                const pmsNonNamoTickets: string[] = [];
-                const mrRaisedTickets: string[] = [];
-
-                pmsTicketMap.forEach((info, tkt) => {
-                  const isNamo = isNamoGroup(info.accountGroup, cancellationType);
-                  if (isNamo) {
-                    pmsNamoTickets.push(tkt);
-                  } else {
-                    pmsNonNamoTickets.push(tkt);
-                  }
-                  if (info.isMaterialConsumed) {
-                    mrRaisedTickets.push(tkt);
-                  }
-                });
-
-                // Categorize failed tickets (excluding PMS tickets as they are handled in PMS sections)
-                const approvalPendingTickets: string[] = [];
-                const bothApprovalAndMRTickets: string[] = [];
-                const failedTickets: string[] = [];
-
-                for (const tkt of cancellationFailedTickets) {
-                  const key = cleanTicket(tkt).toUpperCase();
-                  if (key.startsWith("A")) continue;
-
-                  const failedRow = actuallyFailedRows.find(
-                    (r) => cleanTicket(r.ticket).toUpperCase() === key
-                  );
-                  const sfRow =
-                    step3ByTicket.get(key) ||
-                    (failedRow ? step3ById.get(failedRow.id.toLowerCase()) : undefined);
-
-                  let isApproval = sfRow ? Boolean(sfRow.isApprovalSent) : false;
-                  let isMR = sfRow ? Boolean(sfRow.isMaterialConsumed) : false;
-
-                  if (failedRow) {
-                    if (failedRow.isMaterialConsumed) isMR = true;
-                    if (failedRow.isApprovalSent) isApproval = true;
-                    const errMsg = (failedRow.errorMessage || "").toLowerCase();
-                    if (errMsg.includes("mr exists") || errMsg.includes("cannot be canceled as mr exists")) {
-                      isMR = true;
-                    }
-                    if (errMsg.includes("approval is pending") || errMsg.includes("pending approval") || errMsg.includes("recall the pending approval")) {
-                      isApproval = true;
-                    }
-                  }
-
-                  if (isApproval && isMR) {
-                    bothApprovalAndMRTickets.push(tkt);
-                  } else if (isApproval) {
-                    approvalPendingTickets.push(tkt);
-                  } else if (isMR) {
-                    mrRaisedTickets.push(tkt);
-                  } else {
-                    failedTickets.push(tkt);
-                  }
-                }
-
-                // Deduplicate mrRaisedTickets
-                const uniqueMrTickets = Array.from(new Set(mrRaisedTickets));
-
                 const cancellationTotalTickets = parsedTickets.length || cancellationExecutionRows.length;
-                const nonPmsFailedTickets = cancellationFailedTickets.filter((t) => !cleanTicket(t).toUpperCase().startsWith("A"));
-                const cancellationSuccessCount = Math.max(0, uniqueExecutableCancellationRows.length - nonPmsFailedTickets.length);
-
-                const hasAnyPMS = pmsNamoTickets.length > 0 || pmsNonNamoTickets.length > 0;
-                const hasAnyFailed = cancellationFailedTickets.length > 0 || approvalPendingTickets.length > 0 || uniqueMrTickets.length > 0 || bothApprovalAndMRTickets.length > 0 || failedTickets.length > 0;
-
-                let mailTemplateText = "";
-                let postTemplateText = "";
-                let mailHtmlText = "";
-                let postHtmlText = "";
-
-                if (!hasAnyPMS && !hasAnyFailed) {
-                  mailTemplateText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
-                  postTemplateText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${cancellationTotalTickets}`;
-                  mailHtmlText = `<p>Dear,</p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
-                  postHtmlText = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${cancellationTotalTickets}</p>`;
-                } else {
-                  const sections: string[] = [];
-                  const htmlSections: string[] = [];
-
-                  if (pmsNamoTickets.length > 0) {
-                    sections.push(
-                      `PMS tickets (NAMO):\n----------------------------------------\n${pmsNamoTickets.join("\n")}`
-                    );
-                    htmlSections.push(
-                      `<p><b>PMS tickets (NAMO):</b><br>----------------------------------------<br>${pmsNamoTickets.join("<br>")}</p>`
-                    );
-                  }
-
-                  if (pmsNonNamoTickets.length > 0) {
-                    sections.push(
-                      `PMS tickets (NON NAMO):\n----------------------------------------\n${pmsNonNamoTickets.join("\n")}`
-                    );
-                    htmlSections.push(
-                      `<p><b>PMS tickets (NON NAMO):</b><br>----------------------------------------<br>${pmsNonNamoTickets.join("<br>")}</p>`
-                    );
-                  }
-
-                  if (approvalPendingTickets.length > 0) {
-                    sections.push(
-                      `Appoval pending tickets : \n----------------------------------------\n\n${approvalPendingTickets.join("\n")}`
-                    );
-                    htmlSections.push(
-                      `<p><b>Appoval pending tickets :</b><br>----------------------------------------<br>${approvalPendingTickets.join("<br>")}</p>`
-                    );
-                  }
-
-                  if (uniqueMrTickets.length > 0) {
-                    sections.push(
-                      `MR raised tickets:\n----------------------------------------\n${uniqueMrTickets.join("\n")}`
-                    );
-                    htmlSections.push(
-                      `<p><b>MR raised tickets:</b><br>----------------------------------------<br>${uniqueMrTickets.join("<br>")}</p>`
-                    );
-                  }
-
-                  if (bothApprovalAndMRTickets.length > 0) {
-                    sections.push(
-                      `Both approval pending and MR raise\n----------------------------------------\n\n${bothApprovalAndMRTickets.join("\n")}`
-                    );
-                    htmlSections.push(
-                      `<p><b>Both approval pending and MR raise</b><br>----------------------------------------<br>${bothApprovalAndMRTickets.join("<br>")}</p>`
-                    );
-                  }
-
-                  if (failedTickets.length > 0) {
-                    sections.push(
-                      `Failed ticket\n----------------------------------------\n${failedTickets.join("\n")}`
-                    );
-                    htmlSections.push(
-                      `<p><b>Failed ticket</b><br>----------------------------------------<br>${failedTickets.join("<br>")}</p>`
-                    );
-                  }
-
-                  const hasApprovalFailure = approvalPendingTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
-                  const hasMRFailure = uniqueMrTickets.length > 0 || bothApprovalAndMRTickets.length > 0;
-
-                  const instructionLines: string[] = [];
-                  const instructionHtmlLines: string[] = [];
-
-                  if (pmsNamoTickets.length > 0) {
-                    instructionLines.push(
-                      `*For PMS tickets (NAMO):* Kindly provide approval from Vishal Sir (CPSD) / Suraj Sir (UCPG) before proceeding with cancellation.`
-                    );
-                    instructionHtmlLines.push(
-                      `<p><b>For PMS tickets (NAMO):</b> Kindly provide approval from Vishal Sir (CPSD) / Suraj Sir (UCPG) before proceeding with cancellation.</p>`
-                    );
-                  }
-
-                  if (pmsNonNamoTickets.length > 0) {
-                    instructionLines.push(
-                      `*For PMS tickets (NON NAMO):* Kindly provide RM approval before proceeding with cancellation.`
-                    );
-                    instructionHtmlLines.push(
-                      `<p><b>For PMS tickets (NON NAMO):</b> Kindly provide RM approval before proceeding with cancellation.</p>`
-                    );
-                  }
-
-                  if (hasApprovalFailure) {
-                    instructionLines.push(
-                      `*For approval-pending cases:* Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.`
-                    );
-                    instructionHtmlLines.push(
-                      `<p><b>For approval-pending cases:</b> Please reject or recall the pending approval through the CP/Dealer Portal, as applicable.</p>`
-                    );
-                  }
-
-                  if (hasMRFailure) {
-                    instructionLines.push(
-                      `*For MR-raised tickets:* Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.`
-                    );
-                    instructionHtmlLines.push(
-                      `<p><b>For MR-raised tickets:</b> Please ensure that the tickets are properly completed and closed using the appropriate OTP closure process.</p>`
-                    );
-                  }
-
-                  const instructionsPlainText = instructionLines.length > 0
-                    ? `\n\n*Kindly note the following instructions:*\n\n${instructionLines.join("\n")}`
-                    : "";
-
-                  const instructionsHtml = instructionHtmlLines.length > 0
-                    ? `\n<p><b>Kindly note the following instructions:</b></p>\n${instructionHtmlLines.join("\n")}`
-                    : "";
-
-                  const bodyText = `Cancellation has been done successfully.\nTotal Tickets: ${cancellationTotalTickets}\nCancelled Tickets: ${cancellationSuccessCount}\n\nFailed / Pending tickets are mentioned below:\n\n${sections.join("\n\n")}${instructionsPlainText}`;
-
-                  const bodyHtml = `<p>Cancellation has been done successfully.<br>Total Tickets: ${cancellationTotalTickets}<br>Cancelled Tickets: ${cancellationSuccessCount}</p>\n<p>Failed / Pending tickets are mentioned below:</p>\n${htmlSections.join("<br>")}${instructionsHtml}`;
-
-                  mailTemplateText = `Dear,\n${bodyText}`;
-                  postTemplateText = `@taguser \n${bodyText}`;
-                  mailHtmlText = `<p>Dear,</p>${bodyHtml}`;
-                  postHtmlText = `<p>@taguser </p>${bodyHtml}`;
+                let ccoApprovalExtra = "";
+                if (cancellationType === "CCO" && algo1Result.approvalSegmentText) {
+                  ccoApprovalExtra = `\n\n${algo1Result.approvalSegmentText}`;
                 }
+
+                const step5Outputs = buildCancellationStep5Output({
+                  cancellationType,
+                  totalTickets: cancellationTotalTickets,
+                  executableCount: uniqueExecutableCancellationRows.length,
+                  parsedFailed: parsedCancellationFailed,
+                  ccoApprovalExtra,
+                  namoResult: namoAlgo2Result,
+                  nonNamoResult: nonNamoAlgo3Result,
+                  accountCheckResult: accountCheckResult.totalCount > 0 ? accountCheckResult : undefined,
+                  ccoResult: ccoAlgoResult,
+                });
+
+                const {
+                  mailText: mailTemplateText,
+                  mailHtml: mailHtmlText,
+                  postText: postTemplateText,
+                  postHtml: postHtmlText,
+                } = step5Outputs;
 
                 return (
 
@@ -25193,7 +26527,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(mailTemplateText, mailHtmlText)}>
+                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(mailTemplateText, mailHtmlText)} disabled={!mailTemplateText}>
 
 
 
@@ -25221,7 +26555,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <SOQLHighlighter query={mailTemplateText} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
+                      <SOQLHighlighter query={mailTemplateText || "// Email template output will appear here after defining your custom algorithm"} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
 
 
 
@@ -25297,7 +26631,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText, postHtmlText)}>
+                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText, postHtmlText)} disabled={!postTemplateText}>
 
 
 
@@ -25325,7 +26659,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <SOQLHighlighter query={postTemplateText} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100" />
+                      <SOQLHighlighter query={postTemplateText || "// Post template output will appear here after defining your custom algorithm"} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-200 min-h-[160px] max-h-[320px] selection:bg-indigo-500/20 selection:text-indigo-900 dark:selection:text-indigo-100" />
 
 
 
@@ -25453,6 +26787,11 @@ BSL22295338      CID-6074821`}
 
 
 
+              )}
+
+
+
+                            </>
               )}
 
 
@@ -27865,6 +29204,21 @@ BSL22295338      CID-6074821`}
 
 
 
+      />
+
+      <AccountCheckHandoverModal
+        isOpen={showAccountCheckHandoverModal}
+        onClose={() => setShowAccountCheckHandoverModal(false)}
+        result={accountCheckResult}
+      />
+
+      <CancellationHandoverModal
+        isOpen={showCancellationHandoverModal}
+        onClose={() => setShowCancellationHandoverModal(false)}
+        type={cancellationType === "NAMO" ? "NAMO" : cancellationType === "NON NAMO" ? "NON NAMO" : "CCO"}
+        namoResult={namoAlgo2Result}
+        nonNamoResult={nonNamoAlgo3Result}
+        ccoResult={ccoAlgoResult}
       />
 
 

@@ -569,33 +569,17 @@ export function parseCancellationExecutionRows(input: string): CancellationExecu
       const id = row.id || "";
       const ticket = row.ticket_number_read_only__c || row.ticketnumberreadonly__c || "";
       const status = row.status || "";
-      const rawMaterial = (row.is_material_consumed__c || row.ismaterialconsumed__c || "").toLowerCase();
-      const rawApproval = (row.is_approval_sent__c || row.isapprovalsent__c || "").toLowerCase();
-      let isMaterialConsumed = rawMaterial === "true" || rawMaterial === "1" || rawMaterial === "yes";
-      let isApprovalSent = rawApproval === "true" || rawApproval === "1" || rawApproval === "yes";
-      const rawGroup = (row["account.group__c"] || row.account_group__c || row.group__c || row.group || "").trim().toUpperCase();
-      const accountGroup = rawGroup.includes("NON NAMO") || rawGroup.includes("NON-NAMO") || rawGroup.includes("NONNAMO")
-        ? "NON NAMO"
-        : (rawGroup.includes("NAMO") ? "NAMO" : rawGroup);
       const resultStatus = row.__status || row.resultstatus || "";
       const errorMessage = row.__errors || row.errors || row.error || "";
-      const errorLower = (errorMessage + " " + JSON.stringify(row)).toLowerCase();
-      if (errorLower.includes("mr exists") || errorLower.includes("cannot be canceled as mr exists")) {
-        isMaterialConsumed = true;
-      }
-      if (errorLower.includes("approval is pending") || errorLower.includes("pending approval")) {
-        isApprovalSent = true;
-      }
-      return { id, ticket, status, isMaterialConsumed, isApprovalSent, accountGroup, resultStatus, errorMessage };
+      return { id, ticket, status, resultStatus, errorMessage };
     })
     .filter((row) => row.id && row.ticket && row.status);
 }
 
-export function buildCancellationCanceledOutput(rows: CancellationExecutionRow[]): string {
+export function buildCancellationCanceledOutput(rows: CancellationExecutionRow[], _cancellationType?: string): string {
   const outputRows = [buildTSVRow(["_", "Id", "Ticket_Number_Read_Only__c", "Status"])];
 
   for (const row of rows) {
-    if (row.ticket.trim().toUpperCase().startsWith("A")) continue;
     outputRows.push(buildTSVRow(["[WorkOrder]", row.id, row.ticket, "Canceled"]));
   }
 

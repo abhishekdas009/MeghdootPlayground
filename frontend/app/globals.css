@@ -762,6 +762,87 @@ html.theme-transition *::after {
   }
 }
 
+@keyframes textShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes laserSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(220%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.shimmer-text-glow {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.5) 0%,
+    rgba(56, 189, 248, 0.95) 35%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(56, 189, 248, 0.95) 65%,
+    rgba(148, 163, 184, 0.5) 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: textShimmer 3.2s ease-in-out infinite;
+}
+
+@keyframes auroraFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes neonBreathe {
+  0%, 100% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.2));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.85));
+  }
+}
+
+@keyframes floatDrift {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-auroraFlow {
+  animation: auroraFlow 4s ease infinite;
+}
+
+.animate-neonBreathe {
+  animation: neonBreathe 3s ease-in-out infinite;
+}
+
+.animate-floatDrift {
+  animation: floatDrift 3.5s ease-in-out infinite;
+}
+
 
 
 /* ── Translucent Frosted Glass Search Components ── */

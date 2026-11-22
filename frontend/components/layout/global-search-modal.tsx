@@ -31,6 +31,7 @@ import {
   Keyboard,
   ShieldCheck,
   CheckCheck,
+  GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -60,6 +61,15 @@ const NAVIGATION_ITEMS: SearchItem[] = [
     typeTag: "Report",
     url: "/daily-report-generator",
     icon: <Sparkles className="h-5 w-5 text-emerald-500" />,
+  },
+  {
+    id: "nav-training-mom",
+    title: "Training MOM Maker",
+    subtitle: "Draft Minutes of Meeting (MOM) for SDE and CP training sessions with attendees table and Outlook export",
+    category: "navigation",
+    typeTag: "Training",
+    url: "/daily-report-generator?tab=training-mom",
+    icon: <GraduationCap className="h-5 w-5 text-sky-500" />,
   },
   {
     id: "nav-soql-generator",

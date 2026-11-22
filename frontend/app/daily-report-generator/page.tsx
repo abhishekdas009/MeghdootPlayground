@@ -28,6 +28,7 @@ import {
   X,
   Save,
   Code2,
+  GraduationCap,
 } from "lucide-react";
 import {
   DEFAULT_STATUS_REPORT_QUERIES,
@@ -44,6 +45,7 @@ import {
   parseCategories,
   type CategoryRow,
 } from "./category-breakdown";
+import { TrainingMOMMaker } from "./training-mom-maker";
 
 const CASE_ID_REGEX = /(?:^|[^\p{L}\p{N}])(500[A-Za-z0-9]{12}(?:[A-Za-z0-9]{3})?)(?![\p{L}\p{N}])/gui;
 
@@ -70,7 +72,7 @@ export default function DailyReportGeneratorPage() {
   
   const [reportData, setReportData] = React.useState<ReportData | null>(null);
   const [mergedData, setMergedData] = React.useState<any[][] | null>(null);
-  const [activeTab, setActiveTab] = React.useState<"category-breakdown" | "status-merger">("category-breakdown");
+  const [activeTab, setActiveTab] = React.useState<"category-breakdown" | "status-merger" | "training-mom">("category-breakdown");
   const [categoryInputForEmail, setCategoryInputForEmail] = React.useState("");
   const [categoryBreakdownHtml, setCategoryBreakdownHtml] = React.useState<string | null>(null);
   const [categoryRowsForExcel, setCategoryRowsForExcel] = React.useState<{ rows: CategoryRow[]; total: number } | null>(null);
@@ -100,6 +102,13 @@ export default function DailyReportGeneratorPage() {
 
   React.useEffect(() => {
     setIsMounted(true);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "training-mom" || tab === "status-merger" || tab === "category-breakdown") {
+        setActiveTab(tab as any);
+      }
+    }
     // Fetch persisted queries from Prisma table
     fetch("/api/status-report-queries")
       .then((res) => res.json())
@@ -484,6 +493,37 @@ export default function DailyReportGeneratorPage() {
             <FileSpreadsheet className={cn("h-4 w-4 transition-colors", activeTab === "status-merger" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
             <span>Status Report & Merger</span>
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("training-mom")}
+            className={cn(
+              "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10",
+              activeTab === "training-mom"
+                ? "text-white font-black"
+                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
+            )}
+          >
+            {activeTab === "training-mom" && (
+              <motion.div
+                layoutId="activeDailyReportTabBadge"
+                transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                className="absolute inset-0 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 rounded-xl shadow-md z-[-1] border border-sky-300/40"
+                style={{
+                  boxShadow: "0 4px 16px rgba(2, 132, 199, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.35)"
+                }}
+              />
+            )}
+            <GraduationCap className={cn("h-4 w-4 transition-colors", activeTab === "training-mom" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
+            <span>Training MOM Maker</span>
+            <span className={cn(
+              "text-[10px] font-black uppercase px-2 py-0.5 rounded-full transition-colors",
+              activeTab === "training-mom"
+                ? "bg-white/20 text-white border border-white/30"
+                : "bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-500/20"
+            )}>
+              SDE / CP
+            </span>
+          </button>
         </div>
 
         <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground font-medium">
@@ -492,10 +532,15 @@ export default function DailyReportGeneratorPage() {
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               Paste category list ➔ Exact Image 2 table with blue headers
             </span>
-          ) : (
+          ) : activeTab === "status-merger" ? (
             <span className="flex items-center gap-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 px-3 py-1.5 rounded-xl border border-purple-500/20 font-semibold">
               <Mail className="h-3.5 w-3.5 text-purple-500" />
               Merge ticket files & draft daily email
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 bg-sky-500/10 text-sky-600 dark:text-sky-400 px-3 py-1.5 rounded-xl border border-sky-500/20 font-semibold">
+              <GraduationCap className="h-3.5 w-3.5 text-sky-500" />
+              SDE & CP Training Minutes of Meeting (MOM)
             </span>
           )}
         </div>
@@ -510,6 +555,8 @@ export default function DailyReportGeneratorPage() {
             }}
           />
         </div>
+      ) : activeTab === "training-mom" ? (
+        <TrainingMOMMaker />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto w-full px-4 sm:px-6">
         {/* Input Section */}
@@ -716,7 +763,7 @@ export default function DailyReportGeneratorPage() {
                 </div>
               ) : (
                 <div className="p-6 md:p-8 overflow-y-auto max-h-[800px] text-[15px] font-sans text-slate-800 dark:text-slate-300 select-text">
-                  <div id="email-report-content" style={{ fontFamily: "Segoe UI, Calibri, Arial, sans-serif", backgroundColor: "transparent", padding: "10px" }}>
+                  <div id="email-report-content" style={{ fontFamily: "'Aptos', 'Aptos (Body)', Aptos, Calibri, Arial, sans-serif", backgroundColor: "transparent", padding: "10px" }}>
                     <p style={{ margin: "0 0 16px 0" }}>
                       Dear <a href={`mailto:${managerName.replace('@', '').replace(/ Sir/i, '').trim()}`} style={{color: "#0563C1", textDecoration: "none"}}>
                         {managerName.replace(/ Sir/i, '')}

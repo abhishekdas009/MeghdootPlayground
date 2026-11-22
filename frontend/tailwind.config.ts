@@ -65,11 +65,22 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        laserSweep: {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(220%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
+        textShimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "fade-in": "fade-in 0.2s ease-out",
         "slide-in": "slide-in 0.2s ease-out",
         shimmer: "shimmer 2.5s infinite",
+        laserSweep: "laserSweep 2.8s ease-in-out infinite",
+        textShimmer: "textShimmer 3.2s ease-in-out infinite",
       },
     },
   },

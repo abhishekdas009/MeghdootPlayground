@@ -714,7 +714,7 @@ export function generateCategoryTableHtml(
   const catWidth = showCumulative ? "38%" : "44%";
   const numWidth = showCumulative ? "20%" : "28%";
 
-  return `<table style="border-collapse: collapse; width: 100%; max-width: ${showCumulative ? "520px" : "460px"}; font-family: 'Segoe UI', Calibri, Arial, sans-serif; font-size: 14px; border: 1px solid ${theme.borderColor}; text-align: center; margin: 12px auto; background-color: #ffffff;">
+  return `<table style="border-collapse: collapse; width: 100%; max-width: ${showCumulative ? "520px" : "460px"}; font-family: 'Aptos', 'Aptos (Body)', Aptos, 'Segoe UI', Calibri, Arial, sans-serif; font-size: 14px; border: 1px solid ${theme.borderColor}; text-align: center; margin: 12px auto; background-color: #ffffff;">
   <thead>
     <tr style="background-color: ${theme.headerBg}; color: ${theme.headerText}; font-weight: bold; border: 1px solid ${theme.borderColor};">
       <th style="border: 1px solid ${theme.borderColor}; background-color: ${theme.headerBg}; padding: 8px 14px; text-align: ${catAlign}; font-weight: bold; color: ${theme.headerText}; width: ${catWidth};">${headers.category}</th>
@@ -2398,7 +2398,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                     id="category-summary-table-view"
                     className="w-full max-w-[500px] shadow-sm overflow-hidden"
                     style={{
-                      fontFamily: "Calibri, 'Segoe UI', Arial, sans-serif",
+                      fontFamily: "'Aptos', 'Aptos (Body)', Aptos, Calibri, 'Segoe UI', Arial, sans-serif",
                     }}
                   >
                     <table
