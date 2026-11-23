@@ -1,21 +1,11 @@
 import { BLUE_STAR_LOGO_BASE64 } from "./branding";
 
 /**
- * Standard corporate email header with greeting on the left and Blue Star logo
- * aligned to the top-right on the exact same horizontal level.
- * Uses 100% table layout for complete cross-client compatibility (Outlook Word engine, Gmail, Apple Mail, Webmail).
+ * Standard corporate email header greeting.
+ * Clean, standard paragraph spacing matching Outlook / Aptos default.
  */
 export function renderEmailHeader(greetingText: string = "Dear Team,"): string {
-  return `<table style="width: 100%; max-width: 650px; border-collapse: collapse; border: 0; margin-bottom: 14px;" border="0" cellpadding="0" cellspacing="0" width="100%">
-    <tr>
-      <td style="vertical-align: middle; text-align: left; padding: 0;" align="left">
-        <p style="margin: 0; font-family: Calibri, Arial, sans-serif; font-size: 14px; font-weight: bold; color: inherit;">${greetingText}</p>
-      </td>
-      <td style="vertical-align: middle; text-align: right; padding: 0;" align="right">
-        <img src="${BLUE_STAR_LOGO_BASE64}" alt="Blue Star" style="height: 34px; width: auto; max-width: 180px; display: inline-block; vertical-align: middle;" border="0" />
-      </td>
-    </tr>
-  </table>`;
+  return `<p style="margin: 0 0 10px 0; font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; font-weight: bold; color: inherit;">${greetingText}</p>`;
 }
 
 /**
@@ -1144,7 +1134,7 @@ export function processAlgo2NamoClassification(
   if (records.length > 0) {
     if (totalExcluded === 0) {
       namoMailOutputText = `Dear,\nCancellation has been done successfully for NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}`;
-      namoMailOutputHtml = `<p>Dear,</p><p>Cancellation has been done successfully for NAMO tickets.</p><br><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}</p>`;
+      namoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}</p></div>`;
       namoPostOutputText = `@taguser \nCancellation has been done successfully for NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}`;
       namoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully for NAMO tickets.</p><br><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}</p>`;
     } else {
@@ -1172,10 +1162,10 @@ export function processAlgo2NamoClassification(
       }
 
       const summaryText = `Cancellation has been processed for NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}\nTotal Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
-      const summaryHtml = `<p>Cancellation has been processed for NAMO tickets.</p><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}<br>Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+      const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}<br>Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
 
       namoMailOutputText = `Dear,\n${summaryText}\n\n${excludedSegmentText || nonNamoMailSegmentText}`;
-      namoMailOutputHtml = `<p>Dear,</p>${summaryHtml}<br>${excludedSegmentHtml || nonNamoMailSegmentHtml}`;
+      namoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${excludedSegmentHtml || nonNamoMailSegmentHtml ? `<div style="margin-top: 12px;">${excludedSegmentHtml || nonNamoMailSegmentHtml}</div>` : ""}</div>`;
       namoPostOutputText = `@taguser \n${summaryText}\n\n${nonNamoPostSegmentText || excludedSegmentText}`;
       namoPostOutputHtml = `<p>@taguser </p>${summaryHtml}<br>${nonNamoPostSegmentHtml || excludedSegmentHtml}`;
     }
@@ -1826,7 +1816,7 @@ export function processAlgo3NonNamoClassification(
   if (records.length > 0) {
     if (totalExcluded === 0) {
       nonNamoMailOutputText = `Dear,\nCancellation has been done successfully for NON-NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}`;
-      nonNamoMailOutputHtml = `<p>Dear,</p><p>Cancellation has been done successfully for NON-NAMO tickets.</p><br><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}</p>`;
+      nonNamoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully for NON-NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}</p></div>`;
       nonNamoPostOutputText = `@taguser \nCancellation has been done successfully for NON-NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}`;
       nonNamoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully for NON-NAMO tickets.</p><br><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}</p>`;
     } else {
@@ -1854,10 +1844,10 @@ export function processAlgo3NonNamoClassification(
       }
 
       const summaryText = `Cancellation has been processed for NON-NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}\nTotal Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
-      const summaryHtml = `<p>Cancellation has been processed for NON-NAMO tickets.</p><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}<br>Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+      const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NON-NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}<br>Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
 
       nonNamoMailOutputText = `Dear,\n${summaryText}\n\n${excludedSegmentText || namoMailSegmentText}`;
-      nonNamoMailOutputHtml = `<p>Dear,</p>${summaryHtml}<br>${excludedSegmentHtml || namoMailSegmentHtml}`;
+      nonNamoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${excludedSegmentHtml || namoMailSegmentHtml ? `<div style="margin-top: 12px;">${excludedSegmentHtml || namoMailSegmentHtml}</div>` : ""}</div>`;
       nonNamoPostOutputText = `@taguser \n${summaryText}\n\n${namoPostSegmentText || excludedSegmentText}`;
       nonNamoPostOutputHtml = `<p>@taguser </p>${summaryHtml}<br>${namoPostSegmentHtml || excludedSegmentHtml}`;
     }
@@ -2427,51 +2417,51 @@ export function processAlgo1CcoStep3Classification(
       }
 
       const summaryText = `Cancellation has been processed for CCO tickets.\n\nTotal Tickets: ${total}\nCancelled (CCO): ${totalReady}\n${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}\n` : ""}Total Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
-      const summaryHtml = `<p>Cancellation has been processed for CCO tickets.</p><p>Total Tickets: ${total}<br>Cancelled (CCO): ${totalReady}<br>${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+      const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for CCO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${total}<br>Cancelled (CCO): ${totalReady}<br>${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
 
       let lockedDetailsText = "";
       let lockedDetailsHtml = "";
       if (approvalPendingTickets.length > 0) {
         lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
-        lockedDetailsHtml = `<br><p><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+        lockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
       }
 
       let autoPmsDetailsText = "";
       let autoPmsDetailsHtml = "";
       if (autoPmsTickets.length > 0) {
         autoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${autoPmsTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
-        autoPmsDetailsHtml = `<br><p><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${autoPmsTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+        autoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${autoPmsTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
       }
 
       let mrCreatedDetailsText = "";
       let mrCreatedDetailsHtml = "";
       if (mrCreatedTickets.length > 0) {
         mrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
-        mrCreatedDetailsHtml = `<br><p><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+        mrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
       }
 
       let parentDetailsText = "";
       let parentDetailsHtml = "";
       if (parentWorkOrderTickets.length > 0) {
         parentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
-        parentDetailsHtml = `<br><p><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+        parentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
       }
 
       let completedDetailsText = "";
       let completedDetailsHtml = "";
       if (completedOrCanceledTickets.length > 0) {
         completedDetailsText = `\n\nAlready Completed / Canceled:\nThe following ticket(s) are already completed or canceled:\n${completedOrCanceledTickets.map((t) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("\n")}`;
-        completedDetailsHtml = `<br><p><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:<br>${completedOrCanceledTickets.map((t) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
+        completedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:\n${completedOrCanceledTickets.map((t) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
       }
 
       const detailSectionsText = `${lockedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}${completedDetailsText}`;
       const detailSectionsHtml = `${lockedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}${completedDetailsHtml}`;
 
       const tableText = excludedSegmentText ? `\n\n${excludedSegmentText}` : "";
-      const tableHtml = excludedSegmentHtml ? `<br>${excludedSegmentHtml}` : "";
+      const tableHtml = excludedSegmentHtml ? `<div style="margin-top: 12px;">${excludedSegmentHtml}</div>` : "";
 
       ccoMailOutputText = `Dear,\n${summaryText}${detailSectionsText}${tableText}`;
-      ccoMailOutputHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}</div>`;
+      ccoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}</div>`;
       ccoPostOutputText = `@taguser \n${summaryText}${detailSectionsText}${tableText}`;
       ccoPostOutputHtml = `<p>@taguser </p>${summaryHtml}${detailSectionsHtml}${tableHtml}`;
     }
@@ -3433,14 +3423,14 @@ export function buildNonNamoExecutionSummary(
   if (totalNamo > 0) {
     namoApprovalMailText = `\n\n2. NAMO PMS Cancellation – Approval Requirement\n\nCancellation of NAMO PMS tickets requires the following mandatory approvals:\n\n• RM Approval\n• Approval from either Vishal Sir (CPSD) or Suraj Sir (UCPG)\n\nThe ${pendingNamo} NAMO PMS tickets will remain pending until the required approvals are obtained:\n${namoTickets.join(", ")}`;
 
-    namoApprovalMailHtml = `\n  <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">2. NAMO PMS Cancellation – Approval Requirement</p>
-  <p>Cancellation of NAMO PMS tickets requires the following mandatory approvals:</p>
-  <ul style="margin-top: 4px; margin-bottom: 8px;">
+    namoApprovalMailHtml = `\n  <p style="font-weight: bold; font-size: 12pt; margin: 16px 0 6px 0;">2. NAMO PMS Cancellation – Approval Requirement</p>
+  <p style="margin: 0 0 6px 0;">Cancellation of NAMO PMS tickets requires the following mandatory approvals:</p>
+  <ul style="margin: 0 0 8px 20px; padding: 0;">
     <li>RM Approval</li>
     <li>Approval from either Vishal Sir (CPSD) or Suraj Sir (UCPG)</li>
   </ul>
-  <p>The <strong>${pendingNamo} NAMO PMS tickets</strong> will remain pending until the required approvals are obtained:</p>
-  <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 4px; padding: 8px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; color: #854d0e; line-height: 1.6; max-width: 650px; word-break: break-word;">${namoTickets.join(", ")}</div>`;
+  <p style="margin: 0 0 6px 0;">The <strong>${pendingNamo} NAMO PMS tickets</strong> will remain pending until the required approvals are obtained:</p>
+  <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 4px; padding: 8px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 11pt; color: #854d0e; line-height: 1.5; max-width: 650px; word-break: break-word;">${namoTickets.join(", ")}</div>`;
 
     namoApprovalPostText = `\n\n━━━━━━━━━━━━━━━━━━━━\n**2. NAMO PMS – APPROVAL REQUIREMENT**\n\nNAMO PMS ticket cancellation requires the following mandatory approvals:\n\n• RM Approval\n• Approval from either Vishal Sir (CPSD) or Suraj Sir (UCPG)\n\nThe ${pendingNamo} NAMO PMS tickets will remain pending until the required approvals are obtained:\n${namoTickets.join(", ")}`;
 
@@ -3461,11 +3451,11 @@ export function buildNonNamoExecutionSummary(
         .map((item, idx) => `${String.fromCharCode(65 + idx)}. ${item.title}\n${item.mailTextBody}`)
         .join("\n\n");
 
-    exceptionsMailHtml = `\n  <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">${exceptionsSectionNum}. Ticket-wise Cancellation Exceptions</p>` +
+    exceptionsMailHtml = `\n  <p style="font-weight: bold; font-size: 12pt; margin: 16px 0 6px 0;">${exceptionsSectionNum}. Ticket-wise Cancellation Exceptions</p>` +
       activeExceptions
         .map(
           (item, idx) =>
-            `\n  <p style="font-weight: bold; margin-top: 12px; margin-bottom: 6px;">${String.fromCharCode(65 + idx)}. ${item.title}</p>\n  ${item.mailHtmlBody}`
+            `\n  <p style="font-weight: bold; font-size: 12pt; margin: 12px 0 4px 0;">${String.fromCharCode(65 + idx)}. ${item.title}</p>\n  ${item.mailHtmlBody}`
         )
         .join("");
 
@@ -3490,12 +3480,12 @@ This is to inform you that the PMS ticket cancellation process has been executed
 ${mailTextTable}${namoApprovalMailText}${exceptionsMailText}`;
 
   // 2. HTML Email
-  const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">
+  const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">
   ${renderEmailHeader("Dear Team,")}
-  <p style="margin-top: 0; margin-bottom: 12px;">This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
+  <p style="margin: 0 0 10px 0;">This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
   
-  <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">1. PMS Ticket Cancellation Summary</p>
-  <table style="border-collapse: collapse; width: 100%; max-width: 650px; font-size: 13px; border: 1px solid #cbd5e1;">
+  <p style="font-weight: bold; font-size: 12pt; margin: 16px 0 6px 0;">1. PMS Ticket Cancellation Summary</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 650px; font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; border: 1px solid #cbd5e1;">
     <thead>
       <tr style="background-color: #f1f5f9; text-align: left;">
         <th style="padding: 6px 12px; border: 1px solid #cbd5e1;">Ticket Category / Status</th>
@@ -3882,13 +3872,13 @@ export function buildNamoExecutionSummary(
   if (totalNonNamo > 0) {
     nonNamoApprovalMailText = `\n\n2. NON-NAMO PMS Cancellation – Approval Requirement\n\nCancellation of NON-NAMO PMS tickets requires the following mandatory approval:\n\n• RM Approval\n\nThe ${pendingNonNamo} NON-NAMO PMS tickets will remain pending until the required approval is obtained:\n${nonNamoTickets.join(", ")}`;
 
-    nonNamoApprovalMailHtml = `\n  <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">2. NON-NAMO PMS Cancellation – Approval Requirement</p>
-  <p>Cancellation of NON-NAMO PMS tickets requires the following mandatory approval:</p>
-  <ul style="margin-top: 4px; margin-bottom: 8px;">
+    nonNamoApprovalMailHtml = `\n  <p style="font-weight: bold; font-size: 12pt; margin: 16px 0 6px 0;">2. NON-NAMO PMS Cancellation – Approval Requirement</p>
+  <p style="margin: 0 0 6px 0;">Cancellation of NON-NAMO PMS tickets requires the following mandatory approval:</p>
+  <ul style="margin: 0 0 8px 20px; padding: 0;">
     <li>RM Approval</li>
   </ul>
-  <p>The <strong>${pendingNonNamo} NON-NAMO PMS tickets</strong> will remain pending until the required approval is obtained:</p>
-  <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 4px; padding: 8px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; color: #854d0e; line-height: 1.6; max-width: 650px; word-break: break-word;">${nonNamoTickets.join(", ")}</div>`;
+  <p style="margin: 0 0 6px 0;">The <strong>${pendingNonNamo} NON-NAMO PMS tickets</strong> will remain pending until the required approval is obtained:</p>
+  <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 4px; padding: 8px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 11pt; color: #854d0e; line-height: 1.5; max-width: 650px; word-break: break-word;">${nonNamoTickets.join(", ")}</div>`;
 
     nonNamoApprovalPostText = `\n\n━━━━━━━━━━━━━━━━━━━━\n**2. NON-NAMO PMS – APPROVAL REQUIREMENT**\n\nNON-NAMO PMS ticket cancellation requires the following mandatory approval:\n\n• RM Approval\n\nThe ${pendingNonNamo} NON-NAMO PMS tickets will remain pending until the required approval is obtained:\n${nonNamoTickets.join(", ")}`;
 
@@ -3909,11 +3899,11 @@ export function buildNamoExecutionSummary(
         .map((item, idx) => `${String.fromCharCode(65 + idx)}. ${item.title}\n${item.mailTextBody}`)
         .join("\n\n");
 
-    exceptionsMailHtml = `\n  <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">${exceptionsSectionNum}. Ticket-wise Cancellation Exceptions</p>` +
+    exceptionsMailHtml = `\n  <p style="font-weight: bold; font-size: 12pt; margin: 16px 0 6px 0;">${exceptionsSectionNum}. Ticket-wise Cancellation Exceptions</p>` +
       activeExceptions
         .map(
           (item, idx) =>
-            `\n  <p style="font-weight: bold; margin-top: 12px; margin-bottom: 6px;">${String.fromCharCode(65 + idx)}. ${item.title}</p>\n  ${item.mailHtmlBody}`
+            `\n  <p style="font-weight: bold; font-size: 12pt; margin: 12px 0 4px 0;">${String.fromCharCode(65 + idx)}. ${item.title}</p>\n  ${item.mailHtmlBody}`
         )
         .join("");
 
@@ -3938,12 +3928,12 @@ This is to inform you that the PMS ticket cancellation process has been executed
 ${mailTextTable}${nonNamoApprovalMailText}${exceptionsMailText}`;
 
   // 2. HTML Email
-  const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">
+  const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">
   ${renderEmailHeader("Dear Team,")}
-  <p style="margin-top: 0; margin-bottom: 12px;">This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
+  <p style="margin: 0 0 10px 0;">This is to inform you that the PMS ticket cancellation process has been executed for a total of <strong>${totalTickets} tickets</strong>.</p>
   
-  <p style="font-weight: bold; font-size: 14px; margin-top: 18px; margin-bottom: 6px;">1. PMS Ticket Cancellation Summary</p>
-  <table style="border-collapse: collapse; width: 100%; max-width: 650px; font-size: 13px; border: 1px solid #cbd5e1;">
+  <p style="font-weight: bold; font-size: 12pt; margin: 16px 0 6px 0;">1. PMS Ticket Cancellation Summary</p>
+  <table style="border-collapse: collapse; width: 100%; max-width: 650px; font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; border: 1px solid #cbd5e1;">
     <thead>
       <tr style="background-color: #f1f5f9; text-align: left;">
         <th style="padding: 6px 12px; border: 1px solid #cbd5e1;">Ticket Category / Status</th>
@@ -4193,24 +4183,24 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
 
     const summaryText = `Cancellation has been processed for NON-NAMO tickets.\n\nTotal Auto PMS Tickets: ${totalAuto}\nCancelled (NON-NAMO): ${successCount}\n${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}\n` : ""}${cleanOtherFailedCount > 0 ? `Failed NON-NAMO Tickets: ${cleanOtherFailedCount}\n` : ""}Total Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
 
-    const summaryHtml = `<p>Cancellation has been processed for NON-NAMO tickets.</p><p>Total Auto PMS Tickets: ${totalAuto}<br>Cancelled (NON-NAMO): ${successCount}<br>${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}<br>` : ""}${cleanOtherFailedCount > 0 ? `Failed NON-NAMO Tickets: ${cleanOtherFailedCount}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+    const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NON-NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${totalAuto}<br>Cancelled (NON-NAMO): ${successCount}<br>${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}<br>` : ""}${cleanOtherFailedCount > 0 ? `Failed NON-NAMO Tickets: ${cleanOtherFailedCount}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
 
     let lockedDetailsText = "";
     let lockedDetailsHtml = "";
     if (unifiedApprovalPendingCount > 0) {
       lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${unifiedApprovalPending.map((t: string) => `• ${t}`).join("\n")}`;
-      lockedDetailsHtml = `<br><p><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      lockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
     }
 
     let otherFailedDetailsText = "";
     let otherFailedDetailsHtml = "";
     if (cleanOtherFailedCount > 0) {
       otherFailedDetailsText = `\n\nFailed Tickets:\n${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-      otherFailedDetailsHtml = `<br><p><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      otherFailedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
     }
 
     const mailText = `Dear,\n${summaryText}${lockedDetailsText}${otherFailedDetailsText}\n\n${nonNamoResult.excludedSegmentText || nonNamoResult.namoMailSegmentText}`;
-    const mailHtml = `<p>Dear,</p>${summaryHtml}${lockedDetailsHtml}${otherFailedDetailsHtml}<br>${nonNamoResult.excludedSegmentHtml || nonNamoResult.namoMailSegmentHtml}`;
+    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${lockedDetailsHtml}${otherFailedDetailsHtml}${nonNamoResult.excludedSegmentHtml || nonNamoResult.namoMailSegmentHtml ? `<div style="margin-top: 12px;">${nonNamoResult.excludedSegmentHtml || nonNamoResult.namoMailSegmentHtml}</div>` : ""}</div>`;
     const postText = `@taguser \n${summaryText}${lockedDetailsText}${otherFailedDetailsText}\n\n${nonNamoResult.namoPostSegmentText || nonNamoResult.excludedSegmentText}`;
     const postHtml = `<p>@taguser </p>${summaryHtml}${lockedDetailsHtml}${otherFailedDetailsHtml}<br>${nonNamoResult.namoPostSegmentHtml || nonNamoResult.excludedSegmentHtml}`;
 
@@ -4243,13 +4233,13 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
       if (ccoResult.allSkippedTickets.length === 0) {
         const mailText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${totalCco}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`;
         const postText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${totalCco}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`;
-        const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}<p style="margin-top: 0; margin-bottom: 12px;">Cancellation has been done successfully.</p><p style="margin-top: 0; margin-bottom: 12px;">Total Tickets: ${totalCco}</p>${ccoApprovalExtra ? `<p style="margin-top: 0; margin-bottom: 12px;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
+        const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${totalCco}</p>${ccoApprovalExtra ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
         const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalCco}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
         return { mailText, mailHtml, postText, postHtml };
       }
       return {
         mailText: `${ccoResult.ccoMailOutputText}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`,
-        mailHtml: `${ccoResult.ccoMailOutputHtml}${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`,
+        mailHtml: `${ccoResult.ccoMailOutputHtml}${ccoApprovalExtra ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`,
         postText: `${ccoResult.ccoPostOutputText}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`,
         postHtml: `${ccoResult.ccoPostOutputHtml}${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`,
       };
@@ -4278,61 +4268,61 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
 
     const summaryText = `Cancellation has been processed for CCO tickets.\n\nTotal Tickets: ${totalCco}\nCancelled (CCO): ${successCount}\n${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}\n` : ""}${cleanOtherFailedCount > 0 ? `Failed CCO Tickets: ${cleanOtherFailedCount}\n` : ""}Total Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
 
-    const summaryHtml = `<p>Cancellation has been processed for CCO tickets.</p><p>Total Tickets: ${totalCco}<br>Cancelled (CCO): ${successCount}<br>${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}<br>` : ""}${cleanOtherFailedCount > 0 ? `Failed CCO Tickets: ${cleanOtherFailedCount}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+    const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for CCO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${totalCco}<br>Cancelled (CCO): ${successCount}<br>${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}<br>` : ""}${cleanOtherFailedCount > 0 ? `Failed CCO Tickets: ${cleanOtherFailedCount}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
 
     let lockedDetailsText = "";
     let lockedDetailsHtml = "";
     if (unifiedApprovalPendingCount > 0) {
       lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${unifiedApprovalPending.map((t: string) => `• ${t}`).join("\n")}`;
-      lockedDetailsHtml = `<br><p><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      lockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
     }
 
     let otherFailedDetailsText = "";
     let otherFailedDetailsHtml = "";
     if (cleanOtherFailedCount > 0) {
       otherFailedDetailsText = `\n\nFailed Tickets:\n${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-      otherFailedDetailsHtml = `<br><p><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      otherFailedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
     }
 
     let autoPmsDetailsText = "";
     let autoPmsDetailsHtml = "";
     if (ccoResult.autoPmsTickets.length > 0) {
       autoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
-      autoPmsDetailsHtml = `<br><p><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+      autoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
     }
 
     let mrCreatedDetailsText = "";
     let mrCreatedDetailsHtml = "";
     if (ccoResult.mrCreatedTickets && ccoResult.mrCreatedTickets.length > 0) {
       mrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
-      mrCreatedDetailsHtml = `<br><p><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+      mrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
     }
 
     let parentDetailsText = "";
     let parentDetailsHtml = "";
     if (ccoResult.parentWorkOrderTickets.length > 0) {
       parentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
-      parentDetailsHtml = `<br><p><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+      parentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
     }
 
     let completedDetailsText = "";
     let completedDetailsHtml = "";
     if (ccoResult.completedOrCanceledTickets.length > 0) {
       completedDetailsText = `\n\nAlready Completed / Canceled:\nThe following ticket(s) are already completed or canceled:\n${ccoResult.completedOrCanceledTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("\n")}`;
-      completedDetailsHtml = `<br><p><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:<br>${ccoResult.completedOrCanceledTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
+      completedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:<br>${ccoResult.completedOrCanceledTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
     }
 
     const detailSectionsText = `${lockedDetailsText}${otherFailedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}${completedDetailsText}`;
     const detailSectionsHtml = `${lockedDetailsHtml}${otherFailedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}${completedDetailsHtml}`;
 
     const tableText = ccoResult.excludedSegmentText ? `\n\n${ccoResult.excludedSegmentText}` : "";
-    const tableHtml = ccoResult.excludedSegmentHtml ? `<br>${ccoResult.excludedSegmentHtml}` : "";
+    const tableHtml = ccoResult.excludedSegmentHtml ? `<div style="margin-top: 12px;">${ccoResult.excludedSegmentHtml}</div>` : "";
 
     const approvalExtraBlock = ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : "";
-    const approvalExtraHtmlBlock = ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : "";
+    const approvalExtraHtmlBlock = ccoApprovalExtra ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : "";
 
     const mailText = `Dear,\n${summaryText}${detailSectionsText}${tableText}${approvalExtraBlock}`;
-    const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}${approvalExtraHtmlBlock}</div>`;
+    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}${approvalExtraHtmlBlock}</div>`;
     const postText = `@taguser \n${summaryText}${detailSectionsText}${tableText}${approvalExtraBlock}`;
     const postHtml = `<p>@taguser </p>${summaryHtml}${detailSectionsHtml}${tableHtml}${approvalExtraHtmlBlock}`;
 
@@ -4343,33 +4333,33 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
   if (totalFailedCount === 0) {
     const mailText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
     const postText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
-    const mailHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}<p style="margin-top: 0; margin-bottom: 12px;">Cancellation has been done successfully.</p><p style="margin-top: 0; margin-bottom: 12px;">Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<p style="margin-top: 0; margin-bottom: 12px;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
+    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
     const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
     return { mailText, mailHtml, postText, postHtml };
   }
 
   let bodyText = `Cancellation has been processed.\nTotal Tickets: ${totalTickets}\nCancelled Tickets: ${successCount}`;
-  let bodyHtml = `<p>Cancellation has been processed.<br>Total Tickets: ${totalTickets}<br>Cancelled Tickets: ${successCount}</p>`;
+  let bodyHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed.<br>Total Tickets: ${totalTickets}<br>Cancelled Tickets: ${successCount}</p>`;
 
   if (lockedTickets.length > 0) {
     bodyText += `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${lockedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-    bodyHtml += `<p><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${lockedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    bodyHtml += `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${lockedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
   }
 
   if (otherFailedCount > 0) {
     bodyText += `\n\nFailed Tickets:\n${otherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-    bodyHtml += `<p><b>Failed Tickets:</b><br>${otherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    bodyHtml += `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${otherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
   }
 
   if (ccoApprovalExtra) {
     bodyText += ccoApprovalExtra;
-    bodyHtml += `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>`;
+    bodyHtml += `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>`;
   }
 
   return {
     mailText: `Dear,\n${bodyText}`,
     postText: `@taguser \n${bodyText}`,
-    mailHtml: `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}${bodyHtml}</div>`,
+    mailHtml: `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${bodyHtml}</div>`,
     postHtml: `<p>@taguser </p>${bodyHtml}`,
   };
 }
