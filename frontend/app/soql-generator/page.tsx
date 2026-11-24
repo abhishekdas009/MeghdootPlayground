@@ -70,7 +70,8 @@ import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 
 
 
-import { classifyTicketPrefix, processAlgo1TicketClassification, processAlgo1CcoStep3Classification, type CcoAlgoResult, type CcoTicketItem, processAlgo2NamoClassification, type NamoAlgo2Result, processAlgo3NonNamoClassification, type NonNamoAlgo3Result, processAccountCheckClassification, type AccountCheckResult, type AccountCheckRow, buildNonNamoExecutionSummary, buildNamoExecutionSummary, isEntityLockedError, parseCancellationFailedResults, type ParsedFailedResult, buildCancellationStep5Output } from "@/lib/cancellation-algo";
+import { classifyTicketPrefix, processAlgo1TicketClassification, processAlgo1CcoStep3Classification, type CcoAlgoResult, type CcoTicketItem, processAlgo2NamoClassification, type NamoAlgo2Result, processAlgo3NonNamoClassification, type NonNamoAlgo3Result, processAccountCheckClassification, type AccountCheckResult, type AccountCheckRow, buildNonNamoExecutionSummary, buildNamoExecutionSummary, isEntityLockedError, parseCancellationFailedResults, type ParsedFailedResult, buildCancellationStep5Output, isStatusCanceled, isStatusCompleted } from "@/lib/cancellation-algo";
+import { downloadExcludedInsightsExcel } from "@/lib/cancellation-excel";
 import { parseAssetTransferPairs } from "@/lib/parsers";
 
 
@@ -9018,7 +9019,7 @@ function AccountCheckHandoverModal({
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-border/70 dark:border-white/[0.08] flex items-center justify-between gap-4 bg-muted/20 dark:bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
               <FileText className="h-5 w-5" />
             </div>
             <div>
@@ -9026,7 +9027,7 @@ function AccountCheckHandoverModal({
                 <h3 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
                   Executive Shift Handover & Escalation Summary
                 </h3>
-                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/25 px-2 py-0.5">
+                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-300 border-blue-500/25 px-2 py-0.5">
                   Live Report
                 </Badge>
               </div>
@@ -9343,6 +9344,8 @@ function CancellationHandoverModal({
       : isNamo
       ? (namoResult?.completedOrCanceledTickets || [])
       : (nonNamoResult?.completedOrCanceledTickets || []);
+    const canceledList = completedList.filter((t) => isStatusCanceled(t.status));
+    const completedOnlyList = completedList.filter((t) => !isStatusCanceled(t.status));
     const unverifiedList = isCco
       ? []
       : isNamo
@@ -9384,7 +9387,8 @@ function CancellationHandoverModal({
       isCco
         ? (groupMismatchList.length > 0 ? `• *Auto PMS Tickets (Skipped from CCO):* \`${groupMismatchList.length}\`` : null)
         : `• *Account Group Mismatch (${isNamo ? "NON-NAMO" : "NAMO"}):* \`${groupMismatchList.length}\``,
-      completedList.length > 0 ? `• *Already Completed / Canceled:* \`${completedList.length}\`` : null,
+      completedOnlyList.length > 0 ? `• *Already Completed:* \`${completedOnlyList.length}\`` : null,
+      canceledList.length > 0 ? `• *Already Canceled:* \`${canceledList.length}\`` : null,
       unverifiedList.length > 0 ? `• *Unverified / Blank Group:* \`${unverifiedList.length}\`` : null,
       ``,
       `*🎯 Operational Next Actions & Directives:*`,
@@ -9432,7 +9436,8 @@ function CancellationHandoverModal({
       isCco
         ? `• Auto PMS Tickets          : ${groupMismatchList.length} (Skipped from CCO - requires approval)`
         : `• Account Group Mismatch    : ${groupMismatchList.length} (${isNamo ? "NON-NAMO" : "NAMO"} Group - ${isNamo ? "Requires RM Approval" : "Requires RM + CPSD/UCPG Approval"})`,
-      `• Already Completed/Canceled: ${completedList.length}`,
+      completedOnlyList.length > 0 ? `• Already Completed         : ${completedOnlyList.length}` : null,
+      canceledList.length > 0 ? `• Already Canceled          : ${canceledList.length}` : null,
       `• Unverified / Blank Group  : ${unverifiedList.length}`,
       ``,
       `3. NEXT ACTION DIRECTIVES`,
@@ -9457,6 +9462,8 @@ function CancellationHandoverModal({
       mrList,
       groupMismatchList,
       completedList,
+      completedOnlyList,
+      canceledList,
       unverifiedList,
       skippedList,
       timestamp,
@@ -9474,7 +9481,8 @@ function CancellationHandoverModal({
     const parentSet = new Set(summaryData.parentList.map((t) => t.ticket));
     const mrSet = new Set(summaryData.mrList.map((t) => t.ticket));
     const groupSet = new Set(summaryData.groupMismatchList.map((t) => t.ticket));
-    const completedSet = new Set(summaryData.completedList.map((t) => t.ticket));
+    const canceledSet = new Set(summaryData.canceledList.map((t) => t.ticket));
+    const completedOnlySet = new Set(summaryData.completedOnlyList.map((t) => t.ticket));
     const unverifiedSet = new Set(summaryData.unverifiedList.map((t) => t.ticket));
 
     return result.allRecords.map((item) => {
@@ -9504,10 +9512,14 @@ function CancellationHandoverModal({
         reason = isCco
           ? "Auto PMS ticket (Excluded from CCO Cancellation - requires approval)"
           : `Account Group Mismatch (${item.accountGroupName || "Opposite Group"})`;
-      } else if (completedSet.has(item.ticket)) {
-        category = "Completed/Canceled";
+      } else if (canceledSet.has(item.ticket)) {
+        category = "Canceled";
+        badgeColor = "rose";
+        reason = `Already Canceled in Salesforce`;
+      } else if (completedOnlySet.has(item.ticket)) {
+        category = "Completed";
         badgeColor = "slate";
-        reason = `Already ${item.status || "Closed"}`;
+        reason = `Already ${item.status || "Completed"} in Salesforce`;
       } else if (unverifiedSet.has(item.ticket)) {
         category = "Unverified";
         badgeColor = "slate";
@@ -9536,7 +9548,8 @@ function CancellationHandoverModal({
         if (selectedCategory === "parent" && row.category !== "Parent Tickets") return false;
         if (selectedCategory === "mr" && row.category !== "MR Raised") return false;
         if (selectedCategory === "group" && !row.category.includes("Group") && !row.category.includes("Auto PMS")) return false;
-        if (selectedCategory === "completed" && row.category !== "Completed/Canceled") return false;
+        if (selectedCategory === "canceled" && row.category !== "Canceled") return false;
+        if (selectedCategory === "completed" && row.category !== "Completed") return false;
         if (selectedCategory === "unverified" && row.category !== "Unverified") return false;
       }
       if (searchQuery.trim()) {
@@ -9594,7 +9607,7 @@ function CancellationHandoverModal({
         {/* Header */}
         <div className="p-5 sm:p-6 border-b border-border/70 dark:border-white/[0.08] flex items-center justify-between gap-4 bg-muted/20 dark:bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
               <FileText className="h-5 w-5" />
             </div>
             <div>
@@ -9602,7 +9615,7 @@ function CancellationHandoverModal({
                 <h3 className="text-lg sm:text-xl font-black text-foreground tracking-tight">
                   Executive Shift Handover & Segregation Audit
                 </h3>
-                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/25 px-2 py-0.5">
+                <Badge variant="outline" className="text-[10px] font-black uppercase tracking-wider bg-blue-500/10 text-blue-300 border-blue-500/25 px-2 py-0.5">
                   {type} Live Audit
                 </Badge>
               </div>
@@ -9621,7 +9634,7 @@ function CancellationHandoverModal({
         </div>
 
         {/* KPI Mini-Ribbon */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 p-4 sm:p-5 pb-2 border-b border-border/40 dark:border-white/[0.05] bg-muted/10 dark:bg-white/[0.01]">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 p-4 sm:p-5 pb-2 border-b border-border/40 dark:border-white/[0.05] bg-muted/10 dark:bg-white/[0.01]">
           {/* Total */}
           <div className="p-2.5 rounded-xl border border-slate-200/60 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.02]">
             <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Total Analyzed</span>
@@ -9630,41 +9643,59 @@ function CancellationHandoverModal({
           </div>
 
           {/* Ready */}
-          <div className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
-            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Ready to Cancel</span>
-            <div className="text-lg font-black text-emerald-600 dark:text-emerald-400 mt-0.5 font-mono">{summaryData.readyList.length}</div>
-            <span className="text-[9px] text-emerald-600/70 dark:text-emerald-400/70">Clean payload</span>
+          <div className="p-2.5 rounded-xl border border-blue-500/30 bg-blue-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-blue-400">Ready to Cancel</span>
+            <div className="text-lg font-black text-blue-400 mt-0.5 font-mono">{summaryData.readyList.length}</div>
+            <span className="text-[9px] text-blue-400/70">Clean payload</span>
           </div>
 
-          {/* Approval */}
-          <div className="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/5">
-            <span className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">Approval Pending</span>
-            <div className="text-lg font-black text-amber-600 dark:text-amber-400 mt-0.5 font-mono">{summaryData.approvalList.length}</div>
-            <span className="text-[9px] text-amber-600/70 dark:text-amber-400/70">Locked in SF</span>
-          </div>
-
-          {/* Parent */}
-          <div className="p-2.5 rounded-xl border border-purple-500/30 bg-purple-500/5">
-            <span className="text-[9px] font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">Parent Tickets</span>
-            <div className="text-lg font-black text-purple-600 dark:text-purple-400 mt-0.5 font-mono">{summaryData.parentList.length}</div>
-            <span className="text-[9px] text-purple-600/70 dark:text-purple-400/70">Parent Linked</span>
+          {/* Canceled */}
+          <div className="p-2.5 rounded-xl border border-white/10 bg-white/[0.02]">
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Canceled</span>
+            <div className="text-lg font-black text-slate-200 mt-0.5 font-mono">{summaryData.canceledList.length}</div>
+            <span className="text-[9px] text-slate-400/70">Already in SF</span>
           </div>
 
           {/* MR Raised */}
-          <div className="p-2.5 rounded-xl border border-rose-500/30 bg-rose-500/5">
-            <span className="text-[9px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400">MR Raised</span>
-            <div className="text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5 font-mono">{summaryData.mrList.length}</div>
-            <span className="text-[9px] text-rose-600/70 dark:text-rose-400/70">Material Request</span>
+          <div className="p-2.5 rounded-xl border border-blue-400/25 bg-blue-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-blue-300">MR Raised</span>
+            <div className="text-lg font-black text-blue-300 mt-0.5 font-mono">{summaryData.mrList.length}</div>
+            <span className="text-[9px] text-blue-300/70">Material Request</span>
           </div>
 
-          {/* Group Mismatch */}
-          <div className="p-2.5 rounded-xl border border-sky-500/30 bg-sky-500/5">
-            <span className="text-[9px] font-black uppercase tracking-wider text-sky-600 dark:text-sky-400">
-              {isNamo ? "NON-NAMO Group" : "NAMO Group"}
-            </span>
-            <div className="text-lg font-black text-sky-600 dark:text-sky-400 mt-0.5 font-mono">{summaryData.groupMismatchList.length}</div>
-            <span className="text-[9px] text-sky-600/70 dark:text-sky-400/70">Account Mismatch</span>
+          {/* Approval */}
+          <div className="p-2.5 rounded-xl border border-white/10 bg-white/[0.02]">
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Approval Pending</span>
+            <div className="text-lg font-black text-slate-200 mt-0.5 font-mono">{summaryData.approvalList.length}</div>
+            <span className="text-[9px] text-slate-400/70">Locked in SF</span>
           </div>
+
+          {/* Parent */}
+          <div className="p-2.5 rounded-xl border border-white/10 bg-white/[0.02]">
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Parent Tickets</span>
+            <div className="text-lg font-black text-slate-200 mt-0.5 font-mono">{summaryData.parentList.length}</div>
+            <span className="text-[9px] text-slate-400/70">Parent Linked</span>
+          </div>
+
+          {/* Group Mismatch / Auto PMS */}
+          <div className="p-2.5 rounded-xl border border-blue-500/25 bg-blue-500/5">
+            <span className="text-[9px] font-black uppercase tracking-wider text-blue-300">
+              {isCco ? "Auto PMS (Excluded)" : isNamo ? "NON-NAMO Group" : "NAMO Group"}
+            </span>
+            <div className="text-lg font-black text-blue-300 mt-0.5 font-mono">{summaryData.groupMismatchList.length}</div>
+            <span className="text-[9px] text-blue-300/70">
+              {isCco ? "Requires Approval" : "Account Mismatch"}
+            </span>
+          </div>
+
+          {/* Completed (if any) */}
+          {summaryData.completedOnlyList.length > 0 && (
+            <div className="p-2.5 rounded-xl border border-slate-500/30 bg-slate-500/5">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Completed</span>
+              <div className="text-lg font-black text-slate-300 mt-0.5 font-mono">{summaryData.completedOnlyList.length}</div>
+              <span className="text-[9px] text-muted-foreground">Already in SF</span>
+            </div>
+          )}
         </div>
 
         {/* Tab Selector & Actions Toolbar */}
@@ -9676,7 +9707,7 @@ function CancellationHandoverModal({
               className={cn(
                 "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
                 activeTab === "tickets"
-                  ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -9689,7 +9720,7 @@ function CancellationHandoverModal({
               className={cn(
                 "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
                 activeTab === "teams"
-                  ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -9702,7 +9733,7 @@ function CancellationHandoverModal({
               className={cn(
                 "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
                 activeTab === "email"
-                  ? "bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-300 shadow-xs"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -9717,7 +9748,7 @@ function CancellationHandoverModal({
                 variant="outline"
                 size="sm"
                 onClick={handleCopyFilteredTickets}
-                className="h-8 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg gap-1.5 shadow-sm"
+                className="h-8 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg gap-1.5 shadow-sm"
               >
                 <Copy className="h-3.5 w-3.5" />
                 <span>Copy Visible Tickets ({filteredTickets.length})</span>
@@ -9732,7 +9763,7 @@ function CancellationHandoverModal({
                     activeTab === "teams" ? "Teams / Slack" : "Email"
                   )
                 }
-                className="h-8 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg gap-1.5 shadow-sm"
+                className="h-8 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg gap-1.5 shadow-sm"
               >
                 <Copy className="h-3.5 w-3.5" />
                 <span>{copiedFormat ? "Copied!" : `Copy ${activeTab === "teams" ? "Teams Markdown" : "Email Text"}`}</span>
@@ -9747,6 +9778,24 @@ function CancellationHandoverModal({
             >
               <Download className="h-3.5 w-3.5" />
               <span>Download .txt</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                downloadExcludedInsightsExcel({
+                  cancellationType: type,
+                  namoResult,
+                  nonNamoResult,
+                  ccoResult,
+                });
+              }}
+              className="h-8 text-xs font-bold rounded-lg gap-1.5 shadow-sm border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300"
+              title="Download multi-sheet Excluded Tickets Excel (.xlsx)"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span>Download .xlsx</span>
             </Button>
           </div>
         </div>
@@ -9773,7 +9822,12 @@ function CancellationHandoverModal({
                       : [
                           { id: "group", label: isNamo ? "NON-NAMO Group" : "NAMO Group", count: summaryData.groupMismatchList.length },
                         ]),
-                    { id: "completed", label: "Completed/Canceled", count: summaryData.completedList.length },
+                    ...(summaryData.canceledList.length > 0
+                      ? [{ id: "canceled", label: "Canceled", count: summaryData.canceledList.length }]
+                      : []),
+                    ...(summaryData.completedOnlyList.length > 0
+                      ? [{ id: "completed", label: "Completed", count: summaryData.completedOnlyList.length }]
+                      : []),
                     ...(isCco ? [] : [{ id: "unverified", label: "Unverified", count: summaryData.unverifiedList.length }]),
                   ]
                     .filter((chip) => chip.id === "all" || chip.count > 0)
@@ -9785,7 +9839,7 @@ function CancellationHandoverModal({
                         className={cn(
                           "px-2.5 py-1 rounded-lg text-xs font-bold transition-all border",
                           selectedCategory === chip.id
-                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                             : "bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-slate-300 border-slate-200/60 dark:border-white/[0.08] hover:bg-slate-200 dark:hover:bg-white/[0.08]"
                         )}
                       >
@@ -9845,14 +9899,8 @@ function CancellationHandoverModal({
                                 className={cn(
                                   "h-1.5 w-1.5 rounded-full shrink-0",
                                   row.badgeColor === "emerald"
-                                    ? "bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.8)]"
-                                    : row.badgeColor === "amber"
-                                    ? "bg-amber-400 shadow-[0_0_6px_rgba(245,158,11,0.8)]"
-                                    : row.badgeColor === "purple"
-                                    ? "bg-purple-400 shadow-[0_0_6px_rgba(168,85,247,0.8)]"
-                                    : row.badgeColor === "sky"
-                                    ? "bg-sky-400 shadow-[0_0_6px_rgba(56,189,248,0.8)]"
-                                    : "bg-rose-400 shadow-[0_0_6px_rgba(244,63,94,0.8)]"
+                                    ? "bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]"
+                                    : "bg-slate-400 shadow-[0_0_6px_rgba(255,255,255,0.4)]"
                                 )}
                               />
                               <span className="font-mono">{row.ticket}</span>
@@ -9863,11 +9911,7 @@ function CancellationHandoverModal({
                               className={cn(
                                 "font-bold text-xs font-sans",
                                 row.type === "Auto PMS"
-                                  ? "text-amber-400"
-                                  : row.type === "Breakdown"
-                                  ? "text-rose-400"
-                                  : row.type === "Service"
-                                  ? "text-sky-400"
+                                  ? "text-blue-300"
                                   : "text-slate-300"
                               )}
                             >
@@ -9890,14 +9934,8 @@ function CancellationHandoverModal({
                               className={cn(
                                 "text-[11px] font-sans font-semibold",
                                 row.badgeColor === "emerald"
-                                  ? "text-emerald-400"
-                                  : row.badgeColor === "amber"
-                                  ? "text-amber-400"
-                                  : row.badgeColor === "purple"
-                                  ? "text-purple-400"
-                                  : row.badgeColor === "sky"
-                                  ? "text-sky-400"
-                                  : "text-rose-400/90"
+                                  ? "text-blue-300"
+                                  : "text-slate-400"
                               )}
                             >
                               {row.reason}
@@ -12040,6 +12078,8 @@ export default function SOQLGeneratorPage() {
         autoPmsTickets: [],
         parentWorkOrderTickets: [],
         completedOrCanceledTickets: [],
+        canceledTickets: [],
+        completedTickets: [],
         approvalPendingTickets: [],
         mrCreatedTickets: [],
         allRecords: [],
@@ -12052,11 +12092,8 @@ export default function SOQLGeneratorPage() {
         excludedSegmentHtml: "",
       };
     }
-    return processAlgo1CcoStep3Classification(
-      cancellationExecutionInput,
-      parsedTickets
-    );
-  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
+    return processAlgo1CcoStep3Classification(cancellationExecutionInput);
+  }, [cancellationType, cancellationExecutionInput]);
 
   // ALGO 2: NAMO Page Auto PMS Cancellation Filtering & Output Logic
   const namoAlgo2Result = React.useMemo<NamoAlgo2Result>(() => {
@@ -12067,6 +12104,8 @@ export default function SOQLGeneratorPage() {
         nonNamoTickets: [],
         parentWorkOrderTickets: [],
         completedOrCanceledTickets: [],
+        canceledTickets: [],
+        completedTickets: [],
         unclassifiedTickets: [],
         approvalPendingTickets: [],
         mrCreatedTickets: [],
@@ -12085,11 +12124,8 @@ export default function SOQLGeneratorPage() {
         namoPostOutputHtml: "",
       };
     }
-    return processAlgo2NamoClassification(
-      cancellationExecutionInput,
-      parsedTickets
-    );
-  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
+    return processAlgo2NamoClassification(cancellationExecutionInput);
+  }, [cancellationType, cancellationExecutionInput]);
 
   // ALGO 3: NON-NAMO Page Auto PMS Cancellation Filtering & Output Logic
   const nonNamoAlgo3Result = React.useMemo<NonNamoAlgo3Result>(() => {
@@ -12100,6 +12136,8 @@ export default function SOQLGeneratorPage() {
         namoTickets: [],
         parentWorkOrderTickets: [],
         completedOrCanceledTickets: [],
+        canceledTickets: [],
+        completedTickets: [],
         unclassifiedTickets: [],
         approvalPendingTickets: [],
         mrCreatedTickets: [],
@@ -12118,11 +12156,8 @@ export default function SOQLGeneratorPage() {
         nonNamoPostOutputHtml: "",
       };
     }
-    return processAlgo3NonNamoClassification(
-      cancellationExecutionInput,
-      parsedTickets
-    );
-  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
+    return processAlgo3NonNamoClassification(cancellationExecutionInput);
+  }, [cancellationType, cancellationExecutionInput]);
 
   // ALGO 4 / Account Check: Classification and Parser Result
   const accountCheckResult = React.useMemo<AccountCheckResult>(() => {
@@ -12141,11 +12176,8 @@ export default function SOQLGeneratorPage() {
         mrCreatedCount: 0,
       };
     }
-    return processAccountCheckClassification(
-      cancellationExecutionInput,
-      parsedTickets
-    );
-  }, [cancellationType, cancellationExecutionInput, parsedTickets]);
+    return processAccountCheckClassification(cancellationExecutionInput);
+  }, [cancellationType, cancellationExecutionInput]);
 
   const filteredAccountCheckRows = React.useMemo(() => {
     let rows = accountCheckResult.allRows;
@@ -14728,33 +14760,41 @@ AND Ticket_Numbers__c IN (
 
 
   const handleCancellationResultPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-
-
-
     const pastedText = event.clipboardData.getData("text");
-
-
-
     if (!pastedText.trim()) return;
-
-
-
-
-
-
 
     event.preventDefault();
 
+    const target = event.currentTarget;
+    const selectionStart = target.selectionStart;
+    const selectionEnd = target.selectionEnd;
 
+    setCancellationExecutionInput((prev) => {
+      const cleanPrev = prev.trim();
+      if (!cleanPrev) return pastedText;
 
-    setCancellationExecutionInput(pastedText);
+      // If user selected all text (Ctrl+A), replace completely
+      if (
+        typeof selectionStart === "number" &&
+        typeof selectionEnd === "number" &&
+        selectionStart === 0 &&
+        selectionEnd === target.value.length
+      ) {
+        return pastedText;
+      }
 
+      // If user selected a specific range, replace that selection
+      if (
+        typeof selectionStart === "number" &&
+        typeof selectionEnd === "number" &&
+        selectionStart !== selectionEnd
+      ) {
+        return prev.slice(0, selectionStart) + pastedText + prev.slice(selectionEnd);
+      }
 
-
-    // appendCancellationResultBatch decoupled
-
-
-
+      // Otherwise, append the new batch (e.g. Batch 2, 3, 4) to existing batches
+      return cleanPrev + "\n" + pastedText;
+    });
   };
 
 
@@ -25177,7 +25217,7 @@ BSL22295338      CID-6074821`}
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg shadow-sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm"
                                 onClick={() => setShowCancellationHandoverModal(true)}
                                 title="Open Executive Shift Handover & Segregation Audit"
                               >
@@ -25187,7 +25227,7 @@ BSL22295338      CID-6074821`}
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 gap-1.5 text-xs font-bold border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shadow-sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-blue-400/40 bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 rounded-lg shadow-sm"
                                   onClick={() => {
                                     const tkts = readyList.map((t) => t.ticket).filter(Boolean);
                                     navigator.clipboard.writeText(tkts.join("\n"));
@@ -25201,7 +25241,7 @@ BSL22295338      CID-6074821`}
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 gap-1.5 text-xs font-bold border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 rounded-lg shadow-sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-white/15 bg-white/[0.05] hover:bg-white/10 text-slate-300 rounded-lg shadow-sm"
                                   onClick={() => {
                                     const tkts = skippedList.map((t) => t.ticket).filter(Boolean);
                                     navigator.clipboard.writeText(tkts.join("\n"));
@@ -25209,6 +25249,24 @@ BSL22295338      CID-6074821`}
                                   }}
                                 >
                                   <Copy className="h-3.5 w-3.5" /> Copy All Excluded ({skippedList.length})
+                                </Button>
+                              )}
+                              {skippedList.length > 0 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm"
+                                  onClick={() => {
+                                    downloadExcludedInsightsExcel({
+                                      cancellationType,
+                                      ccoResult: ccoAlgoResult,
+                                      namoResult: namoAlgo2Result,
+                                      nonNamoResult: nonNamoAlgo3Result,
+                                    });
+                                  }}
+                                  title="Download Multi-Sheet Excluded Tickets Excel (.xlsx)"
+                                >
+                                  <FileSpreadsheet className="h-3.5 w-3.5 text-blue-400" /> Excluded Sheet ({skippedList.length})
                                 </Button>
                               )}
                             </div>
@@ -25227,6 +25285,16 @@ BSL22295338      CID-6074821`}
                         const groupMismatchList = isCco ? ccoAlgoResult.autoPmsTickets : isNamo ? namoAlgo2Result.nonNamoTickets : nonNamoAlgo3Result.namoTickets;
                         const parentList = isCco ? ccoAlgoResult.parentWorkOrderTickets : isNamo ? namoAlgo2Result.parentWorkOrderTickets : nonNamoAlgo3Result.parentWorkOrderTickets;
                         const completedList = isCco ? ccoAlgoResult.completedOrCanceledTickets : isNamo ? namoAlgo2Result.completedOrCanceledTickets : nonNamoAlgo3Result.completedOrCanceledTickets;
+                        const canceledOnlyList = isCco
+                          ? (ccoAlgoResult.canceledTickets || completedList.filter((t) => isStatusCanceled(t.status)))
+                          : isNamo
+                          ? (namoAlgo2Result.canceledTickets || completedList.filter((t) => isStatusCanceled(t.status)))
+                          : (nonNamoAlgo3Result.canceledTickets || completedList.filter((t) => isStatusCanceled(t.status)));
+                        const completedOnlyList = isCco
+                          ? (ccoAlgoResult.completedTickets || completedList.filter((t) => !isStatusCanceled(t.status)))
+                          : isNamo
+                          ? (namoAlgo2Result.completedTickets || completedList.filter((t) => !isStatusCanceled(t.status)))
+                          : (nonNamoAlgo3Result.completedTickets || completedList.filter((t) => !isStatusCanceled(t.status)));
                         const unverifiedList = isCco ? [] : isNamo ? namoAlgo2Result.unclassifiedTickets : nonNamoAlgo3Result.unclassifiedTickets;
                         const nonPmsList = isCco ? [] : isNamo ? namoAlgo2Result.nonAutoPmsTickets : nonNamoAlgo3Result.nonAutoPmsTickets;
                         const approvalPendingList = isCco ? ccoAlgoResult.approvalPendingTickets : isNamo ? namoAlgo2Result.approvalPendingTickets : nonNamoAlgo3Result.approvalPendingTickets;
@@ -25258,27 +25326,27 @@ BSL22295338      CID-6074821`}
                                   navigator.clipboard.writeText(tkts.join("\n"));
                                   toast.success(`Copied ${tkts.length} Ready tickets!`);
                                 }}
-                                className="relative rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-emerald-400/50 hover:bg-emerald-500/10 hover:shadow-[0_4px_16px_rgba(16,185,129,0.12)] group select-none active:scale-[0.98]"
+                                className="relative rounded-xl border border-blue-500/30 bg-blue-500/[0.08] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-blue-400/50 hover:bg-blue-500/15 hover:shadow-[0_4px_16px_rgba(59,130,246,0.15)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-400 dark:text-blue-300 leading-none truncate">
                                     Ready to Cancel
                                   </span>
-                                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)] shrink-0" />
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-emerald-600 dark:text-emerald-300 leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-white dark:text-blue-100 leading-none">
                                       {readyList.length.toLocaleString()}
                                     </span>
-                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
-                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-slate-400/70 ml-1">
                                       {total > 0 ? ((readyList.length / total) * 100).toFixed(0) : "0"}%
                                     </span>
                                   </div>
                                   <button
                                     disabled={readyList.length === 0}
-                                    className="h-6 w-6 rounded-md bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-500 dark:text-emerald-400 hover:bg-emerald-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    className="h-6 w-6 rounded-md bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-300 hover:bg-blue-500/30 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const tkts = readyList.map((t) => t.ticket).filter(Boolean);
@@ -25301,27 +25369,27 @@ BSL22295338      CID-6074821`}
                                   navigator.clipboard.writeText(tkts.join("\n"));
                                   toast.success(`Copied ${tkts.length} Approval Pending tickets!`);
                                 }}
-                                className="relative rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-amber-400/50 hover:bg-amber-500/10 hover:shadow-[0_4px_16px_rgba(245,158,11,0.12)] group select-none active:scale-[0.98]"
+                                className="relative rounded-xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(255,255,255,0.05)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-200 leading-none truncate">
                                     Approval Pending
                                   </span>
-                                  <span className="inline-flex h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.8)] shrink-0" />
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-slate-400 dark:bg-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-amber-600 dark:text-amber-300 leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-white leading-none">
                                       {approvalPendingList.length.toLocaleString()}
                                     </span>
-                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
-                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-slate-400/70 ml-1">
                                       {total > 0 ? ((approvalPendingList.length / total) * 100).toFixed(0) : "0"}%
                                     </span>
                                   </div>
                                   <button
                                     disabled={approvalPendingList.length === 0}
-                                    className="h-6 w-6 rounded-md bg-amber-500/15 border border-amber-500/25 flex items-center justify-center text-amber-500 dark:text-amber-400 hover:bg-amber-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    className="h-6 w-6 rounded-md bg-white/10 border border-white/15 flex items-center justify-center text-slate-200 hover:bg-white/20 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const tkts = approvalPendingList.map((t) => t.ticket).filter(Boolean);
@@ -25344,27 +25412,27 @@ BSL22295338      CID-6074821`}
                                   navigator.clipboard.writeText(tkts.join("\n"));
                                   toast.success(`Copied ${tkts.length} Parent Linked tickets!`);
                                 }}
-                                className="relative rounded-xl border border-purple-500/25 bg-purple-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-purple-400/50 hover:bg-purple-500/10 hover:shadow-[0_4px_16px_rgba(168,85,247,0.12)] group select-none active:scale-[0.98]"
+                                className="relative rounded-xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(255,255,255,0.05)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-200 leading-none truncate">
                                     Parent Tickets
                                   </span>
-                                  <span className="inline-flex h-2 w-2 rounded-full bg-purple-500 shadow-[0_0_6px_rgba(168,85,247,0.8)] shrink-0" />
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-slate-400 dark:bg-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-purple-600 dark:text-purple-300 leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-white leading-none">
                                       {parentList.length.toLocaleString()}
                                     </span>
-                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
-                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-slate-400/70 ml-1">
                                       {total > 0 ? ((parentList.length / total) * 100).toFixed(0) : "0"}%
                                     </span>
                                   </div>
                                   <button
                                     disabled={parentList.length === 0}
-                                    className="h-6 w-6 rounded-md bg-purple-500/15 border border-purple-500/25 flex items-center justify-center text-purple-500 dark:text-purple-400 hover:bg-purple-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    className="h-6 w-6 rounded-md bg-white/10 border border-white/15 flex items-center justify-center text-slate-200 hover:bg-white/20 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const tkts = parentList.map((t) => t.ticket).filter(Boolean);
@@ -25387,27 +25455,27 @@ BSL22295338      CID-6074821`}
                                   navigator.clipboard.writeText(tkts.join("\n"));
                                   toast.success(`Copied ${tkts.length} MR Raised tickets!`);
                                 }}
-                                className="relative rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-rose-400/50 hover:bg-rose-500/10 hover:shadow-[0_4px_16px_rgba(244,63,94,0.12)] group select-none active:scale-[0.98]"
+                                className="relative rounded-xl border border-blue-400/25 bg-blue-500/[0.05] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-blue-400/40 hover:bg-blue-500/10 hover:shadow-[0_4px_16px_rgba(59,130,246,0.1)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 dark:text-sky-300 leading-none truncate">
                                     MR Raised
                                   </span>
-                                  <span className="inline-flex h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)] shrink-0" />
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.7)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-rose-600 dark:text-rose-300 leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-white dark:text-sky-100 leading-none">
                                       {mrCreatedList.length.toLocaleString()}
                                     </span>
-                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
-                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-slate-400/70 ml-1">
                                       {total > 0 ? ((mrCreatedList.length / total) * 100).toFixed(0) : "0"}%
                                     </span>
                                   </div>
                                   <button
                                     disabled={mrCreatedList.length === 0}
-                                    className="h-6 w-6 rounded-md bg-rose-500/15 border border-rose-500/25 flex items-center justify-center text-rose-500 dark:text-rose-400 hover:bg-rose-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    className="h-6 w-6 rounded-md bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-300 hover:bg-blue-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const tkts = mrCreatedList.map((t) => t.ticket).filter(Boolean);
@@ -25430,27 +25498,27 @@ BSL22295338      CID-6074821`}
                                   navigator.clipboard.writeText(tkts.join("\n"));
                                   toast.success(`Copied ${tkts.length} tickets!`);
                                 }}
-                                className="relative rounded-xl border border-sky-500/25 bg-sky-500/[0.06] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-sky-400/50 hover:bg-sky-500/10 hover:shadow-[0_4px_16px_rgba(56,189,248,0.12)] group select-none active:scale-[0.98]"
+                                className="relative rounded-xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(255,255,255,0.05)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-200 leading-none truncate">
                                     {isCco ? "AUTO PMS (EXCLUDED)" : isNamo ? "NON-NAMO GROUP" : "NAMO GROUP"}
                                   </span>
-                                  <span className="inline-flex h-2 w-2 rounded-full bg-sky-500 shadow-[0_0_6px_rgba(56,189,248,0.8)] shrink-0" />
+                                  <span className="inline-flex h-2 w-2 rounded-full bg-slate-400 dark:bg-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-sky-600 dark:text-sky-300 leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-white leading-none">
                                       {groupMismatchList.length.toLocaleString()}
                                     </span>
-                                    <span className="text-[8px] font-bold text-muted-foreground/60 uppercase">WOs</span>
-                                    <span className="text-[9px] font-mono font-bold text-muted-foreground/50 ml-1">
+                                    <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
+                                    <span className="text-[9px] font-mono font-bold text-slate-400/70 ml-1">
                                       {total > 0 ? ((groupMismatchList.length / total) * 100).toFixed(0) : "0"}%
                                     </span>
                                   </div>
                                   <button
                                     disabled={groupMismatchList.length === 0}
-                                    className="h-6 w-6 rounded-md bg-sky-500/15 border border-sky-500/25 flex items-center justify-center text-sky-500 dark:text-sky-400 hover:bg-sky-500/25 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
+                                    className="h-6 w-6 rounded-md bg-white/10 border border-white/15 flex items-center justify-center text-slate-200 hover:bg-white/20 transition-all shrink-0 disabled:opacity-30 disabled:cursor-not-allowed active:scale-90"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const tkts = groupMismatchList.map((t) => t.ticket).filter(Boolean);
@@ -25480,12 +25548,12 @@ BSL22295338      CID-6074821`}
                                   className={cn(
                                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
                                     groupMismatchList.length > 0
-                                      ? "border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                      ? "border-blue-500/30 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 cursor-pointer active:scale-95 shadow-xs"
                                       : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
                                   )}
                                   title={groupMismatchList.length > 0 ? "Click to copy Auto PMS tickets" : "No Auto PMS tickets"}
                                 >
-                                  <span className="h-1.5 w-1.5 rounded-full bg-sky-500 shrink-0" />
+                                  <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", groupMismatchList.length > 0 ? "bg-blue-400 shadow-[0_0_6px_rgba(96,165,250,0.8)]" : "bg-slate-400")} />
                                   <span>Auto PMS: <strong>{groupMismatchList.length}</strong></span>
                                   <Copy className="h-3 w-3 opacity-70 ml-0.5" />
                                 </div>
@@ -25499,12 +25567,12 @@ BSL22295338      CID-6074821`}
                                   className={cn(
                                     "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
                                     nonPmsList.length > 0
-                                      ? "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300 hover:bg-rose-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                      ? "border-white/20 bg-white/10 text-white hover:bg-white/15 cursor-pointer active:scale-95 shadow-xs"
                                       : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
                                   )}
                                   title={nonPmsList.length > 0 ? "Click to copy NON PMS tickets" : "No NON PMS tickets"}
                                 >
-                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500 shrink-0" />
+                                  <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", nonPmsList.length > 0 ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.6)]" : "bg-slate-400")} />
                                   <span>NON PMS: <strong>{nonPmsList.length}</strong></span>
                                   <Copy className="h-3 w-3 opacity-70 ml-0.5" />
                                 </div>
@@ -25513,21 +25581,42 @@ BSL22295338      CID-6074821`}
                               {/* Completed Badge */}
                               <div
                                 onClick={() => {
-                                  const tkts = completedList.map((t) => t.ticket).filter(Boolean);
+                                  const tkts = completedOnlyList.map((t) => t.ticket).filter(Boolean);
                                   if (tkts.length === 0) return;
                                   navigator.clipboard.writeText(tkts.join("\n"));
                                   toast.success(`Copied ${tkts.length} Completed tickets!`);
                                 }}
                                 className={cn(
                                   "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
-                                  completedList.length > 0
-                                    ? "border-slate-500/30 bg-slate-500/10 text-slate-700 dark:text-slate-300 hover:bg-slate-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                  completedOnlyList.length > 0
+                                    ? "border-white/20 bg-white/10 text-white hover:bg-white/15 cursor-pointer active:scale-95 shadow-xs"
                                     : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
                                 )}
-                                title={completedList.length > 0 ? "Click to copy Already Completed tickets" : "No Already Completed tickets"}
+                                title={completedOnlyList.length > 0 ? "Click to copy Already Completed tickets" : "No Already Completed tickets"}
                               >
-                                <span className="h-1.5 w-1.5 rounded-full bg-slate-400 shrink-0" />
-                                <span>Completed: <strong>{completedList.length}</strong></span>
+                                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", completedOnlyList.length > 0 ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.6)]" : "bg-slate-400")} />
+                                <span>Completed: <strong>{completedOnlyList.length}</strong></span>
+                                <Copy className="h-3 w-3 opacity-70 ml-0.5" />
+                              </div>
+
+                              {/* Canceled Badge */}
+                              <div
+                                onClick={() => {
+                                  const tkts = canceledOnlyList.map((t) => t.ticket).filter(Boolean);
+                                  if (tkts.length === 0) return;
+                                  navigator.clipboard.writeText(tkts.join("\n"));
+                                  toast.success(`Copied ${tkts.length} Canceled tickets!`);
+                                }}
+                                className={cn(
+                                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
+                                  canceledOnlyList.length > 0
+                                    ? "border-white/20 bg-white/10 text-white hover:bg-white/15 cursor-pointer active:scale-95 shadow-xs"
+                                    : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
+                                )}
+                                title={canceledOnlyList.length > 0 ? "Click to copy Already Canceled tickets" : "No Already Canceled tickets"}
+                              >
+                                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", canceledOnlyList.length > 0 ? "bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]" : "bg-slate-400")} />
+                                <span>Canceled: <strong>{canceledOnlyList.length}</strong></span>
                                 <Copy className="h-3 w-3 opacity-70 ml-0.5" />
                               </div>
 
@@ -25542,21 +25631,21 @@ BSL22295338      CID-6074821`}
                                 className={cn(
                                   "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-semibold select-none transition-all duration-200",
                                   unverifiedList.length > 0
-                                    ? "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 cursor-pointer active:scale-95 shadow-xs"
+                                    ? "border-white/20 bg-white/10 text-white hover:bg-white/15 cursor-pointer active:scale-95 shadow-xs"
                                     : "border-slate-200/50 dark:border-white/10 opacity-40 cursor-not-allowed text-muted-foreground"
                                 )}
                                 title={unverifiedList.length > 0 ? "Click to copy Unverified tickets" : "No Unverified tickets"}
                               >
-                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", unverifiedList.length > 0 ? "bg-white shadow-[0_0_6px_rgba(255,255,255,0.6)]" : "bg-slate-400")} />
                                 <span>Unverified: <strong>{unverifiedList.length}</strong></span>
                                 <Copy className="h-3 w-3 opacity-70 ml-0.5" />
                               </div>
                             </div>
 
                             {/* Full Segregation Audit & Handover Report Banner */}
-                            <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-indigo-500/8 border border-indigo-500/20 text-xs gap-2.5">
+                            <div className="flex items-center justify-between p-2.5 px-3 rounded-xl bg-blue-500/[0.05] border border-blue-500/20 text-xs gap-2.5">
                               <div className="flex items-center gap-2 min-w-0">
-                                <div className="h-6 w-6 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                                <div className="h-6 w-6 rounded-lg bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-400 shrink-0">
                                   <FileText className="h-3 w-3" />
                                 </div>
                                 <span className="text-[11px] font-semibold text-muted-foreground truncate">Explore all {total} WorkOrders — Segregation Audit & Handover</span>
@@ -25564,7 +25653,7 @@ BSL22295338      CID-6074821`}
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-7 px-3 text-[10px] font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg gap-1 shadow-xs shrink-0"
+                                className="h-7 px-3 text-[10px] font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg gap-1 shadow-xs shrink-0"
                                 onClick={() => setShowCancellationHandoverModal(true)}
                               >
                                 <FileText className="h-3 w-3" />
@@ -25659,7 +25748,7 @@ BSL22295338      CID-6074821`}
                             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
                               {/* 1. Group */}
                               <div className="flex items-center gap-1.5">
-                                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
+                                <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] shrink-0" />
                                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
                                   Group:
                                 </span>
@@ -25668,7 +25757,7 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   disabled={accountCheckResult.namoCount === 0}
                                   onClick={() => copySegmentTickets("NAMO", (r) => r.accountGroupCategory === "NAMO")}
-                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-700 rounded-lg disabled:opacity-40"
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 rounded-lg disabled:opacity-40"
                                   title="Click to copy NAMO tickets"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -25679,7 +25768,7 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   disabled={accountCheckResult.nonNamoCount === 0}
                                   onClick={() => copySegmentTickets("NON-NAMO", (r) => r.accountGroupCategory === "NON-NAMO")}
-                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 hover:text-sky-700 rounded-lg disabled:opacity-40"
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-slate-300 hover:bg-white/10 hover:text-white rounded-lg disabled:opacity-40"
                                   title="Click to copy NON-NAMO tickets"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -25691,7 +25780,7 @@ BSL22295338      CID-6074821`}
 
                               {/* 2. Hierarchy */}
                               <div className="flex items-center gap-1.5">
-                                <span className="h-2 w-2 rounded-full bg-purple-500 shadow-[0_0_8px_rgba(168,85,247,0.8)] shrink-0" />
+                                <span className="h-2 w-2 rounded-full bg-slate-400 shrink-0" />
                                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
                                   Hierarchy:
                                 </span>
@@ -25700,7 +25789,7 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   disabled={accountCheckResult.parentCount === 0}
                                   onClick={() => copySegmentTickets("Parent", (r) => r.isParent)}
-                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 hover:text-indigo-700 rounded-lg disabled:opacity-40"
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-blue-300 hover:bg-blue-500/10 hover:text-blue-200 rounded-lg disabled:opacity-40"
                                   title="Click to copy Parent tickets"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -25711,7 +25800,7 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   disabled={accountCheckResult.childCount === 0}
                                   onClick={() => copySegmentTickets("Child", (r) => r.isChild)}
-                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 hover:text-purple-700 rounded-lg disabled:opacity-40"
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-slate-300 hover:bg-white/10 hover:text-white rounded-lg disabled:opacity-40"
                                   title="Click to copy Child tickets"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -25723,7 +25812,7 @@ BSL22295338      CID-6074821`}
 
                               {/* 3. Flags */}
                               <div className="flex items-center gap-1.5">
-                                <span className="h-2 w-2 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] shrink-0" />
+                                <span className="h-2 w-2 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)] shrink-0" />
                                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
                                   Flags:
                                 </span>
@@ -25732,7 +25821,7 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   disabled={accountCheckResult.approvalSentCount === 0}
                                   onClick={() => copySegmentTickets("Approval Request", (r) => r.isApprovalSent)}
-                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 hover:text-orange-700 rounded-lg disabled:opacity-40"
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-slate-300 hover:bg-white/10 hover:text-white rounded-lg disabled:opacity-40"
                                   title="Click to copy Approval Request tickets"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -25743,7 +25832,7 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   disabled={accountCheckResult.mrCreatedCount === 0}
                                   onClick={() => copySegmentTickets("MR Created", (r) => r.isMrCreated)}
-                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-700 rounded-lg disabled:opacity-40"
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-blue-300 hover:bg-blue-500/10 hover:text-blue-200 rounded-lg disabled:opacity-40"
                                   title="Click to copy MR Created tickets"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -25755,7 +25844,7 @@ BSL22295338      CID-6074821`}
 
                               {/* 4. Type */}
                               <div className="flex items-center gap-1.5">
-                                <span className="h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] shrink-0" />
+                                <span className="h-2 w-2 rounded-full bg-slate-400 shrink-0" />
                                 <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mr-1">
                                   Type:
                                 </span>
@@ -25764,7 +25853,7 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   disabled={accountCheckResult.pmsCount === 0}
                                   onClick={() => copySegmentTickets("Auto PMS", (r) => r.isPms)}
-                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 hover:text-amber-700 rounded-lg disabled:opacity-40"
+                                  className="h-7 px-2.5 text-xs font-bold gap-1.5 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 rounded-lg disabled:opacity-40"
                                   title="Click to copy Auto PMS tickets"
                                 >
                                   <Copy className="h-3 w-3" />
@@ -26445,13 +26534,70 @@ BSL22295338      CID-6074821`}
                   postHtml: postHtmlText,
                 } = step5Outputs;
 
+                const step5ExcludedList =
+                  cancellationType === "CCO"
+                    ? (ccoAlgoResult.allSkippedTickets || [])
+                    : cancellationType === "NAMO"
+                    ? (namoAlgo2Result.allSkippedTickets || [])
+                    : (nonNamoAlgo3Result.allSkippedTickets || []);
+                const totalStep5Excluded =
+                  step5ExcludedList.length +
+                  (parsedCancellationFailed?.allFailedTickets?.length || 0);
+
+                const handleDownloadStep5Excel = () => {
+                  downloadExcludedInsightsExcel({
+                    cancellationType,
+                    ccoResult: ccoAlgoResult,
+                    namoResult: namoAlgo2Result,
+                    nonNamoResult: nonNamoAlgo3Result,
+                    parsedFailed: parsedCancellationFailed,
+                  });
+                };
+
                 return (
 
 
 
                   <>
 
-
+                    {/* Common Excluded Tickets Insights Sheet Action Banner for Email and Post */}
+                    <motion.div variants={cardItemVariants} className="col-span-full">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:px-5 rounded-2xl border border-blue-500/30 bg-blue-500/[0.06] backdrop-blur-md">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="h-9 w-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                            <FileSpreadsheet className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-xs sm:text-sm font-black text-foreground">
+                                Excluded Tickets Insights Sheet (.xlsx)
+                              </h4>
+                              {totalStep5Excluded > 20 && (
+                                <Badge className="bg-blue-600/20 text-blue-300 border-blue-400/40 text-[10px] font-black uppercase tracking-wider">
+                                  High Volume ({totalStep5Excluded} &gt; 20)
+                                </Badge>
+                              )}
+                              <Badge variant="outline" className="text-[10px] font-bold border-blue-500/25 text-blue-400">
+                                {totalStep5Excluded} Excluded
+                              </Badge>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                              Multi-page Excel workbook with separate sheets for MR RAISED, Approval Pending, {cancellationType === "NAMO" ? "NON Namo tickets Found" : cancellationType === "NON NAMO" ? "NAMO tickets Found" : "Auto PMS (Excluded)"}, Child WorkOrders, and All Excluded. Common sheet for Email attachment & Teams Post.
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleDownloadStep5Excel}
+                          disabled={totalStep5Excluded === 0}
+                          size="sm"
+                          className="h-8 sm:h-9 px-4 text-xs font-bold gap-2 bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/20 rounded-xl whitespace-nowrap cursor-pointer shrink-0"
+                        >
+                          <FileSpreadsheet className="h-4 w-4" />
+                          <span>Download Excluded Sheet (.xlsx)</span>
+                        </Button>
+                      </div>
+                    </motion.div>
 
                     <motion.div variants={cardItemVariants} className="h-full flex flex-col">
 
@@ -26528,6 +26674,17 @@ BSL22295338      CID-6074821`}
                                   Plain Text
                                 </button>
                               </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm cursor-pointer"
+                                onClick={handleDownloadStep5Excel}
+                                disabled={totalStep5Excluded === 0}
+                                title="Download Multi-Sheet Excluded Tickets Excel (.xlsx) for Email Attachment"
+                              >
+                                <FileSpreadsheet className="h-3.5 w-3.5 text-blue-400" />
+                                <span>Sheet (.xlsx)</span>
+                              </Button>
                               <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm cursor-pointer" onClick={() => handleCopy(mailTemplateText, mailHtmlText)} disabled={!mailTemplateText}>
 
 
@@ -26631,15 +26788,28 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText, postHtmlText)} disabled={!postTemplateText}>
+                            <div className="flex items-center gap-2 mt-5 md:mt-6">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm cursor-pointer"
+                                onClick={handleDownloadStep5Excel}
+                                disabled={totalStep5Excluded === 0}
+                                title="Download Multi-Sheet Excluded Tickets Excel (.xlsx) for Teams Post"
+                              >
+                                <FileSpreadsheet className="h-3.5 w-3.5 text-blue-400" />
+                                <span>Sheet (.xlsx)</span>
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText, postHtmlText)} disabled={!postTemplateText}>
 
 
 
-                              <Copy className="h-3.5 w-3.5" /> Copy
+                                <Copy className="h-3.5 w-3.5" /> Copy
 
 
 
-                            </Button>
+                              </Button>
+                            </div>
 
 
 

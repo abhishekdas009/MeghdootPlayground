@@ -9,6 +9,111 @@ export function renderEmailHeader(greetingText: string = "Dear Team,"): string {
 }
 
 /**
+ * Render an ASCII / Unicode rectangle box for plain text emails and notifications.
+ * Auto-wraps subtitle and fits comma-separated tickets in an aligned box.
+ */
+export function renderAsciiBox(
+  title: string,
+  subtitle?: string,
+  items: string[] = [],
+  targetWidth: number = 72
+): string {
+  const contentLines: string[] = [];
+  if (title) contentLines.push(title);
+
+  const maxLine = targetWidth - 6;
+
+  if (subtitle) {
+    const words = subtitle.split(" ");
+    let currentLine = "";
+    for (const w of words) {
+      if (!currentLine) {
+        currentLine = w;
+      } else if (currentLine.length + 1 + w.length <= maxLine) {
+        currentLine += " " + w;
+      } else {
+        contentLines.push(currentLine);
+        currentLine = w;
+      }
+    }
+    if (currentLine) contentLines.push(currentLine);
+  }
+
+  // Strip bullets and format tickets as comma-separated inside the rectangle
+  const cleanItems = items
+    .map((it) => it.replace(/^\s*[•\-\*]\s*/, "").trim())
+    .filter(Boolean);
+
+  if (cleanItems.length > 0) {
+    if (title || subtitle) {
+      contentLines.push("");
+    }
+
+    const joinedText = cleanItems.join(", ");
+    const words = joinedText.split(" ");
+    let currentLine = "";
+    for (const w of words) {
+      if (!currentLine) {
+        currentLine = w;
+      } else if (currentLine.length + 1 + w.length <= maxLine) {
+        currentLine += " " + w;
+      } else {
+        contentLines.push(currentLine);
+        currentLine = w;
+      }
+    }
+    if (currentLine) contentLines.push(currentLine);
+
+    if (cleanItems.length > 20) {
+      contentLines.push("");
+      contentLines.push(
+        `[Note: High volume (${cleanItems.length} tickets > 20) - Full breakdown attached in Excluded Insights Sheet]`
+      );
+    }
+  }
+
+  const maxContentLen = contentLines.reduce((max, line) => Math.max(max, line.length), 0);
+  const boxWidth = Math.max(targetWidth, maxContentLen + 4);
+
+  const top = "┌" + "─".repeat(boxWidth - 2) + "┐";
+  const bottom = "└" + "─".repeat(boxWidth - 2) + "┘";
+  const middle = contentLines.map((line) => {
+    const pad = " ".repeat(Math.max(0, boxWidth - 4 - line.length));
+    return `│ ${line}${pad} │`;
+  });
+
+  return [top, ...middle, bottom].join("\n");
+}
+
+/**
+ * Render a styled HTML table container (rectangle box) for rich HTML emails.
+ * Table-based rendering guarantees rock-solid borders and padding across Outlook, Gmail, and Webmail.
+ * Formats all tickets cleanly inside the rectangle as comma-separated values.
+ * If tickets count exceeds 20, includes an attached sheet reference note.
+ */
+export function renderHtmlBox(
+  title: string,
+  subtitle?: string,
+  items: string[] = [],
+  borderColor: string = "#ef4444",
+  bgColor: string = "#fff1f2",
+  titleColor: string = "#9f1239",
+  itemColor: string = "#881337"
+): string {
+  // Strip any leading bullet points so tickets are strictly comma-separated
+  const cleanItems = items
+    .map((it) => it.replace(/^\s*[•\-\*]\s*/, "").trim())
+    .filter(Boolean);
+  if (cleanItems.length === 0) return "";
+  const itemsText = cleanItems.join(", ");
+  const isHighCount = cleanItems.length > 20;
+  const highCountNotice = isHighCount
+    ? `<div style="margin-top: 8px; font-size: 11px; font-style: italic; color: #64748b; border-top: 1px dashed ${borderColor}55; padding-top: 6px;">Note: High volume (${cleanItems.length} tickets &gt; 20). Detailed breakdown attached in Excluded Insights Sheet (.xlsx).</div>`
+    : "";
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-top: 14px; margin-bottom: 12px; max-width: 650px; width: 100%; border: 1.5px solid ${borderColor}; background-color: ${bgColor}; border-radius: 8px; border-collapse: separate;"><tr><td style="padding: 12px 16px;"><div style="font-size: 13px; font-weight: bold; color: ${titleColor}; margin-bottom: 4px;">${title}</div>${subtitle ? `<div style="font-size: 12px; color: #475569; margin-bottom: 8px;">${subtitle}</div>` : ""}<div style="font-family: Consolas, 'Courier New', monospace; font-size: 12px; font-weight: bold; color: ${itemColor}; line-height: 1.6; word-break: break-word;">${itemsText}</div>${highCountNotice}</td></tr></table>`;
+}
+
+/**
  * ALGO 1 – Ticket Classification, CCO Cancellation Filtering & Approval Logic
  *
  * Centralized ticket classification and filtering for all pasted ticket numbers.
@@ -339,6 +444,8 @@ export interface NamoAlgo2Result {
   nonNamoTickets: NamoTicketItem[]; // Collection C: NON_NAMO_TICKETS (excluded from cancellation - Condition 2)
   parentWorkOrderTickets: NamoTicketItem[]; // Excluded: ParentWorkOrderId is present (Condition 3)
   completedOrCanceledTickets: NamoTicketItem[]; // Excluded: Status is in ('Completed','Canceled') (Condition 3)
+  canceledTickets?: NamoTicketItem[]; // Excluded: Status is Canceled / Cancelled
+  completedTickets?: NamoTicketItem[]; // Excluded: Status is Completed / Closed / Resolved
   unclassifiedTickets: NamoTicketItem[]; // Blank / Unknown Account Group Type (unverified)
   approvalPendingTickets: NamoTicketItem[]; // Excluded: Approval Pending / Locked in Salesforce
   mrCreatedTickets: NamoTicketItem[]; // Excluded: MR Raised / Material Request Created
@@ -517,32 +624,59 @@ export function isParentWorkOrderPresent(
 }
 
 /**
+ * Smart heuristic to check if WorkOrder Status is Canceled.
+ */
+export function isStatusCanceled(status?: string | null): boolean {
+  if (!status) return false;
+  const lower = String(status).trim().toLowerCase();
+  if (lower.includes("cancellation requested") || lower.includes("cancel requested")) return false;
+  return lower === "canceled" || lower === "cancelled";
+}
+
+/**
+ * Smart heuristic to check if WorkOrder Status is Completed / Closed.
+ */
+export function isStatusCompleted(status?: string | null): boolean {
+  if (!status) return false;
+  const lower = String(status).trim().toLowerCase();
+  if (lower.includes("cancellation requested") || lower.includes("cancel requested")) return false;
+  return (
+    lower === "completed" ||
+    lower === "closed" ||
+    lower === "auto-completed" ||
+    lower === "auto completed" ||
+    lower === "resolved"
+  );
+}
+
+/**
  * Smart heuristic to check if WorkOrder Status is Completed, Canceled, or Closed.
  * Note: 'Cancellation Requested' is an active/cancelable status and returns false!
  */
 export function isStatusCompletedOrCanceled(status?: string | null): {
   isCompletedOrCanceled: boolean;
+  isCanceled: boolean;
+  isCompleted: boolean;
   cleanStatus: string;
 } {
-  if (!status) return { isCompletedOrCanceled: false, cleanStatus: "" };
+  if (!status) return { isCompletedOrCanceled: false, isCanceled: false, isCompleted: false, cleanStatus: "" };
   const clean = String(status).trim();
   const lower = clean.toLowerCase();
 
   // If status is 'Cancellation Requested' or 'Cancel Requested', it MUST be processed for cancellation!
   if (lower.includes("cancellation requested") || lower.includes("cancel requested")) {
-    return { isCompletedOrCanceled: false, cleanStatus: clean };
+    return { isCompletedOrCanceled: false, isCanceled: false, isCompleted: false, cleanStatus: clean };
   }
 
-  const isTerminal =
+  const isCanceled = lower === "canceled" || lower === "cancelled";
+  const isCompleted =
     lower === "completed" ||
-    lower === "canceled" ||
-    lower === "cancelled" ||
     lower === "closed" ||
     lower === "auto-completed" ||
     lower === "auto completed" ||
     lower === "resolved";
 
-  return { isCompletedOrCanceled: isTerminal, cleanStatus: clean };
+  return { isCompletedOrCanceled: isCanceled || isCompleted, isCanceled, isCompleted, cleanStatus: clean };
 }
 
 function cleanCell(cell?: string | null): string {
@@ -573,6 +707,8 @@ export function processAlgo2NamoClassification(
       nonNamoTickets: [],
       parentWorkOrderTickets: [],
       completedOrCanceledTickets: [],
+      canceledTickets: [],
+      completedTickets: [],
       unclassifiedTickets: [],
       approvalPendingTickets: [],
       mrCreatedTickets: [],
@@ -661,68 +797,70 @@ export function processAlgo2NamoClassification(
           t === "casenumber"
       );
 
-    if (isHeader && ticketCol === -1) {
-      lowerTokens.forEach((token, idx) => {
-        if (
-          token.includes("parentworkorder.ticket") ||
-          (token.includes("parent") && (token.includes("ticket") || token.includes("casenumber") || token.includes("number")))
-        ) {
-          parentTicketCol = idx;
-        } else if (
-          token === "parentworkorderid" ||
-          (token.includes("parent") && (token.includes("id") || token.includes("workorder"))) &&
-          !token.includes("ticket")
-        ) {
-          parentWorkOrderIdCol = idx;
-        } else if (
-          token === "ticket_number_read_only__c" ||
-          ((token.includes("ticket") || token.includes("casenumber") || token === "number") && !token.includes("parent"))
-        ) {
-          if (ticketCol === -1 || token === "ticket_number_read_only__c") {
-            ticketCol = idx;
+    if (isHeader) {
+      if (ticketCol === -1) {
+        lowerTokens.forEach((token, idx) => {
+          if (
+            token.includes("parentworkorder.ticket") ||
+            (token.includes("parent") && (token.includes("ticket") || token.includes("casenumber") || token.includes("number")))
+          ) {
+            parentTicketCol = idx;
+          } else if (
+            token === "parentworkorderid" ||
+            (token.includes("parent") && (token.includes("id") || token.includes("workorder"))) &&
+            !token.includes("ticket")
+          ) {
+            parentWorkOrderIdCol = idx;
+          } else if (
+            token === "ticket_number_read_only__c" ||
+            ((token.includes("ticket") || token.includes("casenumber") || token === "number") && !token.includes("parent"))
+          ) {
+            if (ticketCol === -1 || token === "ticket_number_read_only__c") {
+              ticketCol = idx;
+            }
+          } else if (token.includes("group") || token === "account.group__c") {
+            groupCol = idx;
+          } else if (token.includes("fgr") || token.includes("crbf")) {
+            fgrCol = idx;
+          } else if (
+            (token.includes("account") || token.includes("customer")) &&
+            !token.includes("group") &&
+            !token.includes("id")
+          ) {
+            accountNameCol = idx;
+          } else if (
+            token === "id" ||
+            (token.endsWith(".id") && !token.includes("parent")) ||
+            token === "workorderid"
+          ) {
+            if (idCol === -1) idCol = idx;
+          } else if (
+            (token === "status" || token === "workorder.status" || token === "status__c") &&
+            !token.includes("fgr") &&
+            !token.includes("crbf") &&
+            !token.includes("approval")
+          ) {
+            statusCol = idx;
+          } else if (
+            token === "is_approval_sent__c" ||
+            token === "is_approval_send_c" ||
+            token === "is_approval_sent" ||
+            token === "is_approval_send" ||
+            token.includes("approval_sent") ||
+            token.includes("approval_send") ||
+            token.includes("is_approval")
+          ) {
+            isApprovalCol = idx;
+          } else if (
+            token === "is_mr_created__c" ||
+            token === "is_mr_created" ||
+            token.includes("mr_created") ||
+            token.includes("is_mr")
+          ) {
+            isMrCol = idx;
           }
-        } else if (token.includes("group") || token === "account.group__c") {
-          groupCol = idx;
-        } else if (token.includes("fgr") || token.includes("crbf")) {
-          fgrCol = idx;
-        } else if (
-          (token.includes("account") || token.includes("customer")) &&
-          !token.includes("group") &&
-          !token.includes("id")
-        ) {
-          accountNameCol = idx;
-        } else if (
-          token === "id" ||
-          (token.endsWith(".id") && !token.includes("parent")) ||
-          token === "workorderid"
-        ) {
-          if (idCol === -1) idCol = idx;
-        } else if (
-          (token === "status" || token === "workorder.status" || token === "status__c") &&
-          !token.includes("fgr") &&
-          !token.includes("crbf") &&
-          !token.includes("approval")
-        ) {
-          statusCol = idx;
-        } else if (
-          token === "is_approval_sent__c" ||
-          token === "is_approval_send_c" ||
-          token === "is_approval_sent" ||
-          token === "is_approval_send" ||
-          token.includes("approval_sent") ||
-          token.includes("approval_send") ||
-          token.includes("is_approval")
-        ) {
-          isApprovalCol = idx;
-        } else if (
-          token === "is_mr_created__c" ||
-          token === "is_mr_created" ||
-          token.includes("mr_created") ||
-          token.includes("is_mr")
-        ) {
-          isMrCol = idx;
-        }
-      });
+        });
+      }
       continue;
     }
 
@@ -945,14 +1083,24 @@ export function processAlgo2NamoClassification(
 
     if (isLocked || isApprovalSent) {
       isEligible = false;
-      skipReason = "Approval Pending";
+      skipReason = "Approval Pending (Record Locked in Salesforce)";
     } else if (isMrCreated) {
       isEligible = false;
       skipReason = "MR Raised (Material Request Created / Is_MR_Created is true)";
+    } else if (statusCheck.isCompletedOrCanceled) {
+      // Prioritize terminal status check so already canceled/completed tickets are accurately classified
+      isEligible = false;
+      skipReason = statusCheck.isCanceled
+        ? `Status is '${statusCheck.cleanStatus}' (Already Canceled)`
+        : `Status is '${statusCheck.cleanStatus}' (Already Completed)`;
     } else if (!isAutoPms) {
       // Condition 1: Skip non-A tickets (B, C, I, X, D, S, etc.)
       isEligible = false;
       skipReason = `Non-PMS ticket (Starts with '${ticket.charAt(0) || "?"}' instead of 'A')`;
+    } else if (parentCheck.hasParent) {
+      // Condition 3: ParentWorkOrderId or Parent Ticket is present -> Skip even if group is NAMO
+      isEligible = false;
+      skipReason = `Parent WorkOrder present (${parentCheck.parentIdentifier || parentWorkOrderId || parentTicket})`;
     } else if (category === "NON-NAMO") {
       // Condition 2: Start with A but group is NON-NAMO -> Skip (page is strictly for NAMO cancellations)
       isEligible = false;
@@ -961,14 +1109,6 @@ export function processAlgo2NamoClassification(
       // Blank / Unknown group -> Hold for verification (never default to NAMO)
       isEligible = false;
       skipReason = "Blank / Unknown Account Group (Unverified)";
-    } else if (parentCheck.hasParent) {
-      // Condition 3: ParentWorkOrderId or Parent Ticket is present -> Skip even if group is NAMO
-      isEligible = false;
-      skipReason = `Parent WorkOrder present (${parentCheck.parentIdentifier || parentWorkOrderId || parentTicket})`;
-    } else if (statusCheck.isCompletedOrCanceled) {
-      // Condition 3: Status is Completed, Canceled, Closed -> Skip
-      isEligible = false;
-      skipReason = `Status is '${statusCheck.cleanStatus}' (Already Completed/Canceled)`;
     } else {
       // All conditions satisfied: Starts with A, NAMO, ParentWorkOrderId is null, Status active
       isEligible = true;
@@ -1008,49 +1148,41 @@ export function processAlgo2NamoClassification(
     });
   }
 
-  // Handle any fallback tickets from Step 1 that weren't in Step 3
-  if (fallbackTickets.length > 0) {
-    for (const fTkt of fallbackTickets) {
-      const clean = cleanTicketToken(fTkt);
-      if (!clean || seenTickets.has(clean)) continue;
-      seenTickets.add(clean);
-      const isAutoPms = clean.toUpperCase().startsWith("A");
-      records.push({
-        ticket: clean,
-        accountGroupName: "Blank / Unknown",
-        accountGroupCategory: "UNCLASSIFIED",
-        accountName: "—",
-        parentWorkOrderId: undefined,
-        parentTicket: undefined,
-        isChild: false,
-        status: "Not Returned",
-        isEligibleForCancellation: false,
-        isAutoPms,
-        skipReason: isAutoPms ? "Not Returned by SF" : `Non-PMS ticket (Starts with '${clean.charAt(0) || "?"}' instead of 'A')`,
-      });
-    }
-  }
-
   // Collections per NAMO specifications
   const allAutoPmsTickets = records.filter((r) => r.isAutoPms).map((r) => r.ticket);
   const namoCancellationTickets = records.filter((r) => r.isEligibleForCancellation);
-  const nonNamoTickets = records.filter((r) => r.isAutoPms && r.accountGroupCategory === "NON-NAMO");
+  const nonNamoTickets = records.filter(
+    (r) =>
+      !r.isEligibleForCancellation &&
+      (r.skipReason?.includes("NON-NAMO") ||
+        (r.isAutoPms &&
+          r.accountGroupCategory === "NON-NAMO" &&
+          !isStatusCompletedOrCanceled(r.status).isCompletedOrCanceled &&
+          !r.isMrCreated &&
+          !r.isLocked &&
+          !r.isApprovalSent &&
+          !r.isChild))
+  );
   const parentWorkOrderTickets = records.filter(
-    (r) => r.isAutoPms && r.accountGroupCategory === "NAMO" && r.isChild
+    (r) => !r.isEligibleForCancellation && r.isChild
   );
   const completedOrCanceledTickets = records.filter(
-    (r) =>
-      r.isAutoPms &&
-      r.accountGroupCategory === "NAMO" &&
-      !r.isChild &&
-      (r.skipReason?.includes("Completed/Canceled") ?? false)
+    (r) => !r.isEligibleForCancellation && isStatusCompletedOrCanceled(r.status).isCompletedOrCanceled
   );
-  const unclassifiedTickets = records.filter((r) => r.isAutoPms && r.accountGroupCategory === "UNCLASSIFIED");
+  const canceledTickets = completedOrCanceledTickets.filter((r) => isStatusCanceled(r.status));
+  const completedTickets = completedOrCanceledTickets.filter((r) => !isStatusCanceled(r.status));
+  const unclassifiedTickets = records.filter(
+    (r) => !r.isEligibleForCancellation && r.accountGroupCategory === "UNCLASSIFIED"
+  );
   const approvalPendingTickets = records.filter(
-    (r) => r.isApprovalSent || r.isLocked || (r.skipReason && r.skipReason.includes("Approval Pending"))
+    (r) =>
+      !r.isEligibleForCancellation &&
+      (r.isApprovalSent || r.isLocked || r.skipReason?.includes("Approval Pending"))
   );
   const mrCreatedTickets = records.filter(
-    (r) => r.isMrCreated || (r.skipReason && r.skipReason.includes("MR Raised"))
+    (r) =>
+      !r.isEligibleForCancellation &&
+      (r.isMrCreated || r.skipReason?.includes("MR Raised"))
   );
   const nonAutoPmsTickets = records.filter((r) => !r.isAutoPms).map((r) => r.ticket);
   const allSkippedTickets = records.filter((r) => !r.isEligibleForCancellation);
@@ -1084,7 +1216,7 @@ export function processAlgo2NamoClassification(
   <div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 4px; padding: 8px 12px; font-family: Consolas, 'Courier New', monospace; font-size: 12px; color: #854d0e; line-height: 1.6; max-width: 650px; word-break: break-word;">${nonNamoTktsStr}</div>${unclassifiedTickets.length > 0 ? `<p style="margin-top: 8px;">Unverified / Blank Group Tickets (<strong>${unclassifiedTickets.length}</strong>):</p><div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 10px; font-family: monospace; font-size: 12px; color: #475569; word-break: break-word;">${unclassifiedTktsStr}</div>` : ""}`;
 
     const postLines: string[] = [];
-    postLines.push("━━━━━━━━━━━━━━━━━━━━\n**NON-NAMO PMS – APPROVAL REQUIREMENT**\n");
+    postLines.push("NON-NAMO PMS – APPROVAL REQUIREMENT\n");
     postLines.push("NON-NAMO PMS ticket cancellation requires the following mandatory approval:\n");
     postLines.push("• RM Approval\n");
     postLines.push(`The ${nonNamoTickets.length} NON-NAMO PMS tickets will remain pending until the required approval is obtained:\n${nonNamoTktsStr}`);
@@ -1092,10 +1224,10 @@ export function processAlgo2NamoClassification(
       postLines.push(`\nUnverified / Blank Group Tickets (${unclassifiedTickets.length}):\n${unclassifiedTktsStr}`);
     }
     nonNamoPostSegmentText = postLines.join("\n");
-    nonNamoPostSegmentHtml = `<hr/><p><strong>NON-NAMO PMS – APPROVAL REQUIREMENT</strong></p><p>NON-NAMO PMS ticket cancellation requires the following mandatory approval:</p><p>• RM Approval</p><p>The ${nonNamoTickets.length} NON-NAMO PMS tickets will remain pending until the required approval is obtained:</p><div style="background-color: #fefce8; border: 1px solid #fef08a; border-radius: 4px; padding: 6px 10px; font-family: monospace; font-size: 12px; color: #854d0e; line-height: 1.5; margin-bottom: 8px;">${nonNamoTktsStr}</div>${unclassifiedTickets.length > 0 ? `<p>Unverified / Blank Group Tickets (<strong>${unclassifiedTickets.length}</strong>):</p><div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 10px; font-family: monospace; font-size: 12px; color: #475569; margin-bottom: 8px;">${unclassifiedTktsStr}</div>` : ""}`;
+    nonNamoPostSegmentHtml = `<p><strong>NON-NAMO PMS – APPROVAL REQUIREMENT</strong></p><p>NON-NAMO PMS ticket cancellation requires the following mandatory approval:</p><p>• RM Approval</p><p>The ${nonNamoTickets.length} NON-NAMO PMS tickets will remain pending until the required approval is obtained:</p><p>${nonNamoTktsStr}</p>${unclassifiedTickets.length > 0 ? `<p>Unverified / Blank Group Tickets (<strong>${unclassifiedTickets.length}</strong>):</p><p>${unclassifiedTktsStr}</p>` : ""}`;
   }
 
-  // Generate Comprehensive Excluded Segment
+  // Generate Comprehensive Excluded Segment (Retained for audit/exports)
   let excludedSegmentText = "";
   let excludedSegmentHtml = "";
 
@@ -1121,8 +1253,8 @@ export function processAlgo2NamoClassification(
     excludedSegmentHtml = `<p><b>Excluded Tickets – Excluded from NAMO Cancellation</b></p><table style="border-collapse:collapse;width:100%;max-width:700px;font-family:sans-serif;font-size:12px;" border="1" cellpadding="6"><thead><tr style="background:#f1f5f9;text-align:left;"><th style="padding:6px 10px;border:1px solid #cbd5e1;">Ticket Number</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Reason</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Group</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Parent WorkOrder</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Status</th></tr></thead><tbody>${htmlRows}</tbody></table>`;
   }
 
-  // Full templates
-  const total = allAutoPmsTickets.length;
+  // Full templates - total represents all records analyzed in Step 3 across all batches
+  const total = records.length;
   const eligibleCount = namoCancellationTickets.length;
   const totalExcluded = allSkippedTickets.length;
 
@@ -1133,41 +1265,225 @@ export function processAlgo2NamoClassification(
 
   if (records.length > 0) {
     if (totalExcluded === 0) {
-      namoMailOutputText = `Dear,\nCancellation has been done successfully for NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}`;
-      namoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}</p></div>`;
-      namoPostOutputText = `@taguser \nCancellation has been done successfully for NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}`;
-      namoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully for NAMO tickets.</p><br><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}</p>`;
+      namoMailOutputText = `Dear Team,\n\nCancellation has been done successfully for NAMO tickets.\n\nTotal Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}`;
+      namoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}</p></div>`;
+      namoPostOutputText = `@taguser \nCancellation has been done successfully for NAMO tickets.\n\nTotal Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}`;
+      namoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully for NAMO tickets.</p><br><p>Total Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}</p>`;
     } else {
       const breakdownLines: string[] = [];
       if (nonAutoPmsTickets.length > 0) {
         breakdownLines.push(`• Total Non-PMS Tickets: ${nonAutoPmsTickets.length}`);
       }
       if (nonNamoTickets.length > 0) {
-        breakdownLines.push(`• Skipped NON-NAMO Group Tickets (Condition 2): ${nonNamoTickets.length}`);
+        breakdownLines.push(`• Skipped NON-NAMO Group (Requires RM Approval): ${nonNamoTickets.length}`);
       }
       if (parentWorkOrderTickets.length > 0) {
-        breakdownLines.push(`• Skipped Child WorkOrders with Parent Present (Condition 3): ${parentWorkOrderTickets.length}`);
+        breakdownLines.push(`• Skipped Child WorkOrders with Parent Present: ${parentWorkOrderTickets.length}`);
       }
-      if (completedOrCanceledTickets.length > 0) {
-        breakdownLines.push(`• Skipped Completed/Canceled Status (Condition 3): ${completedOrCanceledTickets.length}`);
+      if (canceledTickets.length > 0) {
+        breakdownLines.push(`• Skipped Already Canceled: ${canceledTickets.length}`);
+      }
+      if (completedTickets.length > 0) {
+        breakdownLines.push(`• Skipped Already Completed: ${completedTickets.length}`);
+      }
+      if (mrCreatedTickets.length > 0) {
+        breakdownLines.push(`• Skipped Material Request (MR) Created: ${mrCreatedTickets.length}`);
+      }
+      if (approvalPendingTickets.length > 0) {
+        breakdownLines.push(`• Skipped Approval Pending: ${approvalPendingTickets.length}`);
       }
       if (unclassifiedTickets.length > 0) {
-        breakdownLines.push(`• Skipped Unclassified / Blank Group: ${unclassifiedTickets.length}`);
-      }
-      const approvalPendingRecordsInStep3 = records.filter(
-        (r) => r.isApprovalSent || r.isLocked || r.skipReason?.includes("Approval Pending")
-      );
-      if (approvalPendingRecordsInStep3.length > 0) {
-        breakdownLines.push(`• Skipped Approval Pending: ${approvalPendingRecordsInStep3.length}`);
+        breakdownLines.push(`• Skipped Blank / Unknown Account Group: ${unclassifiedTickets.length}`);
       }
 
-      const summaryText = `Cancellation has been processed for NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}\nTotal Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
-      const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}<br>Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+      const summaryText = `Cancellation has been processed for NAMO tickets.\n\nTotal Tickets: ${total}\nCancelled (NAMO): ${eligibleCount}\n${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}\n` : ""}Total Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
+      const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${total}<br>Cancelled (NAMO): ${eligibleCount}<br>${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
 
-      namoMailOutputText = `Dear,\n${summaryText}\n\n${excludedSegmentText || nonNamoMailSegmentText}`;
-      namoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${excludedSegmentHtml || nonNamoMailSegmentHtml ? `<div style="margin-top: 12px;">${excludedSegmentHtml || nonNamoMailSegmentHtml}</div>` : ""}</div>`;
-      namoPostOutputText = `@taguser \n${summaryText}\n\n${nonNamoPostSegmentText || excludedSegmentText}`;
-      namoPostOutputHtml = `<p>@taguser </p>${summaryHtml}<br>${nonNamoPostSegmentHtml || excludedSegmentHtml}`;
+      let lockedDetailsText = "";
+      let lockedDetailsHtml = "";
+      if (approvalPendingTickets.length > 0) {
+        lockedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Approval Pending:",
+            "Approval is pending against the following ticket(s):",
+            approvalPendingTickets.map((t) => `• ${t.ticket}`)
+          );
+        lockedDetailsHtml = renderHtmlBox(
+          "Approval Pending:",
+          "Approval is pending against the following ticket(s):",
+          approvalPendingTickets.map((t) => `• ${t.ticket}`),
+          "#f59e0b",
+          "#fffbeb",
+          "#92400e",
+          "#b45309"
+        );
+      }
+
+      let mrCreatedDetailsText = "";
+      let mrCreatedDetailsHtml = "";
+      if (mrCreatedTickets.length > 0) {
+        mrCreatedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Material Request (MR) Created:",
+            "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+            mrCreatedTickets.map((t) => `• ${t.ticket}`)
+          );
+        mrCreatedDetailsHtml = renderHtmlBox(
+          "Material Request (MR) Created:",
+          "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+          mrCreatedTickets.map((t) => `• ${t.ticket}`),
+          "#ef4444",
+          "#fff1f2",
+          "#9f1239",
+          "#881337"
+        );
+      }
+
+      let nonNamoDetailsText = "";
+      let nonNamoDetailsHtml = "";
+      if (nonNamoTickets.length > 0) {
+        nonNamoDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "NON-NAMO PMS Cancellation – Approval Requirement:",
+            "Cancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:",
+            nonNamoTickets.map((t) => `• ${t.ticket}`)
+          );
+        nonNamoDetailsHtml = renderHtmlBox(
+          "NON-NAMO PMS Cancellation – Approval Requirement:",
+          "Cancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:",
+          nonNamoTickets.map((t) => `• ${t.ticket}`),
+          "#0284c7",
+          "#f0f9ff",
+          "#0369a1",
+          "#075985"
+        );
+      }
+
+      let parentDetailsText = "";
+      let parentDetailsHtml = "";
+      if (parentWorkOrderTickets.length > 0) {
+        parentDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Child WorkOrders (Parent Present):",
+            "The following ticket(s) have a parent work order present and cannot be cancelled:",
+            parentWorkOrderTickets.map(
+              (t) =>
+                `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+            )
+          );
+        parentDetailsHtml = renderHtmlBox(
+          "Child WorkOrders (Parent Present):",
+          "The following ticket(s) have a parent work order present and cannot be cancelled:",
+          parentWorkOrderTickets.map(
+            (t) =>
+              `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+          ),
+          "#8b5cf6",
+          "#f5f3ff",
+          "#6d28d9",
+          "#5b21b6"
+        );
+      }
+
+      let unclassifiedDetailsText = "";
+      let unclassifiedDetailsHtml = "";
+      if (unclassifiedTickets.length > 0) {
+        unclassifiedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Unverified / Blank Group Tickets:",
+            "The following ticket(s) have a blank or unknown account group and cannot be processed until verified:",
+            unclassifiedTickets.map((t) => `• ${t.ticket}`)
+          );
+        unclassifiedDetailsHtml = renderHtmlBox(
+          "Unverified / Blank Group Tickets:",
+          "The following ticket(s) have a blank or unknown account group and cannot be processed until verified:",
+          unclassifiedTickets.map((t) => `• ${t.ticket}`),
+          "#64748b",
+          "#f8fafc",
+          "#334155",
+          "#475569"
+        );
+      }
+
+      let nonAutoPmsDetailsText = "";
+      let nonAutoPmsDetailsHtml = "";
+      if (nonAutoPmsTickets.length > 0) {
+        nonAutoPmsDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Non-PMS Tickets (Excluded):",
+            "The following ticket(s) do not start with 'A' and are excluded from NAMO cancellation:",
+            nonAutoPmsTickets.map((t) => `• ${t}`)
+          );
+        nonAutoPmsDetailsHtml = renderHtmlBox(
+          "Non-PMS Tickets (Excluded):",
+          "The following ticket(s) do not start with 'A' and are excluded from NAMO cancellation:",
+          nonAutoPmsTickets.map((t) => `• ${t}`),
+          "#64748b",
+          "#f8fafc",
+          "#334155",
+          "#475569"
+        );
+      }
+
+      // Normal written detail sections for Post (standard plain text, no tables, no box borders)
+      let postLockedDetailsText = "";
+      let postLockedDetailsHtml = "";
+      if (approvalPendingTickets.length > 0) {
+        postLockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postLockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postMrCreatedDetailsText = "";
+      let postMrCreatedDetailsHtml = "";
+      if (mrCreatedTickets.length > 0) {
+        postMrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postMrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postNonNamoDetailsText = "";
+      let postNonNamoDetailsHtml = "";
+      if (nonNamoTickets.length > 0) {
+        postNonNamoDetailsText = `\n\nNON-NAMO PMS – Approval Requirement:\nCancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:\n${nonNamoTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postNonNamoDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>NON-NAMO PMS – Approval Requirement:</b><br>Cancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:<br>${nonNamoTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postParentDetailsText = "";
+      let postParentDetailsHtml = "";
+      if (parentWorkOrderTickets.length > 0) {
+        postParentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+        postParentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+      }
+
+      let postUnclassifiedDetailsText = "";
+      let postUnclassifiedDetailsHtml = "";
+      if (unclassifiedTickets.length > 0) {
+        postUnclassifiedDetailsText = `\n\nUnverified / Blank Group Tickets:\nThe following ticket(s) have a blank or unknown account group and cannot be processed until verified:\n${unclassifiedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postUnclassifiedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Unverified / Blank Group Tickets:</b><br>The following ticket(s) have a blank or unknown account group and cannot be processed until verified:<br>${unclassifiedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postNonAutoPmsDetailsText = "";
+      let postNonAutoPmsDetailsHtml = "";
+      if (nonAutoPmsTickets.length > 0) {
+        postNonAutoPmsDetailsText = `\n\nNon-PMS Tickets (Excluded):\nThe following ticket(s) do not start with 'A' and are excluded from NAMO cancellation:\n${nonAutoPmsTickets.map((t) => `• ${t}`).join("\n")}`;
+        postNonAutoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Non-PMS Tickets (Excluded):</b><br>The following ticket(s) do not start with 'A' and are excluded from NAMO cancellation:<br>${nonAutoPmsTickets.map((t) => `• ${t}`).join("<br>")}</p>`;
+      }
+
+      const detailSectionsText = `${lockedDetailsText}${mrCreatedDetailsText}${nonNamoDetailsText}${parentDetailsText}${unclassifiedDetailsText}${nonAutoPmsDetailsText}`;
+      const detailSectionsHtml = `${lockedDetailsHtml}${mrCreatedDetailsHtml}${nonNamoDetailsHtml}${parentDetailsHtml}${unclassifiedDetailsHtml}${nonAutoPmsDetailsHtml}`;
+
+      const postDetailSectionsText = `${postLockedDetailsText}${postMrCreatedDetailsText}${postNonNamoDetailsText}${postParentDetailsText}${postUnclassifiedDetailsText}${postNonAutoPmsDetailsText}`;
+      const postDetailSectionsHtml = `${postLockedDetailsHtml}${postMrCreatedDetailsHtml}${postNonNamoDetailsHtml}${postParentDetailsHtml}${postUnclassifiedDetailsHtml}${postNonAutoPmsDetailsHtml}`;
+
+      namoMailOutputText = `Dear Team,\n\n${summaryText}${detailSectionsText}`;
+      namoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}</div>`;
+      namoPostOutputText = `@taguser \n${summaryText}${postDetailSectionsText}`;
+      namoPostOutputHtml = `<p>@taguser </p>${summaryHtml}${postDetailSectionsHtml}`;
     }
   }
 
@@ -1177,6 +1493,8 @@ export function processAlgo2NamoClassification(
     nonNamoTickets,
     parentWorkOrderTickets,
     completedOrCanceledTickets,
+    canceledTickets,
+    completedTickets,
     unclassifiedTickets,
     approvalPendingTickets,
     mrCreatedTickets,
@@ -1225,6 +1543,8 @@ export interface NonNamoAlgo3Result {
   namoTickets: NonNamoTicketItem[]; // Collection C: NAMO_TICKETS (excluded: starts with A but Group is NAMO - Condition 2)
   parentWorkOrderTickets: NonNamoTicketItem[]; // Excluded: ParentWorkOrderId is present (Condition 3)
   completedOrCanceledTickets: NonNamoTicketItem[]; // Excluded: Status is in ('Completed','Canceled') (Condition 3)
+  canceledTickets?: NonNamoTicketItem[]; // Excluded: Status is Canceled / Cancelled
+  completedTickets?: NonNamoTicketItem[]; // Excluded: Status is Completed / Closed / Resolved
   unclassifiedTickets: NonNamoTicketItem[]; // Blank / Unknown Account Group Type (unverified)
   approvalPendingTickets: NonNamoTicketItem[]; // Excluded: Approval Pending / Locked in Salesforce
   mrCreatedTickets: NonNamoTicketItem[]; // Excluded: MR Raised / Material Request Created
@@ -1261,6 +1581,8 @@ export function processAlgo3NonNamoClassification(
       namoTickets: [],
       parentWorkOrderTickets: [],
       completedOrCanceledTickets: [],
+      canceledTickets: [],
+      completedTickets: [],
       unclassifiedTickets: [],
       approvalPendingTickets: [],
       mrCreatedTickets: [],
@@ -1348,68 +1670,70 @@ export function processAlgo3NonNamoClassification(
           t === "casenumber"
       );
 
-    if (isHeader && ticketCol === -1) {
-      lowerTokens.forEach((token, idx) => {
-        if (
-          token.includes("parentworkorder.ticket") ||
-          (token.includes("ticket") && token.includes("parent"))
-        ) {
-          parentTicketCol = idx;
-        } else if (
-          token === "parentworkorderid" ||
-          (token.includes("parent") && (token.includes("id") || token.includes("workorder"))) &&
-          !token.includes("ticket")
-        ) {
-          parentWorkOrderIdCol = idx;
-        } else if (
-          token === "ticket_number_read_only__c" ||
-          ((token.includes("ticket") || token.includes("casenumber") || token === "number") && !token.includes("parent"))
-        ) {
-          if (ticketCol === -1 || token === "ticket_number_read_only__c") {
-            ticketCol = idx;
+    if (isHeader) {
+      if (ticketCol === -1) {
+        lowerTokens.forEach((token, idx) => {
+          if (
+            token.includes("parentworkorder.ticket") ||
+            (token.includes("ticket") && token.includes("parent"))
+          ) {
+            parentTicketCol = idx;
+          } else if (
+            token === "parentworkorderid" ||
+            (token.includes("parent") && (token.includes("id") || token.includes("workorder"))) &&
+            !token.includes("ticket")
+          ) {
+            parentWorkOrderIdCol = idx;
+          } else if (
+            token === "ticket_number_read_only__c" ||
+            ((token.includes("ticket") || token.includes("casenumber") || token === "number") && !token.includes("parent"))
+          ) {
+            if (ticketCol === -1 || token === "ticket_number_read_only__c") {
+              ticketCol = idx;
+            }
+          } else if (token.includes("group") || token === "account.group__c") {
+            groupCol = idx;
+          } else if (token.includes("fgr") || token.includes("crbf")) {
+            fgrCol = idx;
+          } else if (
+            (token.includes("account") || token.includes("customer")) &&
+            !token.includes("group") &&
+            !token.includes("id")
+          ) {
+            accountNameCol = idx;
+          } else if (
+            token === "id" ||
+            (token.endsWith(".id") && !token.includes("parent")) ||
+            token === "workorderid"
+          ) {
+            if (idCol === -1) idCol = idx;
+          } else if (
+            (token === "status" || token === "workorder.status" || token === "status__c") &&
+            !token.includes("fgr") &&
+            !token.includes("crbf") &&
+            !token.includes("approval")
+          ) {
+            statusCol = idx;
+          } else if (
+            token === "is_approval_sent__c" ||
+            token === "is_approval_send_c" ||
+            token === "is_approval_sent" ||
+            token === "is_approval_send" ||
+            token.includes("approval_sent") ||
+            token.includes("approval_send") ||
+            token.includes("is_approval")
+          ) {
+            isApprovalCol = idx;
+          } else if (
+            token === "is_mr_created__c" ||
+            token === "is_mr_created" ||
+            token.includes("mr_created") ||
+            token.includes("is_mr")
+          ) {
+            isMrCol = idx;
           }
-        } else if (token.includes("group") || token === "account.group__c") {
-          groupCol = idx;
-        } else if (token.includes("fgr") || token.includes("crbf")) {
-          fgrCol = idx;
-        } else if (
-          (token.includes("account") || token.includes("customer")) &&
-          !token.includes("group") &&
-          !token.includes("id")
-        ) {
-          accountNameCol = idx;
-        } else if (
-          token === "id" ||
-          (token.endsWith(".id") && !token.includes("parent")) ||
-          token === "workorderid"
-        ) {
-          if (idCol === -1) idCol = idx;
-        } else if (
-          (token === "status" || token === "workorder.status" || token === "status__c") &&
-          !token.includes("fgr") &&
-          !token.includes("crbf") &&
-          !token.includes("approval")
-        ) {
-          statusCol = idx;
-        } else if (
-          token === "is_approval_sent__c" ||
-          token === "is_approval_send_c" ||
-          token === "is_approval_sent" ||
-          token === "is_approval_send" ||
-          token.includes("approval_sent") ||
-          token.includes("approval_send") ||
-          token.includes("is_approval")
-        ) {
-          isApprovalCol = idx;
-        } else if (
-          token === "is_mr_created__c" ||
-          token === "is_mr_created" ||
-          token.includes("mr_created") ||
-          token.includes("is_mr")
-        ) {
-          isMrCol = idx;
-        }
-      });
+        });
+      }
       continue;
     }
 
@@ -1632,14 +1956,24 @@ export function processAlgo3NonNamoClassification(
 
     if (isLocked || isApprovalSent) {
       isEligible = false;
-      skipReason = "Approval Pending";
+      skipReason = "Approval Pending (Record Locked in Salesforce)";
     } else if (isMrCreated) {
       isEligible = false;
       skipReason = "MR Raised (Material Request Created / Is_MR_Created is true)";
+    } else if (statusCheck.isCompletedOrCanceled) {
+      // Prioritize terminal status check so already canceled/completed tickets are accurately classified
+      isEligible = false;
+      skipReason = statusCheck.isCanceled
+        ? `Status is '${statusCheck.cleanStatus}' (Already Canceled)`
+        : `Status is '${statusCheck.cleanStatus}' (Already Completed)`;
     } else if (!isAutoPms) {
       // Condition 1: Skip non-A tickets (B, C, I, X, D, S, etc.)
       isEligible = false;
       skipReason = `Non-PMS ticket (Starts with '${ticket.charAt(0) || "?"}' instead of 'A')`;
+    } else if (parentCheck.hasParent) {
+      // Condition 3: ParentWorkOrderId or Parent Ticket is present -> Skip even if group is NON-NAMO
+      isEligible = false;
+      skipReason = `Parent WorkOrder present (${parentCheck.parentIdentifier || parentWorkOrderId || parentTicket})`;
     } else if (category === "NAMO") {
       // Condition 2: Start with A but group is NAMO -> Skip
       isEligible = false;
@@ -1648,14 +1982,6 @@ export function processAlgo3NonNamoClassification(
       // Blank / Unknown group -> Hold for verification (never default to NON-NAMO)
       isEligible = false;
       skipReason = "Blank / Unknown Account Group (Unverified)";
-    } else if (parentCheck.hasParent) {
-      // Condition 3: ParentWorkOrderId or Parent Ticket is present -> Skip even if group is NON-NAMO
-      isEligible = false;
-      skipReason = `Parent WorkOrder present (${parentCheck.parentIdentifier || parentWorkOrderId || parentTicket})`;
-    } else if (statusCheck.isCompletedOrCanceled) {
-      // Condition 3: Status is Completed, Canceled, Closed -> Skip
-      isEligible = false;
-      skipReason = `Status is '${statusCheck.cleanStatus}' (Already Completed/Canceled)`;
     } else {
       // All conditions satisfied: Starts with A, NON-NAMO, ParentWorkOrderId is null, Status active
       isEligible = true;
@@ -1694,49 +2020,41 @@ export function processAlgo3NonNamoClassification(
     });
   }
 
-  // Handle any fallback tickets from Step 1 that weren't in Step 3
-  if (fallbackTickets.length > 0) {
-    for (const fTkt of fallbackTickets) {
-      const clean = cleanTicketToken(fTkt);
-      if (!clean || seenTickets.has(clean)) continue;
-      seenTickets.add(clean);
-      const isAutoPms = clean.startsWith("A");
-      records.push({
-        ticket: clean,
-        accountGroupName: "Blank / Unknown",
-        accountGroupCategory: "UNCLASSIFIED",
-        accountName: "—",
-        parentWorkOrderId: undefined,
-        parentTicket: undefined,
-        isChild: false,
-        status: "Not Returned",
-        isEligibleForCancellation: false,
-        isAutoPms,
-        skipReason: isAutoPms ? "Not Returned by SF" : `Non-PMS ticket (Starts with '${clean.charAt(0) || "?"}' instead of 'A')`,
-      });
-    }
-  }
-
   // Collections per NON-NAMO specifications
   const allAutoPmsTickets = records.filter((r) => r.isAutoPms).map((r) => r.ticket);
   const nonNamoCancellationTickets = records.filter((r) => r.isEligibleForCancellation);
-  const namoTickets = records.filter((r) => r.isAutoPms && r.accountGroupCategory === "NAMO");
+  const namoTickets = records.filter(
+    (r) =>
+      !r.isEligibleForCancellation &&
+      (r.skipReason?.includes("NAMO Group") ||
+        (r.isAutoPms &&
+          r.accountGroupCategory === "NAMO" &&
+          !isStatusCompletedOrCanceled(r.status).isCompletedOrCanceled &&
+          !r.isMrCreated &&
+          !r.isLocked &&
+          !r.isApprovalSent &&
+          !r.isChild))
+  );
   const parentWorkOrderTickets = records.filter(
-    (r) => r.isAutoPms && r.accountGroupCategory === "NON-NAMO" && r.isChild
+    (r) => !r.isEligibleForCancellation && r.isChild
   );
   const completedOrCanceledTickets = records.filter(
-    (r) =>
-      r.isAutoPms &&
-      r.accountGroupCategory === "NON-NAMO" &&
-      !r.isChild &&
-      (r.skipReason?.includes("Completed/Canceled") ?? false)
+    (r) => !r.isEligibleForCancellation && isStatusCompletedOrCanceled(r.status).isCompletedOrCanceled
   );
-  const unclassifiedTickets = records.filter((r) => r.isAutoPms && r.accountGroupCategory === "UNCLASSIFIED");
+  const canceledTickets = completedOrCanceledTickets.filter((r) => isStatusCanceled(r.status));
+  const completedTickets = completedOrCanceledTickets.filter((r) => !isStatusCanceled(r.status));
+  const unclassifiedTickets = records.filter(
+    (r) => !r.isEligibleForCancellation && r.accountGroupCategory === "UNCLASSIFIED"
+  );
   const approvalPendingTickets = records.filter(
-    (r) => r.isApprovalSent || r.isLocked || (r.skipReason && r.skipReason.includes("Approval Pending"))
+    (r) =>
+      !r.isEligibleForCancellation &&
+      (r.isApprovalSent || r.isLocked || r.skipReason?.includes("Approval Pending"))
   );
   const mrCreatedTickets = records.filter(
-    (r) => r.isMrCreated || (r.skipReason && r.skipReason.includes("MR Raised"))
+    (r) =>
+      !r.isEligibleForCancellation &&
+      (r.isMrCreated || r.skipReason?.includes("MR Raised"))
   );
   const nonAutoPmsTickets = records.filter((r) => !r.isAutoPms).map((r) => r.ticket);
   const allSkippedTickets = records.filter((r) => !r.isEligibleForCancellation);
@@ -1777,7 +2095,7 @@ export function processAlgo3NonNamoClassification(
       .join("<br>")}</p>`;
   }
 
-  // Generate Comprehensive Excluded Segment
+  // Generate Comprehensive Excluded Segment (Retained for audit/exports)
   let excludedSegmentText = "";
   let excludedSegmentHtml = "";
 
@@ -1803,8 +2121,8 @@ export function processAlgo3NonNamoClassification(
     excludedSegmentHtml = `<p><b>Excluded Tickets – Excluded from NON-NAMO Cancellation</b></p><table style="border-collapse:collapse;width:100%;max-width:700px;font-family:sans-serif;font-size:12px;" border="1" cellpadding="6"><thead><tr style="background:#f1f5f9;text-align:left;"><th style="padding:6px 10px;border:1px solid #cbd5e1;">Ticket Number</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Reason</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Group</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Parent WorkOrder</th><th style="padding:6px 10px;border:1px solid #cbd5e1;">Status</th></tr></thead><tbody>${htmlRows}</tbody></table>`;
   }
 
-  // Full templates
-  const total = allAutoPmsTickets.length;
+  // Full templates - total represents all records analyzed in Step 3 across all batches
+  const total = records.length;
   const eligibleCount = nonNamoCancellationTickets.length;
   const totalExcluded = allSkippedTickets.length;
 
@@ -1815,41 +2133,225 @@ export function processAlgo3NonNamoClassification(
 
   if (records.length > 0) {
     if (totalExcluded === 0) {
-      nonNamoMailOutputText = `Dear,\nCancellation has been done successfully for NON-NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}`;
-      nonNamoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully for NON-NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}</p></div>`;
-      nonNamoPostOutputText = `@taguser \nCancellation has been done successfully for NON-NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}`;
-      nonNamoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully for NON-NAMO tickets.</p><br><p>Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}</p>`;
+      nonNamoMailOutputText = `Dear Team,\n\nCancellation has been done successfully for NON-NAMO tickets.\n\nTotal Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}`;
+      nonNamoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully for NON-NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}</p></div>`;
+      nonNamoPostOutputText = `@taguser \nCancellation has been done successfully for NON-NAMO tickets.\n\nTotal Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}`;
+      nonNamoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully for NON-NAMO tickets.</p><br><p>Total Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}</p>`;
     } else {
       const breakdownLines: string[] = [];
       if (nonAutoPmsTickets.length > 0) {
         breakdownLines.push(`• Total Non-PMS Tickets: ${nonAutoPmsTickets.length}`);
       }
       if (namoTickets.length > 0) {
-        breakdownLines.push(`• Skipped NAMO Group Tickets (Condition 2): ${namoTickets.length}`);
+        breakdownLines.push(`• Skipped NAMO Group Tickets: ${namoTickets.length}`);
       }
       if (parentWorkOrderTickets.length > 0) {
-        breakdownLines.push(`• Skipped Child WorkOrders with Parent Present (Condition 3): ${parentWorkOrderTickets.length}`);
+        breakdownLines.push(`• Skipped Child WorkOrders with Parent Present: ${parentWorkOrderTickets.length}`);
       }
-      if (completedOrCanceledTickets.length > 0) {
-        breakdownLines.push(`• Skipped Completed/Canceled Status (Condition 3): ${completedOrCanceledTickets.length}`);
+      if (canceledTickets.length > 0) {
+        breakdownLines.push(`• Skipped Already Canceled: ${canceledTickets.length}`);
+      }
+      if (completedTickets.length > 0) {
+        breakdownLines.push(`• Skipped Already Completed: ${completedTickets.length}`);
+      }
+      if (mrCreatedTickets.length > 0) {
+        breakdownLines.push(`• Skipped Material Request (MR) Created: ${mrCreatedTickets.length}`);
+      }
+      if (approvalPendingTickets.length > 0) {
+        breakdownLines.push(`• Skipped Approval Pending: ${approvalPendingTickets.length}`);
       }
       if (unclassifiedTickets.length > 0) {
-        breakdownLines.push(`• Skipped Unclassified / Blank Group: ${unclassifiedTickets.length}`);
-      }
-      const approvalPendingRecordsInStep3 = records.filter(
-        (r) => r.isApprovalSent || r.isLocked || r.skipReason?.includes("Approval Pending")
-      );
-      if (approvalPendingRecordsInStep3.length > 0) {
-        breakdownLines.push(`• Skipped Approval Pending: ${approvalPendingRecordsInStep3.length}`);
+        breakdownLines.push(`• Skipped Blank / Unknown Account Group: ${unclassifiedTickets.length}`);
       }
 
-      const summaryText = `Cancellation has been processed for NON-NAMO tickets.\n\nTotal Auto PMS Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}\nTotal Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
-      const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NON-NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Auto PMS Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}<br>Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+      const summaryText = `Cancellation has been processed for NON-NAMO tickets.\n\nTotal Tickets: ${total}\nCancelled (NON-NAMO): ${eligibleCount}\n${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}\n` : ""}Total Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
+      const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NON-NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${total}<br>Cancelled (NON-NAMO): ${eligibleCount}<br>${approvalPendingTickets.length > 0 ? `Approval Pending: ${approvalPendingTickets.length}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
 
-      nonNamoMailOutputText = `Dear,\n${summaryText}\n\n${excludedSegmentText || namoMailSegmentText}`;
-      nonNamoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${excludedSegmentHtml || namoMailSegmentHtml ? `<div style="margin-top: 12px;">${excludedSegmentHtml || namoMailSegmentHtml}</div>` : ""}</div>`;
-      nonNamoPostOutputText = `@taguser \n${summaryText}\n\n${namoPostSegmentText || excludedSegmentText}`;
-      nonNamoPostOutputHtml = `<p>@taguser </p>${summaryHtml}<br>${namoPostSegmentHtml || excludedSegmentHtml}`;
+      let lockedDetailsText = "";
+      let lockedDetailsHtml = "";
+      if (approvalPendingTickets.length > 0) {
+        lockedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Approval Pending:",
+            "Approval is pending against the following ticket(s):",
+            approvalPendingTickets.map((t) => `• ${t.ticket}`)
+          );
+        lockedDetailsHtml = renderHtmlBox(
+          "Approval Pending:",
+          "Approval is pending against the following ticket(s):",
+          approvalPendingTickets.map((t) => `• ${t.ticket}`),
+          "#f59e0b",
+          "#fffbeb",
+          "#92400e",
+          "#b45309"
+        );
+      }
+
+      let mrCreatedDetailsText = "";
+      let mrCreatedDetailsHtml = "";
+      if (mrCreatedTickets.length > 0) {
+        mrCreatedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Material Request (MR) Created:",
+            "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+            mrCreatedTickets.map((t) => `• ${t.ticket}`)
+          );
+        mrCreatedDetailsHtml = renderHtmlBox(
+          "Material Request (MR) Created:",
+          "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+          mrCreatedTickets.map((t) => `• ${t.ticket}`),
+          "#ef4444",
+          "#fff1f2",
+          "#9f1239",
+          "#881337"
+        );
+      }
+
+      let namoDetailsText = "";
+      let namoDetailsHtml = "";
+      if (namoTickets.length > 0) {
+        namoDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "NAMO Group Tickets (Excluded):",
+            "The following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:",
+            namoTickets.map((t) => `• ${t.ticket}`)
+          );
+        namoDetailsHtml = renderHtmlBox(
+          "NAMO Group Tickets (Excluded):",
+          "The following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:",
+          namoTickets.map((t) => `• ${t.ticket}`),
+          "#0284c7",
+          "#f0f9ff",
+          "#0369a1",
+          "#075985"
+        );
+      }
+
+      let parentDetailsText = "";
+      let parentDetailsHtml = "";
+      if (parentWorkOrderTickets.length > 0) {
+        parentDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Child WorkOrders (Parent Present):",
+            "The following ticket(s) have a parent work order present and cannot be cancelled:",
+            parentWorkOrderTickets.map(
+              (t) =>
+                `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+            )
+          );
+        parentDetailsHtml = renderHtmlBox(
+          "Child WorkOrders (Parent Present):",
+          "The following ticket(s) have a parent work order present and cannot be cancelled:",
+          parentWorkOrderTickets.map(
+            (t) =>
+              `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+          ),
+          "#8b5cf6",
+          "#f5f3ff",
+          "#6d28d9",
+          "#5b21b6"
+        );
+      }
+
+      let unclassifiedDetailsText = "";
+      let unclassifiedDetailsHtml = "";
+      if (unclassifiedTickets.length > 0) {
+        unclassifiedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Unverified / Blank Group Tickets:",
+            "The following ticket(s) have a blank or unknown account group and cannot be processed until verified:",
+            unclassifiedTickets.map((t) => `• ${t.ticket}`)
+          );
+        unclassifiedDetailsHtml = renderHtmlBox(
+          "Unverified / Blank Group Tickets:",
+          "The following ticket(s) have a blank or unknown account group and cannot be processed until verified:",
+          unclassifiedTickets.map((t) => `• ${t.ticket}`),
+          "#64748b",
+          "#f8fafc",
+          "#334155",
+          "#475569"
+        );
+      }
+
+      let nonAutoPmsDetailsText = "";
+      let nonAutoPmsDetailsHtml = "";
+      if (nonAutoPmsTickets.length > 0) {
+        nonAutoPmsDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Non-PMS Tickets (Excluded):",
+            "The following ticket(s) do not start with 'A' and are excluded from NON-NAMO cancellation:",
+            nonAutoPmsTickets.map((t) => `• ${t}`)
+          );
+        nonAutoPmsDetailsHtml = renderHtmlBox(
+          "Non-PMS Tickets (Excluded):",
+          "The following ticket(s) do not start with 'A' and are excluded from NON-NAMO cancellation:",
+          nonAutoPmsTickets.map((t) => `• ${t}`),
+          "#64748b",
+          "#f8fafc",
+          "#334155",
+          "#475569"
+        );
+      }
+
+      // Normal written detail sections for Post (standard plain text, no tables, no box borders)
+      let postLockedDetailsText = "";
+      let postLockedDetailsHtml = "";
+      if (approvalPendingTickets.length > 0) {
+        postLockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postLockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postMrCreatedDetailsText = "";
+      let postMrCreatedDetailsHtml = "";
+      if (mrCreatedTickets.length > 0) {
+        postMrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postMrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postNamoDetailsText = "";
+      let postNamoDetailsHtml = "";
+      if (namoTickets.length > 0) {
+        postNamoDetailsText = `\n\nNAMO Group Tickets (Excluded):\nThe following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:\n${namoTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postNamoDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>NAMO Group Tickets (Excluded):</b><br>The following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:<br>${namoTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postParentDetailsText = "";
+      let postParentDetailsHtml = "";
+      if (parentWorkOrderTickets.length > 0) {
+        postParentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+        postParentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+      }
+
+      let postUnclassifiedDetailsText = "";
+      let postUnclassifiedDetailsHtml = "";
+      if (unclassifiedTickets.length > 0) {
+        postUnclassifiedDetailsText = `\n\nUnverified / Blank Group Tickets:\nThe following ticket(s) have a blank or unknown account group and cannot be processed until verified:\n${unclassifiedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postUnclassifiedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Unverified / Blank Group Tickets:</b><br>The following ticket(s) have a blank or unknown account group and cannot be processed until verified:<br>${unclassifiedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
+
+      let postNonAutoPmsDetailsText = "";
+      let postNonAutoPmsDetailsHtml = "";
+      if (nonAutoPmsTickets.length > 0) {
+        postNonAutoPmsDetailsText = `\n\nNon-PMS Tickets (Excluded):\nThe following ticket(s) do not start with 'A' and are excluded from NON-NAMO cancellation:\n${nonAutoPmsTickets.map((t) => `• ${t}`).join("\n")}`;
+        postNonAutoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Non-PMS Tickets (Excluded):</b><br>The following ticket(s) do not start with 'A' and are excluded from NON-NAMO cancellation:<br>${nonAutoPmsTickets.map((t) => `• ${t}`).join("<br>")}</p>`;
+      }
+
+      const detailSectionsText = `${lockedDetailsText}${mrCreatedDetailsText}${namoDetailsText}${parentDetailsText}${unclassifiedDetailsText}${nonAutoPmsDetailsText}`;
+      const detailSectionsHtml = `${lockedDetailsHtml}${mrCreatedDetailsHtml}${namoDetailsHtml}${parentDetailsHtml}${unclassifiedDetailsHtml}${nonAutoPmsDetailsHtml}`;
+
+      const postDetailSectionsText = `${postLockedDetailsText}${postMrCreatedDetailsText}${postNamoDetailsText}${postParentDetailsText}${postUnclassifiedDetailsText}${postNonAutoPmsDetailsText}`;
+      const postDetailSectionsHtml = `${postLockedDetailsHtml}${postMrCreatedDetailsHtml}${postNamoDetailsHtml}${postParentDetailsHtml}${postUnclassifiedDetailsHtml}${postNonAutoPmsDetailsHtml}`;
+
+      nonNamoMailOutputText = `Dear Team,\n\n${summaryText}${detailSectionsText}`;
+      nonNamoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}</div>`;
+      nonNamoPostOutputText = `@taguser \n${summaryText}${postDetailSectionsText}`;
+      nonNamoPostOutputHtml = `<p>@taguser </p>${summaryHtml}${postDetailSectionsHtml}`;
     }
   }
 
@@ -1859,6 +2361,8 @@ export function processAlgo3NonNamoClassification(
     namoTickets,
     parentWorkOrderTickets,
     completedOrCanceledTickets,
+    canceledTickets,
+    completedTickets,
     unclassifiedTickets,
     approvalPendingTickets,
     mrCreatedTickets,
@@ -1907,6 +2411,8 @@ export interface CcoAlgoResult {
   autoPmsTickets: CcoTicketItem[]; // Excluded: Starts with 'A' (Auto PMS)
   parentWorkOrderTickets: CcoTicketItem[]; // Excluded: ParentWorkOrderId is present (Child WOs)
   completedOrCanceledTickets: CcoTicketItem[]; // Excluded: Status in Completed / Canceled / Closed
+  canceledTickets?: CcoTicketItem[]; // Excluded: Status is Canceled / Cancelled
+  completedTickets?: CcoTicketItem[]; // Excluded: Status is Completed / Closed / Resolved
   approvalPendingTickets: CcoTicketItem[]; // Excluded: Approval Pending / Locked in Salesforce
   mrCreatedTickets: CcoTicketItem[]; // Excluded: Material Request Created
   allRecords: CcoTicketItem[]; // All parsed records
@@ -1945,6 +2451,8 @@ export function processAlgo1CcoStep3Classification(
       autoPmsTickets: [],
       parentWorkOrderTickets: [],
       completedOrCanceledTickets: [],
+      canceledTickets: [],
+      completedTickets: [],
       approvalPendingTickets: [],
       mrCreatedTickets: [],
       allRecords: [],
@@ -2026,67 +2534,69 @@ export function processAlgo1CcoStep3Classification(
           t === "casenumber"
       );
 
-    if (isHeader && ticketCol === -1) {
-      lowerTokens.forEach((token, idx) => {
-        if (
-          token.includes("parentworkorder.ticket") ||
-          (token.includes("parent") && (token.includes("ticket") || token.includes("casenumber") || token.includes("number")))
-        ) {
-          parentTicketCol = idx;
-        } else if (
-          token === "parentworkorderid" ||
-          ((token.includes("parent") && (token.includes("id") || token.includes("workorder"))) && !token.includes("ticket"))
-        ) {
-          parentWorkOrderIdCol = idx;
-        } else if (
-          token === "ticket_number_read_only__c" ||
-          ((token.includes("ticket") || token.includes("casenumber") || token === "number") && !token.includes("parent"))
-        ) {
-          if (ticketCol === -1 || token === "ticket_number_read_only__c") {
-            ticketCol = idx;
+    if (isHeader) {
+      if (ticketCol === -1) {
+        lowerTokens.forEach((token, idx) => {
+          if (
+            token.includes("parentworkorder.ticket") ||
+            (token.includes("parent") && (token.includes("ticket") || token.includes("casenumber") || token.includes("number")))
+          ) {
+            parentTicketCol = idx;
+          } else if (
+            token === "parentworkorderid" ||
+            ((token.includes("parent") && (token.includes("id") || token.includes("workorder"))) && !token.includes("ticket"))
+          ) {
+            parentWorkOrderIdCol = idx;
+          } else if (
+            token === "ticket_number_read_only__c" ||
+            ((token.includes("ticket") || token.includes("casenumber") || token === "number") && !token.includes("parent"))
+          ) {
+            if (ticketCol === -1 || token === "ticket_number_read_only__c") {
+              ticketCol = idx;
+            }
+          } else if (token.includes("group") || token === "account.group__c") {
+            groupCol = idx;
+          } else if (token.includes("fgr") || token.includes("crbf")) {
+            fgrCol = idx;
+          } else if (
+            (token.includes("account") || token.includes("customer")) &&
+            !token.includes("group") &&
+            !token.includes("id")
+          ) {
+            accountNameCol = idx;
+          } else if (
+            token === "id" ||
+            (token.endsWith(".id") && !token.includes("parent")) ||
+            token === "workorderid"
+          ) {
+            if (idCol === -1) idCol = idx;
+          } else if (
+            (token === "status" || token === "workorder.status" || token === "status__c") &&
+            !token.includes("fgr") &&
+            !token.includes("crbf") &&
+            !token.includes("approval")
+          ) {
+            statusCol = idx;
+          } else if (
+            token === "is_approval_sent__c" ||
+            token === "is_approval_send_c" ||
+            token === "is_approval_sent" ||
+            token === "is_approval_send" ||
+            token.includes("approval_sent") ||
+            token.includes("approval_send") ||
+            token.includes("is_approval")
+          ) {
+            isApprovalCol = idx;
+          } else if (
+            token === "is_mr_created__c" ||
+            token === "is_mr_created" ||
+            token.includes("mr_created") ||
+            token.includes("is_mr")
+          ) {
+            isMrCol = idx;
           }
-        } else if (token.includes("group") || token === "account.group__c") {
-          groupCol = idx;
-        } else if (token.includes("fgr") || token.includes("crbf")) {
-          fgrCol = idx;
-        } else if (
-          (token.includes("account") || token.includes("customer")) &&
-          !token.includes("group") &&
-          !token.includes("id")
-        ) {
-          accountNameCol = idx;
-        } else if (
-          token === "id" ||
-          (token.endsWith(".id") && !token.includes("parent")) ||
-          token === "workorderid"
-        ) {
-          if (idCol === -1) idCol = idx;
-        } else if (
-          (token === "status" || token === "workorder.status" || token === "status__c") &&
-          !token.includes("fgr") &&
-          !token.includes("crbf") &&
-          !token.includes("approval")
-        ) {
-          statusCol = idx;
-        } else if (
-          token === "is_approval_sent__c" ||
-          token === "is_approval_send_c" ||
-          token === "is_approval_sent" ||
-          token === "is_approval_send" ||
-          token.includes("approval_sent") ||
-          token.includes("approval_send") ||
-          token.includes("is_approval")
-        ) {
-          isApprovalCol = idx;
-        } else if (
-          token === "is_mr_created__c" ||
-          token === "is_mr_created" ||
-          token.includes("mr_created") ||
-          token.includes("is_mr")
-        ) {
-          isMrCol = idx;
-        }
-      });
+        });
+      }
       continue;
     }
 
@@ -2286,7 +2796,9 @@ export function processAlgo1CcoStep3Classification(
       skipReason = `Parent WorkOrder present (${parentCheck.parentIdentifier || parentWorkOrderId || parentTicket})`;
     } else if (statusCheck.isCompletedOrCanceled) {
       isEligible = false;
-      skipReason = `Status is '${statusCheck.cleanStatus}' (Already Completed/Canceled)`;
+      skipReason = statusCheck.isCanceled
+        ? `Status is '${statusCheck.cleanStatus}' (Already Canceled)`
+        : `Status is '${statusCheck.cleanStatus}' (Already Completed)`;
     } else {
       isEligible = true;
     }
@@ -2324,32 +2836,14 @@ export function processAlgo1CcoStep3Classification(
     });
   }
 
-  // Also include fallback tickets if any were pasted in Step 1 but not returned by SOQL
-  if (fallbackTickets && fallbackTickets.length > 0) {
-    for (const rawT of fallbackTickets) {
-      const ct = cleanTicketToken(rawT);
-      if (!ct) continue;
-      if (!seenTickets.has(ct)) {
-        seenTickets.add(ct);
-        const isAutoPms = ct.toUpperCase().startsWith("A");
-        records.push({
-          ticket: ct,
-          isEligibleForCancellation: false,
-          isAutoPms,
-          skipReason: isAutoPms
-            ? "Auto PMS ticket (Excluded from CCO Cancellation - requires approval)"
-            : "Ticket not returned in Salesforce SOQL results (Not Found / Outside Scope)",
-        });
-      }
-    }
-  }
-
   const ccoCancellationTickets = records.filter((r) => r.isEligibleForCancellation);
   const autoPmsTickets = records.filter((r) => r.isAutoPms);
   const parentWorkOrderTickets = records.filter((r) => !r.isEligibleForCancellation && r.isChild);
   const completedOrCanceledTickets = records.filter(
     (r) => !r.isEligibleForCancellation && isStatusCompletedOrCanceled(r.status).isCompletedOrCanceled
   );
+  const canceledTickets = completedOrCanceledTickets.filter((r) => isStatusCanceled(r.status));
+  const completedTickets = completedOrCanceledTickets.filter((r) => !isStatusCanceled(r.status));
   const approvalPendingTickets = records.filter(
     (r) => !r.isEligibleForCancellation && (r.isApprovalSent || r.isLocked || r.skipReason?.includes("Approval Pending"))
   );
@@ -2394,8 +2888,8 @@ export function processAlgo1CcoStep3Classification(
 
   if (records.length > 0) {
     if (totalExcluded === 0) {
-      ccoMailOutputText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${total}`;
-      ccoMailOutputHtml = `<div style="font-family: Calibri, Arial, sans-serif; font-size: 13px; line-height: 1.5;">${renderEmailHeader("Dear Team,")}<p style="margin-top: 0; margin-bottom: 12px;">Cancellation has been done successfully.</p><p style="margin-top: 0; margin-bottom: 12px;">Total Tickets: ${total}</p></div>`;
+      ccoMailOutputText = `Dear Team,\n\nCancellation has been done successfully.\n\nTotal Tickets: ${total}`;
+      ccoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin-top: 0; margin-bottom: 12px;">Cancellation has been done successfully.</p><p style="margin-top: 0; margin-bottom: 12px;">Total Tickets: ${total}</p></div>`;
       ccoPostOutputText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${total}`;
       ccoPostOutputHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${total}</p>`;
     } else {
@@ -2406,8 +2900,11 @@ export function processAlgo1CcoStep3Classification(
       if (parentWorkOrderTickets.length > 0) {
         breakdownLines.push(`• Skipped Child WorkOrders with Parent Present: ${parentWorkOrderTickets.length}`);
       }
-      if (completedOrCanceledTickets.length > 0) {
-        breakdownLines.push(`• Skipped Completed/Canceled Status: ${completedOrCanceledTickets.length}`);
+      if (canceledTickets.length > 0) {
+        breakdownLines.push(`• Skipped Already Canceled: ${canceledTickets.length}`);
+      }
+      if (completedTickets.length > 0) {
+        breakdownLines.push(`• Skipped Already Completed: ${completedTickets.length}`);
       }
       if (mrCreatedTickets.length > 0) {
         breakdownLines.push(`• Skipped Material Request (MR) Created: ${mrCreatedTickets.length}`);
@@ -2422,48 +2919,134 @@ export function processAlgo1CcoStep3Classification(
       let lockedDetailsText = "";
       let lockedDetailsHtml = "";
       if (approvalPendingTickets.length > 0) {
-        lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
-        lockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+        lockedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Approval Pending:",
+            "Approval is pending against the following ticket(s):",
+            approvalPendingTickets.map((t) => t.ticket)
+          );
+        lockedDetailsHtml = renderHtmlBox(
+          "Approval Pending:",
+          "Approval is pending against the following ticket(s):",
+          approvalPendingTickets.map((t) => t.ticket),
+          "#f59e0b",
+          "#fffbeb",
+          "#92400e",
+          "#b45309"
+        );
       }
 
       let autoPmsDetailsText = "";
       let autoPmsDetailsHtml = "";
       if (autoPmsTickets.length > 0) {
-        autoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${autoPmsTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
-        autoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${autoPmsTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+        autoPmsDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Auto PMS Tickets (Requires Approval):",
+            "The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):",
+            autoPmsTickets.map((t) => t.ticket)
+          );
+        autoPmsDetailsHtml = renderHtmlBox(
+          "Auto PMS Tickets (Requires Approval):",
+          "The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):",
+          autoPmsTickets.map((t) => t.ticket),
+          "#0284c7",
+          "#f0f9ff",
+          "#0369a1",
+          "#075985"
+        );
       }
 
       let mrCreatedDetailsText = "";
       let mrCreatedDetailsHtml = "";
       if (mrCreatedTickets.length > 0) {
-        mrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
-        mrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+        mrCreatedDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Material Request (MR) Created:",
+            "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+            mrCreatedTickets.map((t) => t.ticket)
+          );
+        mrCreatedDetailsHtml = renderHtmlBox(
+          "Material Request (MR) Created:",
+          "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+          mrCreatedTickets.map((t) => t.ticket),
+          "#ef4444",
+          "#fff1f2",
+          "#9f1239",
+          "#881337"
+        );
       }
 
       let parentDetailsText = "";
       let parentDetailsHtml = "";
       if (parentWorkOrderTickets.length > 0) {
-        parentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
-        parentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+        parentDetailsText =
+          `\n\n` +
+          renderAsciiBox(
+            "Child WorkOrders (Parent Present):",
+            "The following ticket(s) have a parent work order present and cannot be cancelled:",
+            parentWorkOrderTickets.map(
+              (t) =>
+                `${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+            )
+          );
+        parentDetailsHtml = renderHtmlBox(
+          "Child WorkOrders (Parent Present):",
+          "The following ticket(s) have a parent work order present and cannot be cancelled:",
+          parentWorkOrderTickets.map(
+            (t) =>
+              `${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+          ),
+          "#8b5cf6",
+          "#f5f3ff",
+          "#6d28d9",
+          "#5b21b6"
+        );
       }
 
-      let completedDetailsText = "";
-      let completedDetailsHtml = "";
-      if (completedOrCanceledTickets.length > 0) {
-        completedDetailsText = `\n\nAlready Completed / Canceled:\nThe following ticket(s) are already completed or canceled:\n${completedOrCanceledTickets.map((t) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("\n")}`;
-        completedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:\n${completedOrCanceledTickets.map((t) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
+      // Normal written detail sections for Post (standard plain text, no tables, no box borders)
+      let postLockedDetailsText = "";
+      let postLockedDetailsHtml = "";
+      if (approvalPendingTickets.length > 0) {
+        postLockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postLockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${approvalPendingTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
       }
 
-      const detailSectionsText = `${lockedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}${completedDetailsText}`;
-      const detailSectionsHtml = `${lockedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}${completedDetailsHtml}`;
+      let postAutoPmsDetailsText = "";
+      let postAutoPmsDetailsHtml = "";
+      if (autoPmsTickets.length > 0) {
+        postAutoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${autoPmsTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postAutoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${autoPmsTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
 
-      const tableText = excludedSegmentText ? `\n\n${excludedSegmentText}` : "";
-      const tableHtml = excludedSegmentHtml ? `<div style="margin-top: 12px;">${excludedSegmentHtml}</div>` : "";
+      let postMrCreatedDetailsText = "";
+      let postMrCreatedDetailsHtml = "";
+      if (mrCreatedTickets.length > 0) {
+        postMrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+        postMrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+      }
 
-      ccoMailOutputText = `Dear,\n${summaryText}${detailSectionsText}${tableText}`;
-      ccoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}</div>`;
-      ccoPostOutputText = `@taguser \n${summaryText}${detailSectionsText}${tableText}`;
-      ccoPostOutputHtml = `<p>@taguser </p>${summaryHtml}${detailSectionsHtml}${tableHtml}`;
+      let postParentDetailsText = "";
+      let postParentDetailsHtml = "";
+      if (parentWorkOrderTickets.length > 0) {
+        postParentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+        postParentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+      }
+
+      // Note: Already completed/canceled tickets are summarized in insight metrics and excluded from verbose mail body.
+      // Similarly, the full excluded markdown table is retained in excludedSegmentText/Html but omitted from email body.
+      const detailSectionsText = `${lockedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}`;
+      const detailSectionsHtml = `${lockedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}`;
+
+      const postDetailSectionsText = `${postLockedDetailsText}${postAutoPmsDetailsText}${postMrCreatedDetailsText}${postParentDetailsText}`;
+      const postDetailSectionsHtml = `${postLockedDetailsHtml}${postAutoPmsDetailsHtml}${postMrCreatedDetailsHtml}${postParentDetailsHtml}`;
+
+      ccoMailOutputText = `Dear Team,\n\n${summaryText}${detailSectionsText}`;
+      ccoMailOutputHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}</div>`;
+      ccoPostOutputText = `@taguser \n${summaryText}${postDetailSectionsText}`;
+      ccoPostOutputHtml = `<p>@taguser </p>${summaryHtml}${postDetailSectionsHtml}`;
     }
   }
 
@@ -2473,6 +3056,8 @@ export function processAlgo1CcoStep3Classification(
     autoPmsTickets,
     parentWorkOrderTickets,
     completedOrCanceledTickets,
+    canceledTickets,
+    completedTickets,
     approvalPendingTickets,
     mrCreatedTickets,
     allRecords: records,
@@ -2622,53 +3207,55 @@ export function processAccountCheckClassification(
           t.includes("approval")
       );
 
-    if (isHeader && ticketCol === -1) {
-      lowerTokens.forEach((tok, idx) => {
-        if (!tok) return;
-        if (tok === "id" || tok === "workorderid") {
-          idCol = idx;
-        } else if (
-          tok.includes("parentworkorder.ticket") ||
-          (tok.includes("ticket") && tok.includes("parent"))
-        ) {
-          parentTicketCol = idx;
-        } else if (
-          tok === "ticket_number_read_only__c" ||
-          (tok.includes("ticket") && !tok.includes("parent"))
-        ) {
-          ticketCol = idx;
-        } else if (
-          tok === "parentworkorderid" ||
-          (tok.includes("parent") && tok.includes("id"))
-        ) {
-          parentIdCol = idx;
-        } else if (
-          tok.includes("approval_sent") ||
-          tok.includes("approval_send") ||
-          tok.includes("is_approval")
-        ) {
-          isApprovalCol = idx;
-        } else if (tok.includes("mr_created")) {
-          isMrCol = idx;
-        } else if (
-          tok.includes("account.group") ||
-          tok === "group__c" ||
-          tok === "group"
-        ) {
-          groupCol = idx;
-        } else if (tok.includes("fgr_approved_reject") || tok.includes("fgr")) {
-          fgrCol = idx;
-        } else if (tok === "assetid") {
-          assetIdCol = idx;
-        } else if (
-          (tok === "status" || tok === "workorder.status" || tok === "status__c") &&
-          !tok.includes("fgr") &&
-          !tok.includes("crbf") &&
-          !tok.includes("approval")
-        ) {
-          statusCol = idx;
-        }
-      });
+    if (isHeader) {
+      if (ticketCol === -1) {
+        lowerTokens.forEach((tok, idx) => {
+          if (!tok) return;
+          if (tok === "id" || tok === "workorderid") {
+            idCol = idx;
+          } else if (
+            tok.includes("parentworkorder.ticket") ||
+            (tok.includes("ticket") && tok.includes("parent"))
+          ) {
+            parentTicketCol = idx;
+          } else if (
+            tok === "ticket_number_read_only__c" ||
+            (tok.includes("ticket") && !tok.includes("parent"))
+          ) {
+            ticketCol = idx;
+          } else if (
+            tok === "parentworkorderid" ||
+            (tok.includes("parent") && tok.includes("id"))
+          ) {
+            parentIdCol = idx;
+          } else if (
+            tok.includes("approval_sent") ||
+            tok.includes("approval_send") ||
+            tok.includes("is_approval")
+          ) {
+            isApprovalCol = idx;
+          } else if (tok.includes("mr_created")) {
+            isMrCol = idx;
+          } else if (
+            tok.includes("account.group") ||
+            tok === "group__c" ||
+            tok === "group"
+          ) {
+            groupCol = idx;
+          } else if (tok.includes("fgr_approved_reject") || tok.includes("fgr")) {
+            fgrCol = idx;
+          } else if (tok === "assetid") {
+            assetIdCol = idx;
+          } else if (
+            (tok === "status" || tok === "workorder.status" || tok === "status__c") &&
+            !tok.includes("fgr") &&
+            !tok.includes("crbf") &&
+            !tok.includes("approval")
+          ) {
+            statusCol = idx;
+          }
+        });
+      }
       continue;
     }
 
@@ -2798,32 +3385,6 @@ export function processAccountCheckClassification(
       isChild,
       isPms,
     });
-  }
-
-  // Handle fallback tickets from Step 1 that were not returned in Step 3
-  if (fallbackTickets.length > 0) {
-    for (const ft of fallbackTickets) {
-      const clean = cleanTicketToken(ft);
-      if (!clean || seenTickets.has(clean)) continue;
-      seenTickets.add(clean);
-      records.push({
-        id: "",
-        ticket: clean,
-        parentId: "",
-        parentTicket: "",
-        isApprovalSent: false,
-        isMrCreated: false,
-        isLocked: false,
-        accountGroup: "Not Returned by SF",
-        accountGroupCategory: "UNCLASSIFIED",
-        fgr: "",
-        assetId: "",
-        status: "Not Returned",
-        isParent: true,
-        isChild: false,
-        isPms: clean.toUpperCase().startsWith("A"),
-      });
-    }
   }
 
   const namoCount = records.filter((r) => r.accountGroupCategory === "NAMO").length;
@@ -4086,7 +4647,231 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
   }
 
   // 2. NAMO Cancellation Mode
-  if (cancellationType === "NAMO") {
+  if (cancellationType === "NAMO" && namoResult && (namoResult.allRecords.length > 0 || namoResult.allAutoPmsTickets.length > 0)) {
+    const unifiedApprovalPending = Array.from(
+      new Set([
+        ...namoResult.approvalPendingTickets.map((t: NamoTicketItem) => t.ticket).filter(Boolean),
+        ...lockedTickets,
+      ])
+    );
+    const cleanOtherFailedTickets = otherFailedTickets.filter(
+      (t: string) => !unifiedApprovalPending.includes(t)
+    );
+    const unifiedApprovalPendingCount = unifiedApprovalPending.length;
+    const cleanOtherFailedCount = cleanOtherFailedTickets.length;
+    const totalNamo =
+      namoResult.allRecords.length > 0
+        ? namoResult.allRecords.length
+        : totalTickets || (namoResult.allAutoPmsTickets.length ?? 0);
+
+    if (totalFailedCount === 0 && unifiedApprovalPendingCount === 0) {
+      if (namoResult.allSkippedTickets.length === 0) {
+        const mailText = `Dear Team,\n\nCancellation has been done successfully for NAMO tickets.\n\nTotal Tickets: ${totalNamo}`;
+        const postText = `@taguser \nCancellation has been done successfully for NAMO tickets.\n\nTotal Tickets: ${totalNamo}`;
+        const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${totalNamo}</p></div>`;
+        const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully for NAMO tickets.</p><br><p>Total Tickets: ${totalNamo}</p>`;
+        return { mailText, mailHtml, postText, postHtml };
+      }
+      return {
+        mailText: namoResult.namoMailOutputText,
+        mailHtml: namoResult.namoMailOutputHtml,
+        postText: namoResult.namoPostOutputText,
+        postHtml: namoResult.namoPostOutputHtml,
+      };
+    }
+
+    const totalExcluded = namoResult.allSkippedTickets.length;
+    const breakdownLines: string[] = [];
+    if (namoResult.nonAutoPmsTickets.length > 0) {
+      breakdownLines.push(`• Total Non-PMS Tickets: ${namoResult.nonAutoPmsTickets.length}`);
+    }
+    if (namoResult.nonNamoTickets.length > 0) {
+      breakdownLines.push(`• Skipped NON-NAMO Group (Requires RM Approval): ${namoResult.nonNamoTickets.length}`);
+    }
+    if (namoResult.parentWorkOrderTickets.length > 0) {
+      breakdownLines.push(`• Skipped Child WorkOrders with Parent Present: ${namoResult.parentWorkOrderTickets.length}`);
+    }
+    const namoCanceled = namoResult.canceledTickets || namoResult.completedOrCanceledTickets.filter((t) => isStatusCanceled(t.status));
+    const namoCompleted = namoResult.completedTickets || namoResult.completedOrCanceledTickets.filter((t) => !isStatusCanceled(t.status));
+    if (namoCanceled.length > 0) {
+      breakdownLines.push(`• Skipped Already Canceled: ${namoCanceled.length}`);
+    }
+    if (namoCompleted.length > 0) {
+      breakdownLines.push(`• Skipped Already Completed: ${namoCompleted.length}`);
+    }
+    if (namoResult.mrCreatedTickets && namoResult.mrCreatedTickets.length > 0) {
+      breakdownLines.push(`• Skipped Material Request (MR) Created: ${namoResult.mrCreatedTickets.length}`);
+    }
+    if (unifiedApprovalPendingCount > 0) {
+      breakdownLines.push(`• Skipped Approval Pending: ${unifiedApprovalPendingCount}`);
+    }
+    if (cleanOtherFailedCount > 0) {
+      breakdownLines.push(`• Failed NAMO Tickets: ${cleanOtherFailedCount}`);
+    }
+
+    const summaryText = `Cancellation has been processed for NAMO tickets.\n\nTotal Tickets: ${totalNamo}\nCancelled (NAMO): ${successCount}\n${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}\n` : ""}${cleanOtherFailedCount > 0 ? `Failed NAMO Tickets: ${cleanOtherFailedCount}\n` : ""}Total Excluded: ${totalExcluded}\n${breakdownLines.join("\n")}`;
+    const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed for NAMO tickets.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${totalNamo}<br>Cancelled (NAMO): ${successCount}<br>${unifiedApprovalPendingCount > 0 ? `Approval Pending: ${unifiedApprovalPendingCount}<br>` : ""}${cleanOtherFailedCount > 0 ? `Failed NAMO Tickets: ${cleanOtherFailedCount}<br>` : ""}Total Excluded: ${totalExcluded}<br>${breakdownLines.join("<br>")}</p>`;
+
+    let lockedDetailsText = "";
+    let lockedDetailsHtml = "";
+    if (unifiedApprovalPendingCount > 0) {
+      lockedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Approval Pending:",
+          "Approval is pending against the following ticket(s):",
+          unifiedApprovalPending.map((t: string) => `• ${t}`)
+        );
+      lockedDetailsHtml = renderHtmlBox(
+        "Approval Pending:",
+        "Approval is pending against the following ticket(s):",
+        unifiedApprovalPending.map((t: string) => `• ${t}`),
+        "#f59e0b",
+        "#fffbeb",
+        "#92400e",
+        "#b45309"
+      );
+    }
+
+    let otherFailedDetailsText = "";
+    let otherFailedDetailsHtml = "";
+    if (cleanOtherFailedCount > 0) {
+      otherFailedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Failed Tickets:",
+          undefined,
+          cleanOtherFailedTickets.map((t: string) => `• ${t}`)
+        );
+      otherFailedDetailsHtml = renderHtmlBox(
+        "Failed Tickets:",
+        undefined,
+        cleanOtherFailedTickets.map((t: string) => `• ${t}`),
+        "#ef4444",
+        "#fff1f2",
+        "#991b1b",
+        "#7f1d1d"
+      );
+    }
+
+    let mrCreatedDetailsText = "";
+    let mrCreatedDetailsHtml = "";
+    if (namoResult.mrCreatedTickets && namoResult.mrCreatedTickets.length > 0) {
+      mrCreatedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Material Request (MR) Created:",
+          "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+          namoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`)
+        );
+      mrCreatedDetailsHtml = renderHtmlBox(
+        "Material Request (MR) Created:",
+        "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+        namoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`),
+        "#ef4444",
+        "#fff1f2",
+        "#9f1239",
+        "#881337"
+      );
+    }
+
+    let nonNamoDetailsText = "";
+    let nonNamoDetailsHtml = "";
+    if (namoResult.nonNamoTickets && namoResult.nonNamoTickets.length > 0) {
+      nonNamoDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "NON-NAMO PMS Cancellation – Approval Requirement:",
+          "Cancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:",
+          namoResult.nonNamoTickets.map((t) => `• ${t.ticket}`)
+        );
+      nonNamoDetailsHtml = renderHtmlBox(
+        "NON-NAMO PMS Cancellation – Approval Requirement:",
+        "Cancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:",
+        namoResult.nonNamoTickets.map((t) => `• ${t.ticket}`),
+        "#0284c7",
+        "#f0f9ff",
+        "#0369a1",
+        "#075985"
+      );
+    }
+
+    let parentDetailsText = "";
+    let parentDetailsHtml = "";
+    if (namoResult.parentWorkOrderTickets && namoResult.parentWorkOrderTickets.length > 0) {
+      parentDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Child WorkOrders (Parent Present):",
+          "The following ticket(s) have a parent work order present and cannot be cancelled:",
+          namoResult.parentWorkOrderTickets.map(
+            (t) =>
+              `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+          )
+        );
+      parentDetailsHtml = renderHtmlBox(
+        "Child WorkOrders (Parent Present):",
+        "The following ticket(s) have a parent work order present and cannot be cancelled:",
+        namoResult.parentWorkOrderTickets.map(
+          (t) =>
+            `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+        ),
+        "#8b5cf6",
+        "#f5f3ff",
+        "#6d28d9",
+        "#5b21b6"
+      );
+    }
+
+    // Normal written detail sections for Post (standard plain text, no tables, no box borders)
+    let postLockedDetailsText = "";
+    let postLockedDetailsHtml = "";
+    if (unifiedApprovalPendingCount > 0) {
+      postLockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${unifiedApprovalPending.map((t: string) => `• ${t}`).join("\n")}`;
+      postLockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    }
+
+    let postOtherFailedDetailsText = "";
+    let postOtherFailedDetailsHtml = "";
+    if (cleanOtherFailedCount > 0) {
+      postOtherFailedDetailsText = `\n\nFailed Tickets:\n${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
+      postOtherFailedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    }
+
+    let postMrCreatedDetailsText = "";
+    let postMrCreatedDetailsHtml = "";
+    if (namoResult.mrCreatedTickets && namoResult.mrCreatedTickets.length > 0) {
+      postMrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${namoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+      postMrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${namoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let postNonNamoDetailsText = "";
+    let postNonNamoDetailsHtml = "";
+    if (namoResult.nonNamoTickets && namoResult.nonNamoTickets.length > 0) {
+      postNonNamoDetailsText = `\n\nNON-NAMO PMS – Approval Requirement:\nCancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:\n${namoResult.nonNamoTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+      postNonNamoDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>NON-NAMO PMS – Approval Requirement:</b><br>Cancellation of NON-NAMO PMS tickets requires RM Approval. The following ticket(s) will remain pending until approval is obtained:<br>${namoResult.nonNamoTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let postParentDetailsText = "";
+    let postParentDetailsHtml = "";
+    if (namoResult.parentWorkOrderTickets && namoResult.parentWorkOrderTickets.length > 0) {
+      postParentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${namoResult.parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+      postParentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${namoResult.parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+    }
+
+    const detailSectionsText = `${lockedDetailsText}${otherFailedDetailsText}${mrCreatedDetailsText}${nonNamoDetailsText}${parentDetailsText}`;
+    const detailSectionsHtml = `${lockedDetailsHtml}${otherFailedDetailsHtml}${mrCreatedDetailsHtml}${nonNamoDetailsHtml}${parentDetailsHtml}`;
+
+    const postDetailSectionsText = `${postLockedDetailsText}${postOtherFailedDetailsText}${postMrCreatedDetailsText}${postNonNamoDetailsText}${postParentDetailsText}`;
+    const postDetailSectionsHtml = `${postLockedDetailsHtml}${postOtherFailedDetailsHtml}${postMrCreatedDetailsHtml}${postNonNamoDetailsHtml}${postParentDetailsHtml}`;
+
+    const mailText = `Dear Team,\n\n${summaryText}${detailSectionsText}`;
+    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}</div>`;
+    const postText = `@taguser \n${summaryText}${postDetailSectionsText}`;
+    const postHtml = `<p>@taguser </p>${summaryHtml}${postDetailSectionsHtml}`;
+
+    return { mailText, mailHtml, postText, postHtml };
+  } else if (cancellationType === "NAMO") {
     let acResult = accountCheckResult;
     if (!acResult || acResult.totalCount === 0) {
       if (namoResult && namoResult.allRecords.length > 0) {
@@ -4168,8 +4953,13 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
     if (nonNamoResult.parentWorkOrderTickets.length > 0) {
       breakdownLines.push(`• Skipped Child WorkOrders with Parent Present (Condition 3): ${nonNamoResult.parentWorkOrderTickets.length}`);
     }
-    if (nonNamoResult.completedOrCanceledTickets.length > 0) {
-      breakdownLines.push(`• Skipped Completed/Canceled Status (Condition 3): ${nonNamoResult.completedOrCanceledTickets.length}`);
+    const nonNamoCanceled = nonNamoResult.canceledTickets || nonNamoResult.completedOrCanceledTickets.filter((t) => isStatusCanceled(t.status));
+    const nonNamoCompleted = nonNamoResult.completedTickets || nonNamoResult.completedOrCanceledTickets.filter((t) => !isStatusCanceled(t.status));
+    if (nonNamoCanceled.length > 0) {
+      breakdownLines.push(`• Skipped Already Canceled (Condition 3): ${nonNamoCanceled.length}`);
+    }
+    if (nonNamoCompleted.length > 0) {
+      breakdownLines.push(`• Skipped Already Completed (Condition 3): ${nonNamoCompleted.length}`);
     }
     if (nonNamoResult.unclassifiedTickets.length > 0) {
       breakdownLines.push(`• Skipped Unclassified / Blank Group: ${nonNamoResult.unclassifiedTickets.length}`);
@@ -4188,21 +4978,160 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
     let lockedDetailsText = "";
     let lockedDetailsHtml = "";
     if (unifiedApprovalPendingCount > 0) {
-      lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${unifiedApprovalPending.map((t: string) => `• ${t}`).join("\n")}`;
-      lockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      lockedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Approval Pending:",
+          "Approval is pending against the following ticket(s):",
+          unifiedApprovalPending.map((t: string) => `• ${t}`)
+        );
+      lockedDetailsHtml = renderHtmlBox(
+        "Approval Pending:",
+        "Approval is pending against the following ticket(s):",
+        unifiedApprovalPending.map((t: string) => `• ${t}`),
+        "#f59e0b",
+        "#fffbeb",
+        "#92400e",
+        "#b45309"
+      );
     }
 
     let otherFailedDetailsText = "";
     let otherFailedDetailsHtml = "";
     if (cleanOtherFailedCount > 0) {
-      otherFailedDetailsText = `\n\nFailed Tickets:\n${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-      otherFailedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      otherFailedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Failed Tickets:",
+          undefined,
+          cleanOtherFailedTickets.map((t: string) => `• ${t}`)
+        );
+      otherFailedDetailsHtml = renderHtmlBox(
+        "Failed Tickets:",
+        undefined,
+        cleanOtherFailedTickets.map((t: string) => `• ${t}`),
+        "#ef4444",
+        "#fff1f2",
+        "#991b1b",
+        "#7f1d1d"
+      );
     }
 
-    const mailText = `Dear,\n${summaryText}${lockedDetailsText}${otherFailedDetailsText}\n\n${nonNamoResult.excludedSegmentText || nonNamoResult.namoMailSegmentText}`;
-    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${lockedDetailsHtml}${otherFailedDetailsHtml}${nonNamoResult.excludedSegmentHtml || nonNamoResult.namoMailSegmentHtml ? `<div style="margin-top: 12px;">${nonNamoResult.excludedSegmentHtml || nonNamoResult.namoMailSegmentHtml}</div>` : ""}</div>`;
-    const postText = `@taguser \n${summaryText}${lockedDetailsText}${otherFailedDetailsText}\n\n${nonNamoResult.namoPostSegmentText || nonNamoResult.excludedSegmentText}`;
-    const postHtml = `<p>@taguser </p>${summaryHtml}${lockedDetailsHtml}${otherFailedDetailsHtml}<br>${nonNamoResult.namoPostSegmentHtml || nonNamoResult.excludedSegmentHtml}`;
+    let mrCreatedDetailsText = "";
+    let mrCreatedDetailsHtml = "";
+    if (nonNamoResult.mrCreatedTickets && nonNamoResult.mrCreatedTickets.length > 0) {
+      mrCreatedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Material Request (MR) Created:",
+          "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+          nonNamoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`)
+        );
+      mrCreatedDetailsHtml = renderHtmlBox(
+        "Material Request (MR) Created:",
+        "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+        nonNamoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`),
+        "#ef4444",
+        "#fff1f2",
+        "#9f1239",
+        "#881337"
+      );
+    }
+
+    let namoDetailsText = "";
+    let namoDetailsHtml = "";
+    if (nonNamoResult.namoTickets && nonNamoResult.namoTickets.length > 0) {
+      namoDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "NAMO Group Tickets (Excluded):",
+          "The following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:",
+          nonNamoResult.namoTickets.map((t) => `• ${t.ticket}`)
+        );
+      namoDetailsHtml = renderHtmlBox(
+        "NAMO Group Tickets (Excluded):",
+        "The following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:",
+        nonNamoResult.namoTickets.map((t) => `• ${t.ticket}`),
+        "#0284c7",
+        "#f0f9ff",
+        "#0369a1",
+        "#075985"
+      );
+    }
+
+    let parentDetailsText = "";
+    let parentDetailsHtml = "";
+    if (nonNamoResult.parentWorkOrderTickets && nonNamoResult.parentWorkOrderTickets.length > 0) {
+      parentDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Child WorkOrders (Parent Present):",
+          "The following ticket(s) have a parent work order present and cannot be cancelled:",
+          nonNamoResult.parentWorkOrderTickets.map(
+            (t) =>
+              `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+          )
+        );
+      parentDetailsHtml = renderHtmlBox(
+        "Child WorkOrders (Parent Present):",
+        "The following ticket(s) have a parent work order present and cannot be cancelled:",
+        nonNamoResult.parentWorkOrderTickets.map(
+          (t) =>
+            `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+        ),
+        "#8b5cf6",
+        "#f5f3ff",
+        "#6d28d9",
+        "#5b21b6"
+      );
+    }
+
+    // Normal written detail sections for Post (standard plain text, no tables, no box borders)
+    let postLockedDetailsText = "";
+    let postLockedDetailsHtml = "";
+    if (unifiedApprovalPendingCount > 0) {
+      postLockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${unifiedApprovalPending.map((t: string) => `• ${t}`).join("\n")}`;
+      postLockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    }
+
+    let postOtherFailedDetailsText = "";
+    let postOtherFailedDetailsHtml = "";
+    if (cleanOtherFailedCount > 0) {
+      postOtherFailedDetailsText = `\n\nFailed Tickets:\n${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
+      postOtherFailedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    }
+
+    let postMrCreatedDetailsText = "";
+    let postMrCreatedDetailsHtml = "";
+    if (nonNamoResult.mrCreatedTickets && nonNamoResult.mrCreatedTickets.length > 0) {
+      postMrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${nonNamoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+      postMrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${nonNamoResult.mrCreatedTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let postNamoDetailsText = "";
+    let postNamoDetailsHtml = "";
+    if (nonNamoResult.namoTickets && nonNamoResult.namoTickets.length > 0) {
+      postNamoDetailsText = `\n\nNAMO Group Tickets (Excluded):\nThe following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:\n${nonNamoResult.namoTickets.map((t) => `• ${t.ticket}`).join("\n")}`;
+      postNamoDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>NAMO Group Tickets (Excluded):</b><br>The following ticket(s) belong to NAMO group and cannot be processed under NON-NAMO:<br>${nonNamoResult.namoTickets.map((t) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let postParentDetailsText = "";
+    let postParentDetailsHtml = "";
+    if (nonNamoResult.parentWorkOrderTickets && nonNamoResult.parentWorkOrderTickets.length > 0) {
+      postParentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${nonNamoResult.parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+      postParentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${nonNamoResult.parentWorkOrderTickets.map((t) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+    }
+
+    const detailSectionsText = `${lockedDetailsText}${otherFailedDetailsText}${mrCreatedDetailsText}${namoDetailsText}${parentDetailsText}`;
+    const detailSectionsHtml = `${lockedDetailsHtml}${otherFailedDetailsHtml}${mrCreatedDetailsHtml}${namoDetailsHtml}${parentDetailsHtml}`;
+
+    const postDetailSectionsText = `${postLockedDetailsText}${postOtherFailedDetailsText}${postMrCreatedDetailsText}${postNamoDetailsText}${postParentDetailsText}`;
+    const postDetailSectionsHtml = `${postLockedDetailsHtml}${postOtherFailedDetailsHtml}${postMrCreatedDetailsHtml}${postNamoDetailsHtml}${postParentDetailsHtml}`;
+
+    const mailText = `Dear Team,\n\n${summaryText}${detailSectionsText}`;
+    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}</div>`;
+    const postText = `@taguser \n${summaryText}${postDetailSectionsText}`;
+    const postHtml = `<p>@taguser </p>${summaryHtml}${postDetailSectionsHtml}`;
 
     return { mailText, mailHtml, postText, postHtml };
   }
@@ -4231,7 +5160,7 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
 
     if (totalFailedCount === 0 && unifiedApprovalPendingCount === 0) {
       if (ccoResult.allSkippedTickets.length === 0) {
-        const mailText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${totalCco}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`;
+        const mailText = `Dear Team,\n\nCancellation has been done successfully.\n\nTotal Tickets: ${totalCco}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`;
         const postText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${totalCco}${ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : ""}`;
         const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${totalCco}</p>${ccoApprovalExtra ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
         const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalCco}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
@@ -4253,8 +5182,13 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
     if (ccoResult.parentWorkOrderTickets.length > 0) {
       breakdownLines.push(`• Skipped Child WorkOrders with Parent Present: ${ccoResult.parentWorkOrderTickets.length}`);
     }
-    if (ccoResult.completedOrCanceledTickets.length > 0) {
-      breakdownLines.push(`• Skipped Completed/Canceled Status: ${ccoResult.completedOrCanceledTickets.length}`);
+    const ccoCanceled = ccoResult.canceledTickets || ccoResult.completedOrCanceledTickets.filter((t) => isStatusCanceled(t.status));
+    const ccoCompleted = ccoResult.completedTickets || ccoResult.completedOrCanceledTickets.filter((t) => !isStatusCanceled(t.status));
+    if (ccoCanceled.length > 0) {
+      breakdownLines.push(`• Skipped Already Canceled: ${ccoCanceled.length}`);
+    }
+    if (ccoCompleted.length > 0) {
+      breakdownLines.push(`• Skipped Already Completed: ${ccoCompleted.length}`);
     }
     if (ccoResult.mrCreatedTickets && ccoResult.mrCreatedTickets.length > 0) {
       breakdownLines.push(`• Skipped Material Request (MR) Created: ${ccoResult.mrCreatedTickets.length}`);
@@ -4273,93 +5207,236 @@ export function buildCancellationStep5Output(options: Step5OutputOptions): Step5
     let lockedDetailsText = "";
     let lockedDetailsHtml = "";
     if (unifiedApprovalPendingCount > 0) {
-      lockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${unifiedApprovalPending.map((t: string) => `• ${t}`).join("\n")}`;
-      lockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      lockedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Approval Pending:",
+          "Approval is pending against the following ticket(s):",
+          unifiedApprovalPending.map((t: string) => t)
+        );
+      lockedDetailsHtml = renderHtmlBox(
+        "Approval Pending:",
+        "Approval is pending against the following ticket(s):",
+        unifiedApprovalPending.map((t: string) => t),
+        "#f59e0b",
+        "#fffbeb",
+        "#92400e",
+        "#b45309"
+      );
     }
 
     let otherFailedDetailsText = "";
     let otherFailedDetailsHtml = "";
     if (cleanOtherFailedCount > 0) {
-      otherFailedDetailsText = `\n\nFailed Tickets:\n${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-      otherFailedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+      otherFailedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Failed Tickets:",
+          undefined,
+          cleanOtherFailedTickets.map((t: string) => t)
+        );
+      otherFailedDetailsHtml = renderHtmlBox(
+        "Failed Tickets:",
+        undefined,
+        cleanOtherFailedTickets.map((t: string) => t),
+        "#ef4444",
+        "#fff1f2",
+        "#991b1b",
+        "#7f1d1d"
+      );
     }
 
     let autoPmsDetailsText = "";
     let autoPmsDetailsHtml = "";
     if (ccoResult.autoPmsTickets.length > 0) {
-      autoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
-      autoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+      autoPmsDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Auto PMS Tickets (Requires Approval):",
+          "The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):",
+          ccoResult.autoPmsTickets.map((t: CcoTicketItem) => t.ticket)
+        );
+      autoPmsDetailsHtml = renderHtmlBox(
+        "Auto PMS Tickets (Requires Approval):",
+        "The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):",
+        ccoResult.autoPmsTickets.map((t: CcoTicketItem) => t.ticket),
+        "#0284c7",
+        "#f0f9ff",
+        "#0369a1",
+        "#075985"
+      );
     }
 
     let mrCreatedDetailsText = "";
     let mrCreatedDetailsHtml = "";
     if (ccoResult.mrCreatedTickets && ccoResult.mrCreatedTickets.length > 0) {
-      mrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
-      mrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+      mrCreatedDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Material Request (MR) Created:",
+          "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+          ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => t.ticket)
+        );
+      mrCreatedDetailsHtml = renderHtmlBox(
+        "Material Request (MR) Created:",
+        "The following ticket(s) have an active Material Request created and cannot be cancelled:",
+        ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => t.ticket),
+        "#ef4444",
+        "#fff1f2",
+        "#9f1239",
+        "#881337"
+      );
     }
 
     let parentDetailsText = "";
     let parentDetailsHtml = "";
     if (ccoResult.parentWorkOrderTickets.length > 0) {
-      parentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
-      parentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+      parentDetailsText =
+        `\n\n` +
+        renderAsciiBox(
+          "Child WorkOrders (Parent Present):",
+          "The following ticket(s) have a parent work order present and cannot be cancelled:",
+          ccoResult.parentWorkOrderTickets.map(
+            (t: CcoTicketItem) =>
+              `${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+          )
+        );
+      parentDetailsHtml = renderHtmlBox(
+        "Child WorkOrders (Parent Present):",
+        "The following ticket(s) have a parent work order present and cannot be cancelled:",
+        ccoResult.parentWorkOrderTickets.map(
+          (t: CcoTicketItem) =>
+            `${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`
+        ),
+        "#8b5cf6",
+        "#f5f3ff",
+        "#6d28d9",
+        "#5b21b6"
+      );
     }
 
-    let completedDetailsText = "";
-    let completedDetailsHtml = "";
-    if (ccoResult.completedOrCanceledTickets.length > 0) {
-      completedDetailsText = `\n\nAlready Completed / Canceled:\nThe following ticket(s) are already completed or canceled:\n${ccoResult.completedOrCanceledTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("\n")}`;
-      completedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Already Completed / Canceled:</b><br>The following ticket(s) are already completed or canceled:<br>${ccoResult.completedOrCanceledTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.status ? ` (Status: ${t.status})` : ""}`).join("<br>")}</p>`;
+    // Normal written detail sections for Post (standard plain text, no tables, no box borders)
+    let postLockedDetailsText = "";
+    let postLockedDetailsHtml = "";
+    if (unifiedApprovalPendingCount > 0) {
+      postLockedDetailsText = `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${unifiedApprovalPending.map((t: string) => `• ${t}`).join("\n")}`;
+      postLockedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${unifiedApprovalPending.map((t: string) => `• ${t}`).join("<br>")}</p>`;
     }
 
-    const detailSectionsText = `${lockedDetailsText}${otherFailedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}${completedDetailsText}`;
-    const detailSectionsHtml = `${lockedDetailsHtml}${otherFailedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}${completedDetailsHtml}`;
+    let postOtherFailedDetailsText = "";
+    let postOtherFailedDetailsHtml = "";
+    if (cleanOtherFailedCount > 0) {
+      postOtherFailedDetailsText = `\n\nFailed Tickets:\n${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
+      postOtherFailedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${cleanOtherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    }
 
-    const tableText = ccoResult.excludedSegmentText ? `\n\n${ccoResult.excludedSegmentText}` : "";
-    const tableHtml = ccoResult.excludedSegmentHtml ? `<div style="margin-top: 12px;">${ccoResult.excludedSegmentHtml}</div>` : "";
+    let postAutoPmsDetailsText = "";
+    let postAutoPmsDetailsHtml = "";
+    if (ccoResult.autoPmsTickets.length > 0) {
+      postAutoPmsDetailsText = `\n\nAuto PMS Tickets (Requires Approval):\nThe following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):\n${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
+      postAutoPmsDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Auto PMS Tickets (Requires Approval):</b><br>The following Auto PMS ticket(s) cannot be cancelled under CCO without department approval (Suraj Sir - UCPG / Vishal Sir - CPSD):<br>${ccoResult.autoPmsTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let postMrCreatedDetailsText = "";
+    let postMrCreatedDetailsHtml = "";
+    if (ccoResult.mrCreatedTickets && ccoResult.mrCreatedTickets.length > 0) {
+      postMrCreatedDetailsText = `\n\nMaterial Request (MR) Created:\nThe following ticket(s) have an active Material Request created and cannot be cancelled:\n${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("\n")}`;
+      postMrCreatedDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Material Request (MR) Created:</b><br>The following ticket(s) have an active Material Request created and cannot be cancelled:<br>${ccoResult.mrCreatedTickets.map((t: CcoTicketItem) => `• ${t.ticket}`).join("<br>")}</p>`;
+    }
+
+    let postParentDetailsText = "";
+    let postParentDetailsHtml = "";
+    if (ccoResult.parentWorkOrderTickets.length > 0) {
+      postParentDetailsText = `\n\nChild WorkOrders (Parent Present):\nThe following ticket(s) have a parent work order present and cannot be cancelled:\n${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("\n")}`;
+      postParentDetailsHtml = `<p style="margin: 12px 0 0 0;"><b>Child WorkOrders (Parent Present):</b><br>The following ticket(s) have a parent work order present and cannot be cancelled:<br>${ccoResult.parentWorkOrderTickets.map((t: CcoTicketItem) => `• ${t.ticket}${t.parentWorkOrderId || t.parentTicket ? ` (Parent: ${t.parentTicket || t.parentWorkOrderId})` : ""}`).join("<br>")}</p>`;
+    }
+
+    // Note: Already completed/canceled tickets and full excluded table are omitted from mail body to keep email concise.
+    const detailSectionsText = `${lockedDetailsText}${otherFailedDetailsText}${autoPmsDetailsText}${mrCreatedDetailsText}${parentDetailsText}`;
+    const detailSectionsHtml = `${lockedDetailsHtml}${otherFailedDetailsHtml}${autoPmsDetailsHtml}${mrCreatedDetailsHtml}${parentDetailsHtml}`;
+
+    const postDetailSectionsText = `${postLockedDetailsText}${postOtherFailedDetailsText}${postAutoPmsDetailsText}${postMrCreatedDetailsText}${postParentDetailsText}`;
+    const postDetailSectionsHtml = `${postLockedDetailsHtml}${postOtherFailedDetailsHtml}${postAutoPmsDetailsHtml}${postMrCreatedDetailsHtml}${postParentDetailsHtml}`;
 
     const approvalExtraBlock = ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : "";
     const approvalExtraHtmlBlock = ccoApprovalExtra ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : "";
 
-    const mailText = `Dear,\n${summaryText}${detailSectionsText}${tableText}${approvalExtraBlock}`;
-    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${tableHtml}${approvalExtraHtmlBlock}</div>`;
-    const postText = `@taguser \n${summaryText}${detailSectionsText}${tableText}${approvalExtraBlock}`;
-    const postHtml = `<p>@taguser </p>${summaryHtml}${detailSectionsHtml}${tableHtml}${approvalExtraHtmlBlock}`;
+    const mailText = `Dear Team,\n\n${summaryText}${detailSectionsText}${approvalExtraBlock}`;
+    const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${detailSectionsHtml}${approvalExtraHtmlBlock}</div>`;
+    const postText = `@taguser \n${summaryText}${postDetailSectionsText}${approvalExtraBlock}`;
+    const postHtml = `<p>@taguser </p>${summaryHtml}${postDetailSectionsHtml}${approvalExtraHtmlBlock}`;
 
     return { mailText, mailHtml, postText, postHtml };
   }
 
   // 4. CCO / Default Mode
   if (totalFailedCount === 0) {
-    const mailText = `Dear,\nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
+    const mailText = `Dear Team,\n\nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
     const postText = `@taguser \nCancellation has been done successfully.\n\nTotal Tickets: ${totalTickets}${ccoApprovalExtra}`;
     const mailHtml = `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}<p style="margin: 0 0 10px 0;">Cancellation has been done successfully.</p><p style="margin: 0 0 10px 0;">Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}</div>`;
     const postHtml = `<p>@taguser </p><p>Cancellation has been done successfully.</p><br><p>Total Tickets: ${totalTickets}</p>${ccoApprovalExtra ? `<br><p><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>` : ""}`;
     return { mailText, mailHtml, postText, postHtml };
   }
 
-  let bodyText = `Cancellation has been processed.\nTotal Tickets: ${totalTickets}\nCancelled Tickets: ${successCount}`;
-  let bodyHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed.<br>Total Tickets: ${totalTickets}<br>Cancelled Tickets: ${successCount}</p>`;
+  const summaryText = `Cancellation has been processed.\nTotal Tickets: ${totalTickets}\nCancelled Tickets: ${successCount}`;
+  const summaryHtml = `<p style="margin: 0 0 10px 0;">Cancellation has been processed.<br>Total Tickets: ${totalTickets}<br>Cancelled Tickets: ${successCount}</p>`;
+
+  let mailDetailsText = "";
+  let mailDetailsHtml = "";
+  let postDetailsText = "";
+  let postDetailsHtml = "";
 
   if (lockedTickets.length > 0) {
-    bodyText += `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${lockedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-    bodyHtml += `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${lockedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    mailDetailsText +=
+      "\n\n" +
+      renderAsciiBox(
+        "Approval Pending:",
+        "Approval is pending against the following ticket(s):",
+        lockedTickets
+      );
+    mailDetailsHtml += renderHtmlBox(
+      "Approval Pending:",
+      "Approval is pending against the following ticket(s):",
+      lockedTickets,
+      "#f59e0b",
+      "#fffbeb",
+      "#92400e",
+      "#b45309"
+    );
+    postDetailsText += `\n\nApproval Pending:\nApproval is pending against the following ticket(s):\n${lockedTickets.map((t: string) => `• ${t}`).join("\n")}`;
+    postDetailsHtml += `<p style="margin: 12px 0 0 0;"><b>Approval Pending:</b><br>Approval is pending against the following ticket(s):<br>${lockedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
   }
 
   if (otherFailedCount > 0) {
-    bodyText += `\n\nFailed Tickets:\n${otherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
-    bodyHtml += `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${otherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
+    mailDetailsText +=
+      "\n\n" +
+      renderAsciiBox(
+        "Failed Tickets:",
+        undefined,
+        otherFailedTickets
+      );
+    mailDetailsHtml += renderHtmlBox(
+      "Failed Tickets:",
+      undefined,
+      otherFailedTickets,
+      "#ef4444",
+      "#fff1f2",
+      "#991b1b",
+      "#7f1d1d"
+    );
+    postDetailsText += `\n\nFailed Tickets:\n${otherFailedTickets.map((t: string) => `• ${t}`).join("\n")}`;
+    postDetailsHtml += `<p style="margin: 12px 0 0 0;"><b>Failed Tickets:</b><br>${otherFailedTickets.map((t: string) => `• ${t}`).join("<br>")}</p>`;
   }
 
-  if (ccoApprovalExtra) {
-    bodyText += ccoApprovalExtra;
-    bodyHtml += `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>`;
-  }
+  const approvalExtraBlock = ccoApprovalExtra ? `\n\n${ccoApprovalExtra}` : "";
+  const approvalExtraHtmlBlock = ccoApprovalExtra
+    ? `<p style="margin: 12px 0 0 0;"><b>${ccoApprovalExtra.replace(/\n/g, "<br>")}</b></p>`
+    : "";
 
   return {
-    mailText: `Dear,\n${bodyText}`,
-    postText: `@taguser \n${bodyText}`,
-    mailHtml: `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${bodyHtml}</div>`,
-    postHtml: `<p>@taguser </p>${bodyHtml}`,
+    mailText: `Dear Team,\n\n${summaryText}${mailDetailsText}${approvalExtraBlock}`,
+    postText: `@taguser \n${summaryText}${postDetailsText}${approvalExtraBlock}`,
+    mailHtml: `<div style="font-family: 'Aptos', Calibri, Arial, sans-serif; font-size: 12pt; line-height: 1.35; color: inherit;">${renderEmailHeader("Dear Team,")}${summaryHtml}${mailDetailsHtml}${approvalExtraHtmlBlock}</div>`,
+    postHtml: `<p>@taguser </p>${summaryHtml}${postDetailsHtml}${approvalExtraHtmlBlock}`,
   };
 }
