@@ -5,6 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
+import { GlassSpotlightCard } from "@/components/ui/glass-primitives";
+import { EASE_120HZ, GLASS_TAB_SPRING } from "@/lib/motion";
 import { TypewriterQuotes } from "@/components/ui/typewriter-quotes";
 import { TodayHighlightCard } from "@/components/ui/today-highlight-card";
 
@@ -72,26 +74,26 @@ function formatExactTime(iso: string) {
 function activityMeta(type: ActivityEntry["type"]) {
   switch (type) {
     case "soql-generated":
-      return { icon: Terminal, bg: "bg-blue-500/10 dark:bg-blue-500/20", text: "text-blue-600 dark:text-blue-400", ring: "ring-blue-500/20" };
+      return { icon: Terminal, bg: "bg-blue-500/12 dark:bg-sky-500/15", text: "text-blue-700 dark:text-sky-300", ring: "ring-blue-500/20 dark:ring-sky-400/25" };
     case "excel-operation":
-      return { icon: FileSearch, bg: "bg-emerald-500/10 dark:bg-emerald-500/20", text: "text-emerald-600 dark:text-emerald-400", ring: "ring-emerald-500/20" };
+      return { icon: FileSearch, bg: "bg-sky-500/12 dark:bg-sky-500/15", text: "text-blue-700 dark:text-sky-300", ring: "ring-sky-500/20 dark:ring-sky-400/25" };
     case "favourite-added":
     case "favourite-removed":
-      return { icon: Star, bg: "bg-amber-500/10 dark:bg-amber-500/20", text: "text-amber-600 dark:text-amber-400", ring: "ring-amber-500/20" };
+      return { icon: Star, bg: "bg-blue-500/10 dark:bg-blue-500/15", text: "text-blue-600 dark:text-blue-300", ring: "ring-blue-500/20 dark:ring-blue-400/25" };
     case "ticket-formatted":
-      return { icon: Ticket, bg: "bg-orange-500/10 dark:bg-orange-500/20", text: "text-orange-600 dark:text-orange-400", ring: "ring-orange-500/20" };
+      return { icon: Ticket, bg: "bg-sky-500/12 dark:bg-sky-500/15", text: "text-sky-700 dark:text-sky-300", ring: "ring-sky-500/20 dark:ring-sky-400/25" };
     case "ticket-cancellation":
-      return { icon: XCircle, bg: "bg-rose-500/10 dark:bg-rose-500/20", text: "text-rose-600 dark:text-rose-400", ring: "ring-rose-500/20" };
+      return { icon: XCircle, bg: "bg-blue-500/12 dark:bg-blue-500/15", text: "text-blue-700 dark:text-blue-300", ring: "ring-blue-500/25 dark:ring-blue-400/25" };
     case "asset-transfer":
-      return { icon: ArrowRightLeft, bg: "bg-purple-500/10 dark:bg-purple-500/20", text: "text-purple-600 dark:text-purple-400", ring: "ring-purple-500/20" };
+      return { icon: ArrowRightLeft, bg: "bg-sky-500/12 dark:bg-sky-500/15", text: "text-blue-700 dark:text-sky-300", ring: "ring-sky-500/20 dark:ring-sky-400/25" };
     case "case-assignment":
-      return { icon: Users, bg: "bg-teal-500/10 dark:bg-teal-500/20", text: "text-teal-600 dark:text-teal-400", ring: "ring-teal-500/20" };
+      return { icon: Users, bg: "bg-blue-500/12 dark:bg-sky-500/15", text: "text-blue-700 dark:text-sky-300", ring: "ring-blue-500/20 dark:ring-sky-400/25" };
     case "template-created":
     case "template-updated":
     case "template-deleted":
-      return { icon: FilePlus, bg: "bg-indigo-500/10 dark:bg-indigo-500/20", text: "text-indigo-600 dark:text-indigo-400", ring: "ring-indigo-500/20" };
+      return { icon: FilePlus, bg: "bg-sky-500/12 dark:bg-blue-500/15", text: "text-blue-700 dark:text-sky-300", ring: "ring-sky-500/20 dark:ring-sky-400/25" };
     default:
-      return { icon: Layers3, bg: "bg-slate-500/10 dark:bg-slate-500/20", text: "text-slate-600 dark:text-slate-400", ring: "ring-slate-500/20" };
+      return { icon: Layers3, bg: "bg-slate-500/10 dark:bg-white/[0.06]", text: "text-slate-600 dark:text-slate-300", ring: "ring-slate-500/20 dark:ring-white/10" };
   }
 }
 
@@ -148,51 +150,54 @@ function KPICard({ label, value, totalValue, icon: Icon, iconBg, iconText, delay
   }, [totalValue, displayTotal]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay, duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-      whileHover={{ y: -4, scale: 1.02 }}
-      className="relative group h-full"
+    <GlassSpotlightCard
+      delay={delay}
+      interactive
+      className="h-full min-h-[11.25rem] rounded-2xl p-[clamp(1rem,2vw,1.5rem)]"
     >
-      <div className="glass-panel glass-panel--elevated relative h-full min-h-[11rem] flex flex-col justify-between overflow-hidden rounded-2xl p-[clamp(1rem,2vw,1.5rem)]">
-        <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-          <Icon className="w-24 h-24 -mr-6 -mt-6 transform rotate-12" />
+      <div className="relative flex h-full flex-col justify-between overflow-hidden">
+        <div className="pointer-events-none absolute top-0 right-0 p-3 opacity-[0.07] dark:opacity-[0.09]">
+          <Icon className="h-24 w-24 -mr-6 -mt-6 rotate-12" />
         </div>
-        <div className="relative flex items-start justify-between gap-4 z-10">
+        <div className="relative z-10 flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[clamp(0.8125rem,1.2vw,0.95rem)] font-semibold tracking-wide text-foreground break-words">{label}</p>
+            <p className="text-[clamp(0.8125rem,1.2vw,0.95rem)] font-bold tracking-wide text-muted-foreground break-words">
+              {label}
+            </p>
             <div className="mt-2 flex items-baseline gap-2">
-              <p className="text-[clamp(2rem,5vw,2.75rem)] font-black tabular-nums text-foreground tracking-tight drop-shadow-sm">
+              <p className="text-[clamp(2rem,5vw,2.75rem)] font-black tabular-nums text-foreground tracking-tight">
                 {displayValue.toLocaleString()}
               </p>
-              <span className="text-sm font-semibold text-muted-foreground ml-1 mb-2">/ wk</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">/ wk</span>
             </div>
-            <p className="text-xs font-medium text-muted-foreground mt-1">
-              All-time: <span className="text-foreground">{displayTotal.toLocaleString()}</span>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">
+              All-time: <span className="font-bold text-foreground tabular-nums">{displayTotal.toLocaleString()}</span>
             </p>
             {value > 0 && (
               <motion.div
-                initial={{ opacity: 0, x: -10 }}
+                initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-400/15 px-2.5 py-1 text-[11px] font-bold leading-tight text-emerald-800 dark:text-emerald-200"
+                transition={{ duration: 0.24, ease: EASE_120HZ }}
+                className="mt-3 inline-flex max-w-full items-center gap-1.5 rounded-full border border-blue-500/25 bg-blue-500/10 px-2.5 py-1 text-[11px] font-bold leading-tight text-blue-700 dark:border-sky-400/30 dark:bg-sky-400/15 dark:text-sky-200"
               >
                 <TrendingUp className="h-3.5 w-3.5" />
                 Active Today
               </motion.div>
             )}
           </div>
-          <div
+          <motion.div
+            whileHover={{ scale: 1.08, rotate: 4 }}
+            transition={GLASS_TAB_SPRING}
             className={cn(
-              "flex h-[var(--icon-box-md)] w-[var(--icon-box-md)] shrink-0 items-center justify-center rounded-2xl shadow-lg ring-1 ring-white/20 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-3",
+              "flex h-[var(--icon-box-md)] w-[var(--icon-box-md)] shrink-0 items-center justify-center rounded-2xl shadow-lg ring-1 ring-white/25",
               iconBg, iconText
             )}
           >
             <Icon className="h-[var(--icon-size-md)] w-[var(--icon-size-md)]" />
-          </div>
+          </motion.div>
         </div>
       </div>
-    </motion.div>
+    </GlassSpotlightCard>
   );
 }
 
@@ -216,40 +221,36 @@ function QuickActionCard({
   delay: number;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.4, ease: "easeOut" }}
-      whileHover={{ y: -2 }}
-    >
-      <Link href={href} className="block h-full">
-        <div className="glass-panel group relative h-full overflow-hidden rounded-2xl p-5 transition-all duration-300">
-          <div className={cn("absolute inset-x-0 top-0 h-1 opacity-0 transition-opacity duration-300 group-hover:opacity-100", gradient)} />
-
-          <div className="flex items-center gap-4">
-            <div
-              className={cn(
-                "flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-md transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg",
-                iconBg
-              )}
-            >
-              <Icon className="h-6 w-6" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-bold text-foreground transition-colors duration-200">
-                {title}
-              </p>
-              <p className="mt-1 truncate text-sm font-medium text-muted-foreground">
-                {description}
-              </p>
-            </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted opacity-0 transition-all duration-300 group-hover:opacity-100">
-              <ChevronRight className="h-5 w-5 text-foreground" />
-            </div>
+    <Link href={href} className="block h-full">
+      <GlassSpotlightCard
+        delay={delay}
+        interactive
+        className="h-full rounded-2xl p-5"
+      >
+        <div className={cn("absolute inset-x-0 top-0 h-[2px] opacity-0 transition-opacity duration-300 group-hover:opacity-100", gradient)} />
+        <div className="flex items-center gap-4">
+          <div
+            className={cn(
+              "flex h-13 w-13 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl text-white shadow-md ring-1 ring-white/25 transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg",
+              iconBg
+            )}
+          >
+            <Icon className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-bold text-foreground transition-colors duration-200 group-hover:text-blue-600 dark:group-hover:text-sky-300">
+              {title}
+            </p>
+            <p className="mt-1 truncate text-sm font-medium text-muted-foreground">
+              {description}
+            </p>
+          </div>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500/10 text-blue-600 dark:bg-sky-400/15 dark:text-sky-300 opacity-0 -translate-x-2 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">
+            <ChevronRight className="h-4.5 w-4.5" />
           </div>
         </div>
-      </Link>
-    </motion.div>
+      </GlassSpotlightCard>
+    </Link>
   );
 }
 
@@ -260,23 +261,23 @@ function LiveIndicator({ isLive }: { isLive: boolean }) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/50 backdrop-blur-sm px-3 py-1.5 shadow-sm"
+      className="inline-flex items-center gap-2 rounded-full border border-blue-400/25 bg-white/60 dark:bg-white/[0.06] backdrop-blur-md px-3 py-1.5 shadow-sm"
     >
       <span className={cn("relative flex h-2.5 w-2.5", !isLive && "opacity-40")}>
         {isLive && (
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
         )}
         <span
           className={cn(
             "relative inline-flex h-2.5 w-2.5 rounded-full",
-            isLive ? "bg-emerald-500" : "bg-muted-foreground"
+            isLive ? "bg-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.8)]" : "bg-muted-foreground"
           )}
         />
       </span>
       <span
         className={cn(
           "text-xs font-bold tracking-wider",
-          isLive ? "text-emerald-800 dark:text-emerald-200" : "text-muted-foreground"
+          isLive ? "text-blue-700 dark:text-sky-200" : "text-muted-foreground"
         )}
       >
         {isLive ? "SYSTEM LIVE" : "OFFLINE"}
@@ -300,7 +301,7 @@ function SectionHeader({
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
         {Icon && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 border border-blue-500/20 dark:bg-sky-500/15 dark:text-sky-300 dark:border-sky-400/25 shadow-sm">
             <Icon className="h-5 w-5" />
           </div>
         )}
@@ -520,14 +521,14 @@ export default function DashboardPage() {
         <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-sky-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
 
         <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-6 lg:w-2/3">
+          <div className="space-y-6 flex-1 min-w-0 max-w-2xl">
             <div className="space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-700 backdrop-blur-md dark:bg-blue-500/15 dark:text-sky-200">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3 py-1 text-sm font-semibold text-blue-700 backdrop-blur-md dark:bg-sky-500/15 dark:border-sky-400/30 dark:text-sky-200">
                 <Sparkles className="h-4 w-4" />
                 <span>Salesforce operations workspace</span>
               </div>
               <h1 className="text-4xl font-black tracking-tight text-slate-950 dark:text-white lg:text-5xl">
-                {greeting}, <span className="bg-gradient-to-r from-sky-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">Team</span>
+                {greeting}, <span className="bg-gradient-to-r from-blue-600 via-sky-500 to-blue-700 dark:from-sky-300 dark:via-blue-400 dark:to-white bg-clip-text text-transparent">Team</span>
               </h1>
               <p className="max-w-xl text-lg font-medium text-slate-600 dark:text-slate-300">
                 <TypewriterQuotes />
@@ -537,7 +538,7 @@ export default function DashboardPage() {
             <div className="flex flex-wrap items-center gap-3">
               <LiveIndicator isLive={isLive} />
               <span
-                className="hidden rounded-full border border-blue-300/30 bg-white/55 px-3 py-1.5 text-sm font-medium text-slate-600 backdrop-blur-sm dark:border-blue-300/15 dark:bg-slate-900/50 dark:text-slate-300 sm:inline"
+                className="hidden rounded-full border border-blue-300/30 bg-white/55 px-3 py-1.5 text-sm font-medium text-slate-600 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-300 sm:inline"
                 title={mounted ? formatExactTime(lastRefreshed.toISOString()) : undefined}
                 suppressHydrationWarning
               >
@@ -545,7 +546,7 @@ export default function DashboardPage() {
               </span>
               <Button
                 variant="outline"
-                className="h-10 gap-2 rounded-xl border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 transition-all font-bold"
+                className="h-10 gap-2 rounded-xl border-border/70 bg-white/60 dark:bg-white/[0.05] backdrop-blur-md text-slate-700 dark:text-slate-200 hover:border-blue-400/50 hover:bg-blue-500/10 hover:text-blue-700 dark:hover:text-sky-300 transition-all font-bold"
                 onClick={handleReset}
                 disabled={isResetting}
               >
@@ -554,7 +555,7 @@ export default function DashboardPage() {
               </Button>
               <Button
                 variant="primary"
-                className="h-10 gap-2 rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-500 font-bold"
+                className="h-10 gap-2 rounded-xl bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25 transition-all hover:brightness-110 font-bold"
                 onClick={handleRefresh}
               >
                 <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
@@ -563,7 +564,7 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          <div className="hidden lg:flex relative lg:w-1/3 h-full min-h-[220px] pointer-events-auto items-center justify-end pr-10 group cursor-pointer">
+          <div className="hidden xl:flex relative w-[335px] shrink-0 h-full min-h-[220px] pointer-events-auto items-center justify-end pr-2 group cursor-pointer">
             <div className="relative w-[320px] h-[200px]">
               {/* Card 1 (Bottom, Portrait) */}
               <a href="https://drive.google.com/file/d/1h5JcEitXxFsXPWN5_kDkbhsKNhKyFBHB/view" target="_blank" rel="noopener noreferrer" 
@@ -628,93 +629,88 @@ export default function DashboardPage() {
             icon={Activity}
             badge={
               activity.length > 0 ? (
-                <span className="inline-flex items-center rounded-full bg-indigo-100 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 px-3 py-1 text-xs font-bold text-indigo-700 dark:text-indigo-400">
+                <span className="inline-flex items-center rounded-full bg-blue-500/10 dark:bg-sky-500/15 border border-blue-500/20 dark:border-sky-400/25 px-3 py-1 text-xs font-bold text-blue-700 dark:text-sky-300">
                   {activity.length} events
                 </span>
               ) : null
             }
           />
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-          >
-            <Card className="overflow-hidden rounded-2xl">
-              <CardContent className="p-0">
-                {activity.length === 0 ? (
-                  <div className="flex flex-col items-center gap-4 p-12 text-center bg-gradient-to-b from-transparent to-muted/30">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-muted shadow-inner">
-                      <Clock className="h-8 w-8 text-muted-foreground/50" />
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-foreground">
-                        No activity yet
-                      </p>
-                      <p className="mt-1 text-sm font-medium text-muted-foreground/80 max-w-[200px] mx-auto">
-                        Generate a query or run an operation to see it here.
-                      </p>
-                    </div>
+          <GlassSpotlightCard delay={0.22} className="rounded-2xl">
+            <CardContent className="p-0">
+              {activity.length === 0 ? (
+                <div className="flex flex-col items-center gap-4 p-12 text-center bg-gradient-to-b from-transparent to-muted/20">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-500/10 text-blue-600 dark:text-sky-300 shadow-inner border border-blue-500/20">
+                    <Clock className="h-8 w-8 opacity-75" />
                   </div>
-                ) : (
-                  <ul className="divide-y divide-border/40">
-                    <AnimatePresence initial={false}>
-                      {activity.slice(0, 7).map((entry, index) => {
-                        const meta = activityMeta(entry.type);
-                        const Icon = meta.icon;
-                        return (
-                          <motion.li
-                            key={entry.id}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: index * 0.04, duration: 0.3 }}
-                            className="group flex items-center gap-4 px-5 py-4 transition-all hover:bg-muted/50 cursor-default"
+                  <div>
+                    <p className="text-lg font-bold text-foreground">
+                      No activity yet
+                    </p>
+                    <p className="mt-1 text-sm font-medium text-muted-foreground/80 max-w-[200px] mx-auto">
+                      Generate a query or run an operation to see it here.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <ul className="divide-y divide-border/40 dark:divide-white/[0.06]">
+                  <AnimatePresence initial={false}>
+                    {activity.slice(0, 7).map((entry, index) => {
+                      const meta = activityMeta(entry.type);
+                      const Icon = meta.icon;
+                      return (
+                        <motion.li
+                          key={entry.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.035, duration: 0.25, ease: EASE_120HZ }}
+                          className="group relative flex items-center gap-4 px-5 py-4 transition-colors hover:bg-blue-500/[0.04] dark:hover:bg-white/[0.03] cursor-default overflow-hidden"
+                        >
+                          <div className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                          <div
+                            className={cn(
+                              "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform duration-200 group-hover:scale-110",
+                              meta.bg, meta.text, meta.ring
+                            )}
                           >
-                            <div
-                              className={cn(
-                                "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 transition-transform group-hover:scale-110",
-                                meta.bg, meta.text, meta.ring
-                              )}
-                            >
-                              <Icon className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-bold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                                {entry.label}
+                            <Icon className="h-5 w-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold text-foreground group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors">
+                              {entry.label}
+                            </p>
+                            {entry.meta && (
+                              <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
+                                {entry.meta}
                               </p>
-                              {entry.meta && (
-                                <p className="mt-0.5 truncate text-xs font-medium text-muted-foreground">
-                                  {entry.meta}
-                                </p>
-                              )}
-                            </div>
-                            <span
-                              className="shrink-0 rounded-md border border-border/45 bg-muted/70 px-2 py-1 text-xs font-bold tabular-nums text-muted-foreground"
-                              title={formatExactTime(entry.timestamp)}
-                            >
-                              {formatRelativeTime(entry.timestamp)}
-                            </span>
-                          </motion.li>
-                        );
-                      })}
-                    </AnimatePresence>
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                            )}
+                          </div>
+                          <span
+                            className="shrink-0 rounded-md border border-border/45 dark:border-white/10 bg-muted/60 dark:bg-white/[0.04] px-2 py-1 text-xs font-bold tabular-nums text-muted-foreground"
+                            title={formatExactTime(entry.timestamp)}
+                          >
+                            {formatRelativeTime(entry.timestamp)}
+                          </span>
+                        </motion.li>
+                      );
+                    })}
+                  </AnimatePresence>
+                </ul>
+              )}
+            </CardContent>
+          </GlassSpotlightCard>
 
           {activity.length > 7 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
+              transition={{ delay: 0.35 }}
               className="pt-2"
             >
               <Link href="/history">
                 <Button
                   variant="outline"
-                  className="w-full h-11 gap-2 rounded-xl border-border/60 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all font-bold"
+                  className="w-full h-11 gap-2 rounded-xl border-border/60 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-sky-300 hover:border-blue-500/30 transition-all font-bold"
                 >
                   View complete history
                   <ChevronRight className="h-4 w-4" />

@@ -105,17 +105,17 @@ export function WallpaperModal() {
           }}
         >
           {/* ── Modal Header ── */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02]">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02]">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-10 w-10 shrink-0 rounded-2xl bg-gradient-to-br from-blue-600 to-sky-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25">
                 <Palette className="h-5 w-5" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white">
                     Wallpaper &amp; Ambient Atmosphere
                   </h2>
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 whitespace-nowrap shrink-0">
                     Alt + B
                   </span>
                 </div>
@@ -125,21 +125,21 @@ export function WallpaperModal() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={handleShuffle}
-                className="h-8 px-2.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="h-8 px-2.5 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap shrink-0"
                 title="Pick random wallpaper"
               >
-                <Shuffle className="h-3.5 w-3.5 text-indigo-500" />
+                <Shuffle className="h-3.5 w-3.5 text-blue-500" />
                 <span className="hidden sm:inline">Surprise Me</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setWallpaperModalOpen(false)}
-                className="h-8 w-8 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors shadow-2xs"
+                className="h-8 w-8 rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center transition-colors shadow-2xs shrink-0"
                 aria-label="Close modal"
               >
                 <X className="h-4 w-4" />
@@ -149,12 +149,12 @@ export function WallpaperModal() {
 
           {/* ── Filter Tabs & Quick Mode State ── */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-slate-200/80 dark:border-white/[0.06] bg-slate-50/30 dark:bg-black/20">
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-200/60 dark:bg-white/[0.06] border border-slate-300/40 dark:border-white/[0.06]">
+            <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-200/60 dark:bg-white/[0.06] border border-slate-300/40 dark:border-white/[0.06]">
               <button
                 type="button"
                 onClick={() => setActiveTab("all")}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-bold transition-all",
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all whitespace-nowrap shrink-0",
                   activeTab === "all"
                     ? "bg-white dark:bg-[#131c2e] text-blue-600 dark:text-blue-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -166,26 +166,26 @@ export function WallpaperModal() {
                 type="button"
                 onClick={() => setActiveTab("animated")}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
                   activeTab === "animated"
-                    ? "bg-white dark:bg-[#131c2e] text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    ? "bg-white dark:bg-[#131c2e] text-sky-600 dark:text-sky-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                <Sparkles className="h-3.5 w-3.5 text-sky-500" />
                 Animated Canvas ({WALLPAPER_PRESETS.filter((p) => p.type === "animated").length})
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("static")}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5",
+                  "px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
                   activeTab === "static"
-                    ? "bg-white dark:bg-[#131c2e] text-indigo-600 dark:text-indigo-400 shadow-xs"
+                    ? "bg-white dark:bg-[#131c2e] text-blue-600 dark:text-blue-400 shadow-xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                <Layers className="h-3.5 w-3.5 text-indigo-500" />
+                <Layers className="h-3.5 w-3.5 text-blue-500" />
                 Static Designer ({WALLPAPER_PRESETS.filter((p) => p.type === "static").length})
               </button>
             </div>

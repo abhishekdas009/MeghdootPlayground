@@ -47,20 +47,20 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Help & Docs", href: "/help", icon: HelpCircle },
 ];
 
-// ─── Salesforce Lightning v2.4 color mapping ─────────────────────────
+// ─── Unified Frosted White & Sapphire Blue Icon Mapping ──────────────────────
 const NAV_ICON_BG: Record<string, string> = {
-  "/dashboard": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  "/dashboard": "bg-blue-500/15 text-blue-700 dark:text-sky-300",
   "/soql-generator": "bg-sky-500/15 text-blue-700 dark:text-sky-300 font-extrabold",
-  "/warranty-finder": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
-  "/formula-generator": "bg-indigo-500/15 text-indigo-700 dark:text-indigo-300",
-  "/ticket-validator": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  "/warranty-finder": "bg-blue-500/15 text-blue-700 dark:text-sky-300",
+  "/formula-generator": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
+  "/ticket-validator": "bg-blue-500/15 text-blue-700 dark:text-sky-300",
   "/ticket-formatter": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
-  "/daily-report-generator": "bg-purple-500/15 text-purple-700 dark:text-purple-300",
-  "/user-manuals": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  "/template-manager": "bg-cyan-500/15 text-blue-700 dark:text-cyan-300",
-  "/history": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  "/analytics": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
-  "/help": "bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  "/daily-report-generator": "bg-blue-500/15 text-blue-700 dark:text-sky-300",
+  "/user-manuals": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
+  "/template-manager": "bg-blue-500/15 text-blue-700 dark:text-sky-300",
+  "/history": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
+  "/analytics": "bg-blue-500/15 text-blue-700 dark:text-sky-300",
+  "/help": "bg-sky-500/15 text-blue-700 dark:text-sky-300",
 };
 const DIVIDERS_AFTER = new Set(["/daily-report-generator", "/analytics"]);
 export function Sidebar() {
@@ -83,7 +83,7 @@ export function Sidebar() {
       const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
       const isCompact = !isExpanded && !isMobile;
       const Icon = item.icon;
-      const iconBg = NAV_ICON_BG[item.href] ?? "bg-gray-500/10 text-gray-600 dark:text-gray-400";
+      const iconBg = NAV_ICON_BG[item.href] ?? "bg-blue-500/15 text-blue-700 dark:text-sky-300";
       const showDivider = DIVIDERS_AFTER.has(item.href);
 
       return (
@@ -103,17 +103,24 @@ export function Sidebar() {
               isCompact ? "w-[50px] h-[50px] justify-center p-0 gap-0 mx-auto" : "min-h-[44px] w-full px-3 py-2.5 gap-3",
               isActive
                 ? "sidebar-nav-link--active font-extrabold"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                : "text-muted-foreground hover:bg-blue-500/[0.06] dark:hover:bg-white/[0.05] hover:text-foreground"
             )}
             title={isCompact ? item.label : undefined}
           >
+            {isActive && (
+              <motion.div
+                layoutId={isMobile ? "mobileSidebarActivePill" : "desktopSidebarActivePill"}
+                transition={{ type: "spring", stiffness: 460, damping: 34, mass: 0.75 }}
+                className="pointer-events-none absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-blue-500/10 to-sky-400/5 dark:from-sky-400/15 dark:to-blue-600/5"
+              />
+            )}
             {/* Icon box */}
             <div
               className={cn(
-                "sidebar-nav-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-colors duration-150 group-hover:scale-110",
+                "sidebar-nav-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110",
                 isActive
                   ? iconBg
-                  : "text-muted-foreground group-hover:text-foreground bg-transparent group-hover:bg-muted/40"
+                  : "text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-sky-300 bg-transparent group-hover:bg-blue-500/10 dark:group-hover:bg-white/[0.06]"
               )}
             >
               <Icon className="h-4.5 w-4.5" />
@@ -158,6 +165,29 @@ export function Sidebar() {
 
     return (
       <div className="border-t border-border/20 p-3 bg-transparent space-y-2">
+        {/* Desktop Collapse Toggle (kept above workspace badge so bottom-left corner overlays never occlude it) */}
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className={cn(
+              "flex min-h-[36px] w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+              isCompact ? "justify-center px-0" : ""
+            )}
+            aria-label={sidebarCollapsed ? "Expand and pin sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? "Expand and pin sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4 text-primary" />
+            ) : (
+              <>
+                <ChevronLeft className="h-4 w-4 text-primary" />
+                <span>Collapse Sidebar</span>
+              </>
+            )}
+          </button>
+        )}
+
         {/* Workspace identity */}
         <div
           className={cn(
@@ -193,29 +223,6 @@ export function Sidebar() {
           )}
         </div>
       </div>
-
-      {/* Desktop Collapse Toggle */}
-      {!isMobile && (
-        <button
-          type="button"
-          onClick={toggleSidebar}
-          className={cn(
-            "flex min-h-[36px] w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors duration-150 hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-            isCompact ? "justify-center px-0" : ""
-          )}
-          aria-label={sidebarCollapsed ? "Expand and pin sidebar" : "Collapse sidebar"}
-          title={sidebarCollapsed ? "Expand and pin sidebar" : "Collapse sidebar"}
-        >
-          {sidebarCollapsed ? (
-            <ChevronRight className="h-4 w-4 text-primary" />
-          ) : (
-            <>
-              <ChevronLeft className="h-4 w-4 text-primary" />
-              <span>Collapse Sidebar</span>
-            </>
-          )}
-        </button>
-      )}
     </div>
   );
 };

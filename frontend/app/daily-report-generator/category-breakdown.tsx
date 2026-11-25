@@ -1472,20 +1472,21 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto w-full">
       {/* ── Left Column: Mode Selector, Input & Excel Controls ── */}
       <div className="lg:col-span-5 space-y-6">
-        <Card className="app-card border-slate-200/80 dark:border-white/[0.08] dark:bg-[#0b0c10] shadow-sm">
-          <CardHeader className="pb-3 border-b border-slate-100 dark:border-white/[0.06]">
-            <div className="flex items-center justify-between">
+        <Card className="app-card glass-surface relative overflow-hidden">
+          <span className="glass-shimmer-line" />
+          <CardHeader className="pb-3 border-b border-slate-200/70 dark:border-white/[0.06] relative z-10">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-base font-bold text-slate-900 dark:text-white">
-                <Layers className="h-4.5 w-4.5 text-blue-500" />
-                Category Dataset
+                <Layers className="h-4.5 w-4.5 text-blue-500 shrink-0" />
+                <span>Category Dataset</span>
               </CardTitle>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setInput("")}
                   disabled={!input}
-                  className="h-7 px-2 text-[11px] font-semibold text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400"
+                  className="h-7 px-2 text-[11px] font-semibold text-slate-500 hover:text-red-500 dark:text-slate-400 dark:hover:text-red-400 whitespace-nowrap shrink-0"
                 >
                   <Trash2 className="h-3 w-3 mr-1" /> Clear
                 </Button>
@@ -1493,7 +1494,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   variant="secondary"
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-7 px-2.5 text-[11px] font-bold rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20"
+                  className="h-7 px-2.5 text-[11px] font-bold rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 whitespace-nowrap shrink-0"
                 >
                   <Upload className="h-3 w-3 mr-1" /> Import Excel/CSV
                 </Button>
@@ -1521,7 +1522,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
               </div>
 
               {/* Full Width Segmented Switcher */}
-              <div className="grid grid-cols-2 gap-2 p-1.5 rounded-xl bg-slate-200/70 dark:bg-[#06070a] border border-slate-300/50 dark:border-white/[0.08]">
+              <div className="grid grid-cols-2 gap-2 p-1.5 rounded-xl glass-inset-well">
                 <button
                   type="button"
                   onClick={() => {
@@ -1529,13 +1530,13 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                     toast.info("Switched to UCPG Mode (UCPG Report)");
                   }}
                   className={cn(
-                    "flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-xs",
+                    "flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-xs whitespace-nowrap",
                     reportMode === "UCPG"
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-400/40"
+                      ? "bg-gradient-to-r from-blue-600 to-sky-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-sky-400/40"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.05]"
                   )}
                 >
-                  <Zap className={cn("h-4 w-4", reportMode === "UCPG" ? "text-amber-300 fill-amber-300" : "text-amber-500")} />
+                  <Zap className={cn("h-4 w-4", reportMode === "UCPG" ? "text-white" : "text-sky-500")} />
                   <span>UCPG Mode</span>
                 </button>
 
@@ -1546,13 +1547,13 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                     toast.info("Switched to CPSD Mode (CPSD Report)");
                   }}
                   className={cn(
-                    "flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-xs",
+                    "flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-xs whitespace-nowrap",
                     reportMode === "CPSD"
-                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25 ring-1 ring-indigo-400/40"
+                      ? "bg-gradient-to-r from-blue-700 to-blue-500 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-400/40"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-white/[0.05]"
                   )}
                 >
-                  <Building2 className={cn("h-4 w-4", reportMode === "CPSD" ? "text-sky-300" : "text-indigo-400")} />
+                  <Building2 className={cn("h-4 w-4", reportMode === "CPSD" ? "text-sky-200" : "text-blue-500")} />
                   <span>CPSD Mode</span>
                 </button>
               </div>
@@ -1587,7 +1588,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   setSelectedColumnIndex(5);
                   toast.success("Loaded UCPG 7-column sheet! Column F (Issue type) active.");
                 }}
-                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 transition-colors border border-blue-500/30 flex items-center gap-1"
+                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 transition-colors border border-blue-500/30 flex items-center gap-1 whitespace-nowrap shrink-0"
               >
                 <Zap className="h-3 w-3 text-amber-500" /> Sample UCPG (Sheet)
               </button>
@@ -1599,7 +1600,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   setSelectedColumnIndex(5);
                   toast.success("Loaded CPSD 7-column sheet! Column F (Issue type) active.");
                 }}
-                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 transition-colors border border-indigo-500/30 flex items-center gap-1"
+                className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 transition-colors border border-indigo-500/30 flex items-center gap-1 whitespace-nowrap shrink-0"
               >
                 <Building2 className="h-3 w-3 text-sky-400" /> Sample CPSD (Sheet)
               </button>
@@ -1610,7 +1611,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   setSelectedColumnIndex(0);
                   toast.info("Loaded Column F Category Items (Single Column).");
                 }}
-                className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/80 dark:border-white/[0.08]"
+                className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/80 dark:border-white/[0.08] whitespace-nowrap shrink-0"
               >
                 Col F Items Only
               </button>
@@ -1621,7 +1622,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   setSelectedColumnIndex(0);
                   toast.info("Loaded 6-item sample from Image 2");
                 }}
-                className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/80 dark:border-white/[0.08]"
+                className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-300 transition-colors border border-slate-200/80 dark:border-white/[0.08] whitespace-nowrap shrink-0"
               >
                 Sample 1 (Image 2)
               </button>
@@ -1630,7 +1631,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
             {/* Multi-Column Pivot Selector with Column F Highlight */}
             {parsed.detectedHeaders.length > 1 && (
               <div className="p-3.5 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 space-y-2">
-                <div className="flex items-center justify-between text-xs font-bold text-blue-700 dark:text-blue-400">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-400">
                   <span className="flex items-center gap-1.5">
                     <FileSpreadsheet className="h-3.5 w-3.5" />
                     Excel Columns Detected ({parsed.detectedHeaders.length} columns):
@@ -1746,7 +1747,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                   "2) CATEGORY ITEMS ONLY (Single column list):\n" +
                   "Data update\nBug\nAwareness issueq"
                 }
-                className="min-h-[170px] resize-y bg-white dark:bg-[#06070a] border-slate-200/80 dark:border-white/[0.08] font-mono text-[11.5px] leading-relaxed text-slate-900 dark:text-slate-200 focus-visible:ring-blue-500/30 rounded-xl"
+                className="glass-inset-well min-h-[170px] resize-y font-mono text-[11.5px] leading-relaxed text-slate-900 dark:text-slate-200 focus-visible:ring-blue-500/30 rounded-xl"
                 value={input}
                 onChange={(e) => {
                   setInput(e.target.value);
@@ -1947,7 +1948,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
                   <ArrowUpDown className="h-3 w-3" /> Sort Order:
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-[11px]">
+                <div className="grid grid-cols-2 xl:grid-cols-4 gap-1.5 text-[11px]">
                   {[
                     { id: "count-desc", label: "Highest First" },
                     { id: "count-asc", label: "Lowest First" },
@@ -1958,7 +1959,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                       key={item.id}
                       type="button"
                       onClick={() => setSortBy(item.id as any)}
-                      className={`py-1.5 px-2 rounded-lg font-semibold border transition-all text-center ${
+                      className={`py-1.5 px-2 rounded-lg font-semibold border transition-all text-center whitespace-nowrap ${
                         sortBy === item.id
                           ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                           : "bg-white dark:bg-[#06070a] text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-white/[0.08] hover:border-blue-500/30"
@@ -2073,11 +2074,12 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
 
       {/* ── Right Column: Interactive Table Preview, Sheet Preview & Arsenal of Exports ── */}
       <div className="lg:col-span-7 space-y-6">
-        <Card className="app-card border-slate-200/80 dark:border-white/[0.08] dark:bg-[#0b0c10] shadow-sm flex flex-col">
+        <Card className="app-card glass-surface relative overflow-hidden flex flex-col">
+          <span className="glass-shimmer-line" />
           {/* ── Top Header: View Switcher (Tabs) + Primary Action ── */}
-          <CardHeader className="flex flex-row items-center justify-between p-4 pb-3 border-b border-slate-100 dark:border-white/[0.06] gap-3">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between p-4 pb-3 border-b border-slate-200/70 dark:border-white/[0.06] gap-3 relative z-10">
             {/* View Tabs */}
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5 min-w-0">
               <div className="inline-flex p-1 rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200/80 dark:border-white/[0.08] shrink-0">
                 <button
                   type="button"
@@ -2089,7 +2091,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
-                  <Table className="h-3.5 w-3.5" />
+                  <Table className="h-3.5 w-3.5 shrink-0" />
                   <span>Summary Table</span>
                 </button>
                 {parsed.isMultiColumn && (
@@ -2103,7 +2105,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
-                    <FileSpreadsheet className="h-3.5 w-3.5 text-sky-400" />
+                    <FileSpreadsheet className="h-3.5 w-3.5 text-sky-400 shrink-0" />
                     <span>Pasted Sheet</span>
                     {parsed.rawRows && parsed.rawRows.length > 1 && (
                       <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-sky-500/20 text-sky-300 font-mono">
@@ -2171,7 +2173,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 type="button"
                 onClick={handleDownloadExcel}
                 disabled={parsed.rows.length === 0}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs whitespace-nowrap shrink-0"
                 title={`Download ${activeDepartment} Report ${dates.alphaDate}.xlsx with full data sheet and summary formulas`}
               >
                 <Download className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
@@ -2182,7 +2184,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 type="button"
                 onClick={handleDownloadImage}
                 disabled={parsed.rows.length === 0}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs whitespace-nowrap shrink-0"
                 title={`Download ${activeDepartment}_Report_Table_${dates.alphaDate}.png`}
               >
                 <ImageIcon className="h-3.5 w-3.5 text-purple-400 shrink-0" />
@@ -2193,7 +2195,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 type="button"
                 onClick={handlePrintReport}
                 disabled={parsed.rows.length === 0}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs whitespace-nowrap shrink-0"
                 title="Print Executive PDF Summary Report (Ctrl+P)"
               >
                 <Printer className="h-3.5 w-3.5 text-blue-500 shrink-0" />
@@ -2203,7 +2205,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
               <button
                 type="button"
                 onClick={() => setIsHistoryDrawerOpen(true)}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
                 title="View 30-Day Daily Report Version History & Diffs"
               >
                 <History className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
@@ -2221,7 +2223,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 type="button"
                 onClick={handleCopyFormattedTable}
                 disabled={parsed.rows.length === 0}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs whitespace-nowrap shrink-0"
                 title="Copy rich HTML table for Outlook & Word"
               >
                 {copiedType === "html" ? (
@@ -2236,7 +2238,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 type="button"
                 onClick={handleCopyImage}
                 disabled={parsed.rows.length === 0}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs whitespace-nowrap shrink-0"
                 title="Copy high-res table image directly to clipboard for WhatsApp (Ctrl+V)"
               >
                 {copiedType === "img" ? (
@@ -2250,7 +2252,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
               <button
                 type="button"
                 onClick={handleCopyWhatsAppCaption}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 shadow-2xs whitespace-nowrap shrink-0"
                 title="Copy WhatsApp text caption with report date"
               >
                 {copiedType === "caption" ? (
@@ -2265,7 +2267,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 type="button"
                 onClick={handleCopyTsv}
                 disabled={parsed.rows.length === 0}
-                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs"
+                className="h-8 px-2.5 text-xs font-semibold rounded-lg bg-white dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/[0.08] transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs whitespace-nowrap shrink-0"
                 title="Copy TSV data to paste into Excel cells"
               >
                 {copiedType === "tsv" ? (
@@ -2373,7 +2375,7 @@ export function CategoryBreakdownModule({ onAppendToDailyEmail }: CategoryBreakd
                 {/* ── Table Container (Exact Image 2 Salesforce Blue Table) ── */}
                 <div
                   ref={tableRef}
-                  className="flex flex-col items-center justify-center p-6 bg-slate-50/80 dark:bg-[#06070a] rounded-2xl border border-slate-200/80 dark:border-white/[0.08]"
+                  className="glass-inset-well flex flex-col items-center justify-center p-6 rounded-2xl"
                 >
                   {/* ── Advancement 4: Print-Only Executive Header ── */}
                   <div className="hidden print-only w-full max-w-[500px] mb-4 pb-3 border-b-2 border-[#0176D3]">

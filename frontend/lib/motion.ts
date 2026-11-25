@@ -52,3 +52,47 @@ export const DRAWER_MOTION = {
   exit: { x: "100%", opacity: 0 },
   transition: SPRING_120HZ,
 };
+
+// Segmented tab slider spring (shared across all glass tab bars)
+export const GLASS_TAB_SPRING = {
+  type: "spring" as const,
+  stiffness: 460,
+  damping: 34,
+  mass: 0.75,
+};
+
+// Stagger container & item presets for smooth cascade reveals
+export const STAGGER_CONTAINER = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.045,
+      delayChildren: 0.02,
+    },
+  },
+};
+
+export const STAGGER_ITEM = {
+  hidden: { opacity: 0, y: 12, scale: 0.985 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.28,
+      ease: EASE_120HZ,
+    },
+  },
+};
+
+// Panel crossfade transition for AnimatePresence mode="wait"
+export const PANEL_SWAP_MOTION = {
+  initial: { opacity: 0, y: 8, scale: 0.992 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -6, scale: 0.994 },
+  transition: {
+    duration: 0.22,
+    ease: EASE_120HZ,
+  },
+};

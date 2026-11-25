@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -104,6 +105,7 @@ function useGlobalTilt() {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { sidebarCollapsed } = useUIStore();
   useGlobalTilt();
 
@@ -115,14 +117,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell relative min-h-screen overflow-x-hidden bg-background text-foreground transition-colors duration-300">
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        {/* Ambient subtle light mode radiance */}
-        <div className="absolute -top-[15%] left-[-10%] h-[45%] w-[45%] rounded-full bg-blue-500/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
-        <div className="absolute right-[-10%] top-[-10%] h-[45%] w-[45%] rounded-full bg-indigo-500/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
-        <div className="absolute bottom-[-15%] left-[20%] h-[45%] w-[50%] rounded-full bg-sky-400/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
+        {/* Subtle micro-dot grid for frosted glass refraction */}
+        <div className="glass-backdrop-grid absolute inset-0 opacity-45 dark:opacity-55" />
 
-        {/* Ambient subtle dark mode spotlight aura */}
-        <div className="hidden dark:block absolute -top-[20%] left-[25%] h-[50%] w-[50%] rounded-full bg-sky-500/[0.04] blur-[140px]" />
-        <div className="hidden dark:block absolute top-[40%] right-[-10%] h-[40%] w-[40%] rounded-full bg-indigo-500/[0.025] blur-[140px]" />
+        {/* Ambient subtle light mode radiance (Blue & Porcelain palette) */}
+        <div className="absolute -top-[15%] left-[-10%] h-[45%] w-[45%] rounded-full bg-blue-500/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
+        <div className="absolute right-[-10%] top-[-10%] h-[45%] w-[45%] rounded-full bg-sky-400/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
+        <div className="absolute bottom-[-15%] left-[20%] h-[45%] w-[50%] rounded-full bg-blue-400/10 mix-blend-multiply blur-[130px] dark:hidden sm:h-[55%] sm:w-[55%]" />
+
+        {/* Ambient subtle dark mode sapphire spotlight aura */}
+        <div className="hidden dark:block absolute -top-[20%] left-[25%] h-[50%] w-[50%] rounded-full bg-sky-500/[0.05] blur-[140px]" />
+        <div className="hidden dark:block absolute top-[40%] right-[-10%] h-[40%] w-[40%] rounded-full bg-blue-600/[0.035] blur-[140px]" />
       </div>
       <AnimatedBackground />
       <Header />
@@ -134,9 +139,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
         )}
       >
         <motion.div
-          initial={{ opacity: 0, y: 6 }}
+          key={pathname}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: EASE_120HZ }}
+          transition={{ duration: 0.24, ease: EASE_120HZ }}
           className="mx-auto min-h-[calc(100dvh-var(--app-header-height))] w-full max-w-[1920px] px-3 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-4 sm:py-5 lg:px-6 lg:py-6 2xl:px-8"
         >
           {children}

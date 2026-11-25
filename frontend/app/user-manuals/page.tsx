@@ -26,7 +26,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import dynamic from "next/dynamic";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { EASE_120HZ, MODAL_MOTION } from "@/lib/motion";
 import Tilt from "react-parallax-tilt";
 import {
   Select,
@@ -318,16 +319,20 @@ export default function UserManualsPage() {
   return (
     <div className="flex h-screen flex-col bg-transparent overflow-hidden">
       {/* ── Top Header Area ─────────────────────────────────────────────────────── */}
-      <div className="flex shrink-0 flex-col gap-4 border-b border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-[#030305]/80 px-6 py-4 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between z-20">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 shadow-xs">
+      <div className="relative flex shrink-0 flex-col gap-4 border-b border-slate-200/70 dark:border-white/[0.08] bg-white/55 dark:bg-[#05070e]/65 px-6 py-4 backdrop-blur-2xl xl:flex-row xl:items-center xl:justify-between z-20">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px glass-shimmer-line opacity-60" />
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-blue-600 to-blue-700 text-white shadow-[0_6px_18px_rgba(2,132,199,0.35)] ring-1 ring-white/25">
             <BookOpen className="h-5 w-5" />
           </div>
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-              User Manual Library & PDF Reader
+          <div className="min-w-0">
+            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-2 flex-wrap">
+              <span>User Manual Library</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-sky-500 dark:from-sky-300 dark:to-blue-400">
+                &amp; PDF Reader
+              </span>
               {activeManual && (
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30 uppercase tracking-wide">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-300 border border-sky-500/30 uppercase tracking-wide whitespace-nowrap">
                   Split Reader Active
                 </span>
               )}
@@ -338,31 +343,31 @@ export default function UserManualsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full sm:w-auto" suppressHydrationWarning>
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full xl:w-auto shrink-0" suppressHydrationWarning>
           <Select value={filterVersion} onValueChange={setFilterVersion}>
-            <SelectTrigger className="w-[150px] h-9 bg-white dark:bg-[#0b0c10] border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-slate-100 shadow-2xs text-xs font-bold">
+            <SelectTrigger className="w-[150px] shrink-0 h-9 bg-white/65 dark:bg-white/[0.05] backdrop-blur-md border-slate-200/80 dark:border-white/[0.1] text-slate-900 dark:text-slate-100 shadow-xs text-xs font-bold rounded-xl">
               <SelectValue placeholder="All Versions" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-white/95 dark:bg-[#0b0e18]/95 backdrop-blur-2xl border-slate-200/80 dark:border-white/[0.1]">
               <SelectItem value="All">All Versions</SelectItem>
               <SelectItem value="New Version">New Version</SelectItem>
               <SelectItem value="Old Version">Old Version</SelectItem>
             </SelectContent>
           </Select>
 
-          <div className="relative flex-1 sm:w-60">
+          <div className="relative flex-1 min-w-[200px] sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
             <Input
               placeholder="Search manuals..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-9 pl-8 text-xs font-semibold bg-white dark:bg-[#0b0c10] border-slate-200 dark:border-white/[0.08] text-slate-900 dark:text-slate-100 shadow-2xs focus-visible:ring-sky-500/30"
+              className="h-9 pl-8 text-xs font-semibold bg-white/65 dark:bg-white/[0.05] backdrop-blur-md border-slate-200/80 dark:border-white/[0.1] text-slate-900 dark:text-slate-100 shadow-xs focus-visible:ring-sky-500/30 rounded-xl"
             />
           </div>
 
           <Button
             size="sm"
-            className="h-9 gap-1.5 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs shadow-xs border border-sky-400/30 transition-all shrink-0 rounded-xl"
+            className="h-9 gap-1.5 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 hover:brightness-110 text-white font-bold text-xs shadow-md shadow-blue-500/25 border border-sky-400/30 transition-all shrink-0 rounded-xl"
             onClick={() => setIsUploadOpen(true)}
           >
             <UploadCloud className="h-4 w-4" />
@@ -422,39 +427,39 @@ export default function UserManualsPage() {
                 return (
                   <motion.div
                     key={manual.id}
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.03 }}
+                    initial={{ opacity: 0, y: 14, scale: 0.985 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.28, delay: Math.min(i * 0.03, 0.24), ease: EASE_120HZ }}
                     className="h-full"
                   >
                     <Tilt
-                      tiltMaxAngleX={3}
-                      tiltMaxAngleY={3}
+                      tiltMaxAngleX={3.5}
+                      tiltMaxAngleY={3.5}
                       glareEnable={true}
-                      glareMaxOpacity={0.05}
+                      glareMaxOpacity={0.08}
                       glareColor="white"
                       glarePosition="all"
-                      glareBorderRadius="1rem"
-                      scale={1.01}
+                      glareBorderRadius="1.25rem"
+                      scale={1.015}
                       transitionSpeed={1500}
                       className={cn(
-                        "group relative flex flex-col h-full rounded-2xl border bg-white dark:bg-[#0b0c10] shadow-xs transition-all duration-200 overflow-hidden",
+                        "app-card group relative flex flex-col h-full rounded-2xl overflow-hidden transition-all duration-200",
                         isCurrentActive
-                          ? "border-sky-500 ring-2 ring-sky-500/30 shadow-lg shadow-sky-500/10"
-                          : "border-slate-200/90 dark:border-white/[0.08] hover:border-sky-500/40 hover:shadow-md"
+                          ? "!border-sky-500/80 ring-2 ring-sky-500/35 shadow-[0_12px_36px_rgba(14,165,233,0.22)]"
+                          : ""
                       )}
                     >
                       {/* Top Specular Rim */}
-                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none" />
+                      <div className="absolute inset-x-0 top-0 h-px glass-shimmer-line pointer-events-none z-20" />
 
                       {/* Thumbnail Area - Clickable to Read */}
                       <div
                         onClick={() => setActiveManual(manual)}
-                        className="w-full aspect-video bg-slate-100 dark:bg-[#06070a] overflow-hidden relative flex items-center justify-center border-b border-slate-200 dark:border-white/[0.06] shrink-0 cursor-pointer group-hover:opacity-95"
+                        className="w-full aspect-video bg-slate-100/70 dark:bg-[#060810]/70 overflow-hidden relative flex items-center justify-center border-b border-slate-200/60 dark:border-white/[0.06] shrink-0 cursor-pointer group-hover:opacity-95"
                       >
                         <ManualThumbnail manual={manual} />
-                        <div className="absolute inset-0 bg-sky-950/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-2xs">
-                          <span className="px-3 py-1 rounded-xl bg-sky-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md">
+                        <div className="absolute inset-0 bg-blue-950/35 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center backdrop-blur-[2px]">
+                          <span className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg border border-white/25 transform translate-y-1 group-hover:translate-y-0 transition-transform duration-200">
                             <BookOpen className="h-3.5 w-3.5" />
                             Open In Split Reader
                           </span>
@@ -462,12 +467,12 @@ export default function UserManualsPage() {
                       </div>
 
                       {/* Card Content */}
-                      <div className="p-4 flex-1 flex flex-col bg-white dark:bg-[#0b0c10] relative z-10">
+                      <div className="p-4 flex-1 flex flex-col bg-transparent relative z-10">
                         <div className="flex-1">
                           <div className="flex items-start justify-between gap-2 mb-1.5">
                             <h3
                               onClick={() => setActiveManual(manual)}
-                              className="font-bold text-sm leading-snug text-slate-900 dark:text-white line-clamp-2 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors cursor-pointer"
+                              className="font-bold text-sm leading-snug text-slate-900 dark:text-white line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-sky-300 transition-colors cursor-pointer"
                               title={manual.title}
                             >
                               {manual.title}
@@ -476,8 +481,8 @@ export default function UserManualsPage() {
                               <span
                                 className={`shrink-0 text-[9.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                                   manual.version === "New Version"
-                                    ? "bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300 border-sky-200 dark:border-sky-500/30"
-                                    : "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 border-amber-200 dark:border-amber-500/30"
+                                    ? "bg-blue-500/10 text-blue-700 dark:bg-sky-500/15 dark:text-sky-300 border-blue-500/25 dark:border-sky-400/30"
+                                    : "bg-slate-500/10 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300 border-slate-300/60 dark:border-white/15"
                                 }`}
                               >
                                 {manual.version}
@@ -485,51 +490,51 @@ export default function UserManualsPage() {
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed mb-3">
+                          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 leading-relaxed mb-3">
                             {manual.description || (
                               <span className="italic opacity-50">No description provided.</span>
                             )}
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-between text-[11px] font-medium text-slate-400 dark:text-slate-500 pt-2 border-t border-slate-100 dark:border-white/[0.04]">
+                        <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
                           <div className="flex items-center gap-1.5">
-                            <Calendar className="h-3.5 w-3.5" />
+                            <Calendar className="h-3.5 w-3.5 text-blue-500/80 dark:text-sky-400/80" />
                             <span>{formatDate(manual.createdAt)}</span>
                           </div>
                           <div className="flex items-center gap-1.5 font-mono">
-                            <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                            <span className="w-1 h-1 rounded-full bg-blue-400/60" />
                             <span>{formatSize(manual.fileSize)}</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Card Actions Strip */}
-                      <div className="flex items-center justify-between border-t border-slate-100 dark:border-white/[0.06] bg-slate-50/70 dark:bg-[#07080b] p-1.5 px-3 relative z-10 shrink-0">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/60 dark:border-white/[0.06] bg-white/40 dark:bg-white/[0.03] backdrop-blur-md p-1.5 px-3 relative z-10 shrink-0">
                         {/* 1-Click Quick Read Button */}
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => setActiveManual(manual)}
                           className={cn(
-                            "h-7 px-2.5 rounded-lg text-xs font-bold gap-1.5 transition-all cursor-pointer",
+                            "h-7 px-2.5 rounded-lg text-xs font-bold gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0",
                             isCurrentActive
                               ? "bg-sky-500/20 text-sky-700 dark:text-sky-300"
-                              : "text-sky-600 dark:text-sky-400 hover:bg-sky-500/10"
+                              : "text-blue-600 dark:text-sky-400 hover:bg-sky-500/10"
                           )}
                         >
                           <BookOpen className="h-3.5 w-3.5" />
                           <span>{isCurrentActive ? "Reading..." : "Read"}</span>
                         </Button>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 shrink-0">
                           <a
                             href={manual.fileUrl}
                             download
                             className={`${buttonVariants({
                               variant: "ghost",
                               size: "icon",
-                            })} h-7 w-7 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-slate-400 dark:hover:text-emerald-400 dark:hover:bg-emerald-500/10 transition-colors rounded-lg`}
+                            })} h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-slate-400 dark:hover:text-sky-300 dark:hover:bg-sky-500/10 transition-colors rounded-lg`}
                             title="Download File"
                           >
                             <Download className="h-3.5 w-3.5" />
@@ -538,7 +543,7 @@ export default function UserManualsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-slate-500 hover:text-sky-600 hover:bg-sky-50 dark:text-slate-400 dark:hover:text-sky-400 dark:hover:bg-sky-500/10 transition-colors rounded-lg"
+                            className="h-7 w-7 text-slate-500 hover:text-blue-600 hover:bg-blue-500/10 dark:text-slate-400 dark:hover:text-sky-300 dark:hover:bg-sky-500/10 transition-colors rounded-lg"
                             title="Edit Info"
                             onClick={() => openEditModal(manual)}
                           >
@@ -581,9 +586,19 @@ export default function UserManualsPage() {
       </div>
 
       {/* ── Upload Modal ───────────────────────────────────────────────────────── */}
+      <AnimatePresence>
       {isUploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#0b0c10] shadow-2xl border border-slate-200 dark:border-white/[0.1] overflow-hidden flex flex-col max-h-[90vh]">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+        >
+          <motion.div
+            {...MODAL_MOTION}
+            className="w-full max-w-lg rounded-3xl bg-white/90 dark:bg-[#0b0e18]/90 backdrop-blur-3xl shadow-2xl border border-slate-200/80 dark:border-white/[0.12] overflow-hidden flex flex-col max-h-[90vh]"
+          >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] px-6 py-4 bg-slate-50/70 dark:bg-[#06070a]/90">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20">
@@ -727,14 +742,25 @@ export default function UserManualsPage() {
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* ── Edit Modal ─────────────────────────────────────────────────────────── */}
+      <AnimatePresence>
       {isEditOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-2xl bg-white dark:bg-[#0b0c10] shadow-2xl border border-slate-200 dark:border-white/[0.1] overflow-hidden flex flex-col max-h-[90vh]">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+        >
+          <motion.div
+            {...MODAL_MOTION}
+            className="w-full max-w-lg rounded-3xl bg-white/90 dark:bg-[#0b0e18]/90 backdrop-blur-3xl shadow-2xl border border-slate-200/80 dark:border-white/[0.12] overflow-hidden flex flex-col max-h-[90vh]"
+          >
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/[0.06] px-6 py-4 bg-slate-50/70 dark:bg-[#06070a]/90">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20">
@@ -826,14 +852,25 @@ export default function UserManualsPage() {
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* ── Delete Confirmation Modal ──────────────────────────────────────────── */}
+      <AnimatePresence>
       {isDeleteOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-[#0b0c10] shadow-2xl border border-rose-500/30 overflow-hidden">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4"
+        >
+          <motion.div
+            {...MODAL_MOTION}
+            className="w-full max-w-md rounded-3xl bg-white/90 dark:bg-[#0b0e18]/90 backdrop-blur-3xl shadow-2xl border border-rose-500/30 overflow-hidden"
+          >
             <div className="bg-rose-500/10 dark:bg-rose-950/30 px-6 py-5 flex items-start gap-3.5 border-b border-rose-200 dark:border-rose-900/40">
               <div className="h-10 w-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 flex items-center justify-center shrink-0 border border-rose-200 dark:border-rose-800/40">
                 <Trash2 className="h-5 w-5 text-rose-600 dark:text-rose-400" />
@@ -881,9 +918,10 @@ export default function UserManualsPage() {
                 </Button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }

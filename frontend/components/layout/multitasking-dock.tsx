@@ -112,93 +112,99 @@ export function MultiTaskingDock() {
     );
   }, [faultQuery]);
 
-  if (!dockOpen) return null;
-
   return (
     <AnimatePresence>
-      <div className="fixed inset-y-0 right-0 z-50 flex pointer-events-auto shadow-2xl">
-        <motion.div
-          initial={{ x: "100%", opacity: 0.5 }}
-          animate={{ x: 0, opacity: 1 }}
-          exit={{ x: "100%", opacity: 0 }}
-          transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
-          className={cn(
-            "h-full bg-white dark:bg-[#07090e] border-l border-slate-200 dark:border-white/10 flex flex-col backdrop-blur-2xl transition-all duration-200",
-            dockWidth === "compact" && "w-[390px]",
-            dockWidth === "wide" && "w-[560px]",
-            dockWidth === "split" && "w-[50vw] min-w-[420px]"
-          )}
-        >
-          {/* ── Dock Header ──────────────────────────────────────────────────────── */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/80 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.02]">
-            <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-                <Layers className="h-4 w-4" />
+      {dockOpen && (
+        <div className="fixed inset-y-0 right-0 z-50 flex pointer-events-auto shadow-2xl">
+          <motion.div
+            initial={{ x: "100%", opacity: 0.5 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32, mass: 0.8 }}
+            className={cn(
+              "h-full bg-white/82 dark:bg-[#07090e]/82 border-l border-slate-200/80 dark:border-white/[0.12] flex flex-col backdrop-blur-3xl transition-all duration-200 shadow-[inset_1px_0_0_rgba(255,255,255,0.6)] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.1)]",
+              dockWidth === "compact" && "w-[390px]",
+              dockWidth === "wide" && "w-[560px]",
+              dockWidth === "split" && "w-[50vw] min-w-[420px]"
+            )}
+          >
+            {/* ── Dock Header ──────────────────────────────────────────────────────── */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200/80 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.03] backdrop-blur-xl">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-blue-600/15 text-blue-600 dark:text-sky-300 border border-blue-500/20 flex items-center justify-center font-bold">
+                  <Layers className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Multi-Tasking Dock
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground">
+                    Cross-reference without switching pages · <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Alt+D</kbd>
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                  Multi-Tasking Dock
-                </h3>
-                <p className="text-[10px] text-muted-foreground">
-                  Cross-reference without switching pages · <kbd className="px-1 py-0.5 rounded bg-muted text-[9px] font-mono">Alt+D</kbd>
-                </p>
-              </div>
-            </div>
 
-            <div className="flex items-center gap-1">
-              {/* Width Controls */}
-              <button
-                type="button"
-                onClick={() =>
-                  setDockWidth(
-                    dockWidth === "compact" ? "wide" : dockWidth === "wide" ? "split" : "compact"
-                  )
-                }
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
-                title={`Current width: ${dockWidth}. Click to toggle width.`}
-              >
-                {dockWidth === "split" ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setDockOpen(false)}
-                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
-                title="Close Dock (Esc)"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* ── Tool Selector Tabs ────────────────────────────────────────────────── */}
-          <div className="flex items-center gap-1 p-2 border-b border-slate-200/60 dark:border-white/[0.06] bg-slate-100/50 dark:bg-[#04060a]">
-            {[
-              { id: "soql-runner" as DockTool, label: "SOQL Runner", icon: Terminal },
-              { id: "ticket-cleaner" as DockTool, label: "Cleanser", icon: Ticket },
-              { id: "warranty-lookup" as DockTool, label: "Warranty", icon: ShieldCheck },
-              { id: "manual-search" as DockTool, label: "Faults", icon: BookOpen },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = dockTool === tab.id;
-              return (
+              <div className="flex items-center gap-1">
+                {/* Width Controls */}
                 <button
-                  key={tab.id}
                   type="button"
-                  onClick={() => setDockTool(tab.id)}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all",
-                    isActive
-                      ? "bg-white dark:bg-white/10 text-blue-600 dark:text-blue-300 shadow-xs border border-slate-200/80 dark:border-white/10"
-                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  )}
+                  onClick={() =>
+                    setDockWidth(
+                      dockWidth === "compact" ? "wide" : dockWidth === "wide" ? "split" : "compact"
+                    )
+                  }
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+                  title={`Current width: ${dockWidth}. Click to toggle width.`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
-                  <span className="truncate">{tab.label}</span>
+                  {dockWidth === "split" ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                 </button>
-              );
-            })}
-          </div>
+
+                <button
+                  type="button"
+                  onClick={() => setDockOpen(false)}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+                  title="Close Dock (Esc)"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Tool Selector Tabs ────────────────────────────────────────────────── */}
+            <div className="flex items-center gap-1 p-2 border-b border-slate-200/60 dark:border-white/[0.06] bg-slate-100/50 dark:bg-[#04060a]/60 backdrop-blur-md">
+              {[
+                { id: "soql-runner" as DockTool, label: "SOQL Runner", icon: Terminal },
+                { id: "ticket-cleaner" as DockTool, label: "Cleanser", icon: Ticket },
+                { id: "warranty-lookup" as DockTool, label: "Warranty", icon: ShieldCheck },
+                { id: "manual-search" as DockTool, label: "Faults", icon: BookOpen },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = dockTool === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setDockTool(tab.id)}
+                    className={cn(
+                      "relative z-10 flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-bold transition-colors",
+                      isActive
+                        ? "text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.div
+                        layoutId="dockActiveTabIndicator"
+                        transition={{ type: "spring", stiffness: 460, damping: 34 }}
+                        className="absolute inset-0 -z-10 rounded-lg bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 shadow-sm border border-sky-300/40"
+                      />
+                    )}
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="truncate">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
 
           {/* ── Tool Body Content ─────────────────────────────────────────────────── */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -391,6 +397,7 @@ export function MultiTaskingDock() {
           </div>
         </motion.div>
       </div>
+      )}
     </AnimatePresence>
   );
 }

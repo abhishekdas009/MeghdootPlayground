@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useDashboardStore } from "@/lib/dashboard-store";
+import { AnimatedNumber, GlassHero, GlassSpotlightCard } from "@/components/ui/glass-primitives";
+import { EASE_120HZ, GLASS_TAB_SPRING, PANEL_SWAP_MOTION } from "@/lib/motion";
 
 // Types for DB responses
 interface MetricSnapshot {
@@ -123,9 +125,9 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     const timeString = "Peak: 02:15 PM";
 
     return (
-      <div className="app-card bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] p-3.5 rounded-xl shadow-xl min-w-[200px]">
+      <div className="app-card glass-surface bg-white/90 dark:bg-[#090d16]/90 backdrop-blur-2xl border border-slate-200/80 dark:border-white/[0.12] p-3.5 rounded-xl shadow-xl min-w-[200px]">
         <p className="font-bold text-xs text-slate-900 dark:text-white mb-0.5">{dateString}</p>
-        <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5 border-b border-slate-100 dark:border-white/[0.06] pb-1.5">
+        <p className="text-[10px] font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5 border-b border-slate-200/60 dark:border-white/[0.08] pb-1.5">
           {timeString}
         </p>
         <div className="space-y-1.5">
@@ -259,12 +261,12 @@ export default function AnalyticsPage() {
     });
 
     const colors: Record<string, string> = {
-      WorkOrder: "bg-[#0176d3] text-[#0176d3] border-[#0176d3]/30",
-      Asset: "bg-cyan-500 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
-      Case: "bg-purple-500 text-purple-600 dark:text-purple-400 border-purple-500/30",
-      ServiceAppointment: "bg-amber-500 text-amber-600 dark:text-amber-400 border-amber-500/30",
-      Account: "bg-emerald-500 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
-      General: "bg-indigo-500 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+      WorkOrder: "bg-blue-600/10 text-blue-700 dark:text-blue-300 border-blue-500/30",
+      Asset: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30",
+      Case: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
+      ServiceAppointment: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-400/30",
+      Account: "bg-sky-600/10 text-sky-800 dark:text-sky-200 border-sky-500/30",
+      General: "bg-blue-700/10 text-blue-700 dark:text-blue-300 border-blue-600/30",
     };
 
     return Object.entries(counts)
@@ -352,66 +354,49 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="workspace-page mx-auto w-full max-w-7xl space-y-10 p-4 sm:p-6 lg:p-8">
+    <div className="workspace-page mx-auto w-full max-w-7xl space-y-8 p-4 sm:p-6 lg:p-8">
       {/* 1. TOP HEADER BANNER */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="page-hero relative flex flex-col gap-6 overflow-hidden rounded-3xl p-8"
-      >
-        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-indigo-500/10 blur-3xl dark:bg-indigo-500/20 dark:mix-blend-screen" />
-        <div className="absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl dark:bg-blue-500/20 dark:mix-blend-screen" />
-
-        <div className="relative z-10 flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-          <div className="space-y-4 flex-1 min-w-0">
-            <div className="inline-flex items-center gap-2.5 flex-wrap min-w-0">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-blue-600 shadow-lg shadow-indigo-500/30">
-                <BarChart3 className="h-6 w-6 text-white" />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-950 drop-shadow-sm dark:text-white truncate">
-                  Executive <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Analytics</span>
-                </h1>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 mt-2">
-              <Badge className="bg-emerald-500/10 text-emerald-700 border border-emerald-500/30 text-xs font-bold px-3 py-1 flex items-center gap-2 shadow-inner backdrop-blur-sm dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/50">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping absolute" />
-                <span className="h-2 w-2 rounded-full bg-emerald-500 relative z-10" />
-                Live Telemetry Connected
-              </Badge>
-              <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-xl hidden sm:block">
-                Real-time PostgreSQL telemetry, CRM workload distribution, and automated operational audit logs.
-              </p>
-            </div>
-          </div>
-
-          {/* Right Actions Bar */}
-          <div className="flex items-center gap-3 flex-wrap md:justify-end shrink-0">
-            {/* Time Range Tabs */}
-            <div className="flex items-center rounded-xl glass-mode-toggle p-1 rounded-xl flex items-center">
-              {(["24h", "7d", "30d", "all"] as TimeRange[]).map((range) => (
-                <button
-                  key={range}
-                  onClick={() => setTimeRange(range)}
-                  className={cn(
-                    "px-3 py-1 rounded-lg text-xs font-semibold transition-all uppercase tracking-wider",
-                    timeRange === range
-                      ? "bg-[#0176d3] text-white shadow-sm"
-                      : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                  )}
-                >
-                  {range === "all" ? "All Time" : range}
-                </button>
-              ))}
+      <GlassHero
+        icon={BarChart3}
+        badge="Live PostgreSQL Telemetry"
+        title="Executive"
+        highlight="Analytics"
+        description="Real-time PostgreSQL telemetry, CRM workload distribution, and automated operational audit logs."
+        actions={
+          <div className="flex items-center gap-2.5 flex-wrap md:justify-end shrink-0">
+            {/* Time Range Tabs with 120Hz gliding glass indicator */}
+            <div className="relative flex items-center rounded-xl glass-mode-toggle p-1">
+              {(["24h", "7d", "30d", "all"] as TimeRange[]).map((range) => {
+                const isActive = timeRange === range;
+                return (
+                  <button
+                    key={range}
+                    onClick={() => setTimeRange(range)}
+                    className={cn(
+                      "relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors uppercase tracking-wider z-10",
+                      isActive
+                        ? "text-white"
+                        : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                    )}
+                  >
+                    {isActive && (
+                      <motion.span
+                        layoutId="analyticsTimeRangePill"
+                        transition={GLASS_TAB_SPRING}
+                        className="absolute inset-0 -z-10 rounded-lg bg-gradient-to-r from-blue-600 to-sky-600 shadow-sm shadow-blue-500/25"
+                      />
+                    )}
+                    {range === "all" ? "All Time" : range}
+                  </button>
+                );
+              })}
             </div>
 
             <Button
               variant="outline"
               onClick={() => fetchDatabaseTelemetry(true)}
               disabled={loading}
-              className="h-9 px-3.5 gap-1.5 font-semibold text-xs rounded-xl border-slate-200/80 bg-white dark:bg-white/[0.03] text-slate-700 hover:bg-slate-100 hover:text-slate-950 shadow-sm transition-all dark:border-white/[0.08] dark:text-slate-300 dark:hover:bg-white/[0.06] dark:hover:text-white"
+              className="h-9 px-3.5 gap-1.5 font-semibold text-xs rounded-xl border-slate-200/80 bg-white/70 dark:bg-white/[0.04] backdrop-blur-md text-slate-700 hover:bg-white hover:text-slate-950 shadow-sm transition-all dark:border-white/[0.1] dark:text-slate-200 dark:hover:bg-white/[0.08]"
             >
               <RefreshCw className={cn("h-3.5 w-3.5 text-blue-500", loading && "animate-spin")} />
               <span>Sync DB</span>
@@ -420,15 +405,15 @@ export default function AnalyticsPage() {
             <Button
               variant="primary"
               onClick={handleExportCSV}
-              className="h-9 px-4 gap-1.5 font-semibold text-xs rounded-xl bg-[#0176d3] hover:bg-[#0161b0] text-white shadow-sm transition-all"
+              className="h-9 px-4 gap-1.5 font-semibold text-xs rounded-xl bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white shadow-md shadow-blue-500/20 transition-all"
               title="Download Telemetry CSV"
             >
               <Download className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Export CSV</span>
             </Button>
           </div>
-        </div>
-      </motion.div>
+        }
+      />
 
       {/* 2. EXECUTIVE KPI CARDS (8-Card Grid) */}
       <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -436,132 +421,131 @@ export default function AnalyticsPage() {
           {
             key: "soql_generated",
             label: "SOQL Queries Generated",
-            val: getMetricValue("soql_generated").toLocaleString(),
+            val: getMetricValue("soql_generated"),
             trend: "+14.8% this week",
             icon: Terminal,
-            gradient: "from-blue-500 to-blue-700",
-            iconColor: "text-blue-600 bg-blue-500/10",
+            gradient: "from-blue-600 to-sky-500",
+            iconColor: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
             pct: 85,
           },
           {
             key: "excel_operations",
             label: "Warranty Finder Runs",
-            val: getMetricValue("excel_operations").toLocaleString(),
+            val: getMetricValue("excel_operations"),
             trend: "+8.4% vs last week",
             icon: FileSpreadsheet,
-            gradient: "from-sky-400 to-blue-700",
-            iconColor: "text-sky-700 bg-sky-500/10 dark:text-sky-300",
+            gradient: "from-sky-500 to-blue-600",
+            iconColor: "text-sky-600 bg-sky-500/10 dark:text-sky-400",
             pct: 72,
           },
           {
             key: "templates",
             label: "SOQL Library Templates",
-            val: templates.length.toString(),
+            val: templates.length,
             trend: `${templates.filter((t) => t.favourite).length} bookmarked in DB`,
             icon: Database,
-            gradient: "from-indigo-400 to-blue-700",
-            iconColor: "text-indigo-700 bg-indigo-500/10 dark:text-indigo-300",
+            gradient: "from-blue-500 to-blue-700",
+            iconColor: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
             pct: 90,
           },
           {
             key: "tickets_formatted",
             label: "Tickets Formatted",
-            val: getMetricValue("tickets_formatted").toLocaleString(),
+            val: getMetricValue("tickets_formatted"),
             trend: "99.9% syntax precision",
             icon: FileText,
-            gradient: "from-blue-400 to-cyan-600",
-            iconColor: "text-blue-700 bg-blue-500/10 dark:text-blue-300",
+            gradient: "from-sky-400 to-blue-600",
+            iconColor: "text-sky-600 bg-sky-500/10 dark:text-sky-400",
             pct: 88,
           },
           {
             key: "case_owners",
             label: "Active Case Owners",
-            val: caseOwners.length > 0 ? caseOwners.length.toString() : "10",
+            val: caseOwners.length > 0 ? caseOwners.length : 10,
             trend: "Balanced load routing",
             icon: Users,
-            gradient: "from-blue-400 to-indigo-700",
-            iconColor: "text-blue-700 bg-blue-500/10 dark:text-blue-300",
+            gradient: "from-blue-500 to-sky-600",
+            iconColor: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
             pct: 78,
           },
           {
             key: "asset_transfer",
             label: "Asset Transfers",
-            val: getMetricValue("asset_transfer").toLocaleString(),
+            val: getMetricValue("asset_transfer"),
             trend: "0 CID mapping errors",
             icon: ArrowRightLeft,
-            gradient: "from-cyan-400 to-blue-700",
-            iconColor: "text-cyan-700 bg-cyan-500/10 dark:text-cyan-300",
+            gradient: "from-sky-500 to-blue-700",
+            iconColor: "text-sky-600 bg-sky-500/10 dark:text-sky-400",
             pct: 65,
           },
           {
             key: "case_assignment",
             label: "Case Assignments",
-            val: getMetricValue("case_assignment").toLocaleString(),
+            val: getMetricValue("case_assignment"),
             trend: "Auto-batch enabled",
             icon: CheckCircle2,
-            gradient: "from-blue-400 to-blue-600",
-            iconColor: "text-blue-600 bg-blue-500/10",
+            gradient: "from-blue-600 to-blue-400",
+            iconColor: "text-blue-600 bg-blue-500/10 dark:text-blue-400",
             pct: 82,
           },
           {
             key: "favourites",
             label: "DB Favourites",
-            val: getMetricValue("favourites_count").toLocaleString(),
+            val: getMetricValue("favourites_count"),
             trend: "Instant quick access",
             icon: Star,
             gradient: "from-sky-400 to-blue-600",
-            iconColor: "text-sky-700 bg-sky-500/10 dark:text-sky-300",
+            iconColor: "text-sky-600 bg-sky-500/10 dark:text-sky-400",
             pct: 95,
           },
         ].map((card, idx) => (
           <motion.div
             key={card.key}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.05 }}
-            whileHover={{ y: -2 }}
+            transition={{ duration: 0.32, ease: EASE_120HZ, delay: idx * 0.04 }}
             className="h-full"
           >
-            <Card className="app-card relative h-full min-h-[196px] overflow-hidden group bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] transition-all rounded-2xl flex flex-col shadow-sm hover:shadow-md">
+            <GlassSpotlightCard
+              spotlightColor="rgba(59, 130, 246, 0.14)"
+              className="relative h-full min-h-[192px] flex flex-col p-5 pt-6 sm:p-6 group"
+            >
               {/* Top Gradient Accent Bar */}
-              <div className={cn("absolute inset-x-0 top-0 h-1 opacity-80 transition-opacity duration-300 bg-gradient-to-r", card.gradient)} />
-              
-              {/* Card Content with Fixed Typography Alignment */}
-              <CardContent className="relative z-10 flex flex-1 flex-col p-5 pt-6 sm:p-6 sm:pt-6">
-                {/* Header: Title and Icon */}
-                <div className="mb-4 flex items-start justify-between gap-4">
-                  <span className="min-h-[2.5rem] max-w-[12rem] text-[11px] font-bold uppercase leading-[1.35] tracking-wider text-slate-500 dark:text-slate-400">
-                    {card.label}
-                  </span>
-                  <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 shadow-sm border border-slate-200/50 dark:border-white/[0.06]", card.iconColor)}>
-                    <card.icon className="h-5 w-5" />
-                  </div>
-                </div>
+              <div className={cn("absolute inset-x-0 top-0 h-[3px] opacity-85 bg-gradient-to-r", card.gradient)} />
 
-                {/* Metrics */}
-                <div className="mb-5 flex-1 space-y-1.5">
-                  <div className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                    {card.val}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                    <TrendingUp className="h-3.5 w-3.5 shrink-0" />
-                    <span className="truncate">{card.trend}</span>
-                  </div>
+              {/* Header: Title and Icon */}
+              <div className="relative z-10 mb-4 flex items-start justify-between gap-4">
+                <span className="min-h-[2.5rem] max-w-[12rem] text-[11px] font-bold uppercase leading-[1.35] tracking-wider text-slate-500 dark:text-slate-400">
+                  {card.label}
+                </span>
+                <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-105 shadow-sm border border-blue-500/15", card.iconColor)}>
+                  <card.icon className="h-5 w-5" />
                 </div>
+              </div>
 
-                {/* Progress Bar Footer */}
-                <div className="pt-2 mt-auto">
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-white/[0.06]">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${card.pct}%` }}
-                      transition={{ duration: 1, delay: 0.3 + idx * 0.05 }}
-                      className={cn("h-full rounded-full bg-gradient-to-r", card.gradient)}
-                    />
-                  </div>
+              {/* Metrics */}
+              <div className="relative z-10 mb-5 flex-1 space-y-1.5">
+                <div className="text-3xl font-black tracking-tight text-slate-900 dark:text-white tabular-nums">
+                  <AnimatedNumber value={card.val} />
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 dark:text-sky-400">
+                  <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{card.trend}</span>
+                </div>
+              </div>
+
+              {/* Progress Bar Footer */}
+              <div className="relative z-10 pt-2 mt-auto">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/[0.06]">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${card.pct}%` }}
+                    transition={{ duration: 0.9, ease: EASE_120HZ, delay: 0.2 + idx * 0.04 }}
+                    className={cn("h-full rounded-full bg-gradient-to-r", card.gradient)}
+                  />
+                </div>
+              </div>
+            </GlassSpotlightCard>
           </motion.div>
         ))}
       </div>
@@ -569,12 +553,13 @@ export default function AnalyticsPage() {
       {/* 3. MIDDLE INTERACTIVE ARENA (2 Columns: Leaderboard/Charts + Live DB Event Stream) */}
       <div className="grid gap-8 lg:grid-cols-12">
         {/* LEFT 2 COLUMNS: DB LEADERBOARD & DISTRIBUTIONS */}
-        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-7 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-8">
-          <Card className="app-card h-full min-h-0 border border-slate-200/80 dark:border-white/[0.08] shadow-sm overflow-hidden flex flex-col bg-white dark:bg-[#0b0c10] rounded-2xl">
-            <CardHeader className="p-5 border-b border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sticky top-0 z-10">
-              <div className="space-y-0.5">
+        <motion.div initial={{ opacity: 0, x: -16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.38, ease: EASE_120HZ, delay: 0.14 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-7 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-8">
+          <Card className="app-card glass-surface h-full min-h-0 overflow-hidden flex flex-col rounded-2xl relative">
+            <span className="glass-shimmer-line" />
+            <CardHeader className="p-5 border-b border-slate-200/70 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02] flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sticky top-0 z-10">
+              <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                  <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 shrink-0">
                     <Layers className="h-4.5 w-4.5" />
                   </div>
                   <CardTitle className="text-lg font-bold text-slate-900 dark:text-white">
@@ -586,28 +571,38 @@ export default function AnalyticsPage() {
                 </CardDescription>
               </div>
 
-              {/* Sub-Tabs */}
-              <div className="flex items-center rounded-xl bg-white/50 dark:bg-[#0b0c10]/40 backdrop-blur-xl p-1 border border-slate-200/70 dark:border-white/10 shrink-0">
+              {/* Sub-Tabs with gliding layoutId */}
+              <div className="relative flex flex-wrap items-center rounded-xl bg-slate-100/80 dark:bg-white/[0.04] backdrop-blur-xl p-1 border border-slate-200/70 dark:border-white/[0.08] max-w-full shrink-0 gap-0.5">
                 {[
                   { id: "trends", label: "Trends", icon: Activity },
                   { id: "leaderboard", label: "Top Templates", icon: TrendingUp },
                   { id: "categories", label: "Categories", icon: PieChart },
                   { id: "owners", label: "Owners", icon: UserCheck },
-                ].map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setActiveTab(t.id as TabType)}
-                    className={cn(
-                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
-                      activeTab === t.id
-                        ? "bg-white dark:bg-white/[0.08] text-blue-600 dark:text-blue-400 shadow-sm"
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-                    )}
-                  >
-                    <t.icon className="h-3.5 w-3.5" />
-                    <span>{t.label}</span>
-                  </button>
-                ))}
+                ].map((t) => {
+                  const active = activeTab === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveTab(t.id as TabType)}
+                      className={cn(
+                        "relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap z-10",
+                        active
+                          ? "text-blue-600 dark:text-blue-300"
+                          : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                      )}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="analyticsExplorerTabPill"
+                          transition={GLASS_TAB_SPRING}
+                          className="absolute inset-0 -z-10 rounded-lg bg-white dark:bg-white/[0.1] border border-slate-200/70 dark:border-white/[0.12] shadow-sm"
+                        />
+                      )}
+                      <t.icon className="h-3.5 w-3.5" />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             </CardHeader>
 
@@ -618,21 +613,19 @@ export default function AnalyticsPage() {
                   {activeTab === "trends" && (
                     <motion.div
                       key="trends"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      {...PANEL_SWAP_MOTION}
                       className="space-y-4"
                     >
-                      <div className="p-5 rounded-xl bg-slate-50/80 dark:bg-[#06070a] border border-slate-200/80 dark:border-white/[0.08]">
-                        <div className="flex items-center justify-between mb-5">
+                      <div className="glass-inset-well p-5 rounded-xl">
+                        <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
                           <div>
                             <h3 className="text-base font-bold text-slate-900 dark:text-white">Weekly System Activity</h3>
                             <p className="text-xs text-slate-500 dark:text-slate-400">Real-time operation volume across core modules</p>
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-500"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">SOQL</span></div>
-                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Excel</span></div>
-                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-500"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tickets</span></div>
+                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-blue-600"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">SOQL</span></div>
+                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-sky-400"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Excel</span></div>
+                            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-slate-400 dark:bg-slate-300"></span><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Tickets</span></div>
                           </div>
                         </div>
                         <div className="h-[300px] w-full">
@@ -640,25 +633,25 @@ export default function AnalyticsPage() {
                             <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                               <defs>
                                 <linearGradient id="colorSoql" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.32} />
+                                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colorExcel" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                  <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colorTickets" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                  <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.28} />
+                                  <stop offset="95%" stopColor="#94a3b8" stopOpacity={0} />
                                 </linearGradient>
                               </defs>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200 dark:text-white/[0.06]" />
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-200/80 dark:text-white/[0.06]" />
                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" dy={10} />
                               <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 600, fill: "currentColor" }} className="text-slate-400 dark:text-slate-500" />
-                              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(59, 130, 246, 0.2)', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
-                              <Area type="monotone" dataKey="soql" stroke="#3b82f6" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSoql)" activeDot={{ r: 5, strokeWidth: 0 }} />
-                              <Area type="monotone" dataKey="tickets" stroke="#f59e0b" strokeWidth={2.5} fillOpacity={1} fill="url(#colorTickets)" activeDot={{ r: 5, strokeWidth: 0 }} />
-                              <Area type="monotone" dataKey="excel" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExcel)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                              <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(59, 130, 246, 0.25)', strokeWidth: 1.5, strokeDasharray: '4 4' }} />
+                              <Area type="monotone" dataKey="soql" stroke="#2563eb" strokeWidth={2.5} fillOpacity={1} fill="url(#colorSoql)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                              <Area type="monotone" dataKey="tickets" stroke="#94a3b8" strokeWidth={2.2} fillOpacity={1} fill="url(#colorTickets)" activeDot={{ r: 5, strokeWidth: 0 }} />
+                              <Area type="monotone" dataKey="excel" stroke="#38bdf8" strokeWidth={2.5} fillOpacity={1} fill="url(#colorExcel)" activeDot={{ r: 5, strokeWidth: 0 }} />
                             </AreaChart>
                           </ResponsiveContainer>
                         </div>
@@ -670,12 +663,10 @@ export default function AnalyticsPage() {
                   {activeTab === "leaderboard" && (
                     <motion.div
                       key="leaderboard"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      {...PANEL_SWAP_MOTION}
                       className="space-y-4"
                     >
-                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
+                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-2.5 border-b border-slate-200/60 dark:border-white/[0.06]">
                         <span>Rank &amp; Query Name</span>
                         <span>Execution Volume</span>
                       </div>
@@ -692,18 +683,18 @@ export default function AnalyticsPage() {
                               <motion.div
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.05 }}
+                                transition={{ duration: 0.28, ease: EASE_120HZ, delay: idx * 0.04 }}
                                 key={t.id}
-                                className="group flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] hover:border-blue-500/40 transition-all shadow-sm gap-3"
+                                className="glass-inset-well group flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl hover:border-blue-500/40 transition-all gap-3"
                               >
                                 <div className="flex items-start gap-3 min-w-0 flex-1">
                                   <span
                                     className={cn(
-                                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold shadow-sm",
-                                      idx === 0 ? "bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-400/30" 
-                                      : idx === 1 ? "bg-slate-200/50 text-slate-700 dark:bg-white/[0.08] dark:text-slate-300 border border-slate-300/40" 
-                                      : idx === 2 ? "bg-amber-700/20 text-amber-800 dark:text-amber-400 border border-amber-700/30" 
-                                      : "bg-slate-100 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400"
+                                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold shadow-sm border",
+                                      idx === 0 ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/20"
+                                      : idx === 1 ? "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                                      : idx === 2 ? "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30"
+                                      : "bg-slate-100/80 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 border-slate-200/70 dark:border-white/[0.08]"
                                     )}
                                   >
                                     #{idx + 1}
@@ -720,7 +711,7 @@ export default function AnalyticsPage() {
                                         {t.category}
                                       </Badge>
                                     </div>
-                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono bg-slate-50 dark:bg-white/[0.02] px-2 py-0.5 rounded border border-slate-200/60 dark:border-white/[0.06]">
+                                    <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-mono bg-white/50 dark:bg-white/[0.02] px-2 py-0.5 rounded border border-slate-200/60 dark:border-white/[0.06]">
                                       {t.soql.replace(/\n/g, " ")}
                                     </div>
                                   </div>
@@ -731,8 +722,8 @@ export default function AnalyticsPage() {
                                     <div className="text-xs font-bold font-mono text-slate-900 dark:text-white">
                                       {(t.usageCount || 12).toLocaleString()} <span className="text-[10px] font-medium text-slate-400 uppercase">runs</span>
                                     </div>
-                                    <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
-                                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
+                                    <div className="h-1.5 w-full rounded-full bg-slate-200/70 dark:bg-white/[0.06] overflow-hidden">
+                                      <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-sky-500 transition-all" style={{ width: `${pct}%` }} />
                                     </div>
                                   </div>
 
@@ -742,7 +733,7 @@ export default function AnalyticsPage() {
                                     onClick={(e) => handleCopySOQL(e, t.soql, t.id)}
                                     className={cn(
                                       "h-8 w-8 rounded-lg transition-all",
-                                      copiedId === t.id ? "bg-emerald-500 text-white border-emerald-500" : "border-slate-200/80 dark:border-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.06] text-slate-600 dark:text-slate-300"
+                                      copiedId === t.id ? "bg-blue-600 text-white border-blue-500" : "border-slate-200/80 dark:border-white/[0.1] hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 text-slate-600 dark:text-slate-300"
                                     )}
                                   >
                                     {copiedId === t.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -759,19 +750,17 @@ export default function AnalyticsPage() {
                   {activeTab === "categories" && (
                     <motion.div
                       key="categories"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      {...PANEL_SWAP_MOTION}
                       className="space-y-4"
                     >
-                      <div className="p-4 rounded-xl bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 flex items-center justify-between">
+                      <div className="p-4 rounded-xl bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/20 flex items-center justify-between">
                         <div className="space-y-0.5">
-                          <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Total Analyzed Queries</div>
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-sky-300">Total Analyzed Queries</div>
                           <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
                             {templates.reduce((acc, t) => acc + (t.usageCount || 10), 0).toLocaleString()} <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">executions</span>
                           </div>
                         </div>
-                        <div className="h-10 w-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                        <div className="h-10 w-10 rounded-xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-600 dark:text-blue-400">
                           <PieChart className="h-5 w-5" />
                         </div>
                       </div>
@@ -779,11 +768,11 @@ export default function AnalyticsPage() {
                       <div className="grid gap-3 sm:grid-cols-2">
                         {categoryStats.map((cat, idx) => (
                           <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
+                            initial={{ opacity: 0, scale: 0.96 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ delay: idx * 0.05 }}
+                            transition={{ duration: 0.28, ease: EASE_120HZ, delay: idx * 0.04 }}
                             key={cat.name} 
-                            className="space-y-2.5 p-4 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] shadow-sm hover:border-blue-500/30 transition-all"
+                            className="glass-inset-well space-y-2.5 p-4 rounded-xl hover:border-blue-500/35 transition-all"
                           >
                             <div className="flex items-center justify-between text-sm">
                               <div className="flex items-center gap-2.5">
@@ -792,19 +781,19 @@ export default function AnalyticsPage() {
                                 </span>
                                 <span className="font-bold text-slate-900 dark:text-white text-sm">{cat.name}</span>
                               </div>
-                              <Badge className="bg-slate-100 dark:bg-white/[0.04] text-slate-700 dark:text-slate-300 font-bold border-slate-200/80 dark:border-white/[0.08] text-xs px-2 py-0.5">{cat.pct}%</Badge>
+                              <Badge className="bg-blue-500/10 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 font-bold border border-blue-500/20 text-xs px-2 py-0.5">{cat.pct}%</Badge>
                             </div>
                             
                             <div className="flex items-center justify-between">
                               <span className="text-slate-500 dark:text-slate-400 font-semibold text-xs">{cat.count.toLocaleString()} runs</span>
                             </div>
                             
-                            <div className="h-1.5 w-full rounded-full bg-slate-100 dark:bg-white/[0.06] overflow-hidden">
+                            <div className="h-1.5 w-full rounded-full bg-slate-200/70 dark:bg-white/[0.06] overflow-hidden">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${cat.pct}%` }}
-                                transition={{ duration: 1, delay: 0.2 + idx * 0.1 }}
-                                className={cn("h-full rounded-full", idx % 2 === 0 ? "bg-blue-500" : "bg-emerald-500")}
+                                transition={{ duration: 0.9, ease: EASE_120HZ, delay: 0.15 + idx * 0.06 }}
+                                className={cn("h-full rounded-full", idx % 2 === 0 ? "bg-gradient-to-r from-blue-600 to-sky-500" : "bg-gradient-to-r from-sky-500 to-blue-500")}
                               />
                             </div>
                           </motion.div>
@@ -817,20 +806,18 @@ export default function AnalyticsPage() {
                   {activeTab === "owners" && (
                     <motion.div
                       key="owners"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
+                      {...PANEL_SWAP_MOTION}
                       className="space-y-4"
                     >
-                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
+                      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 pb-2.5 border-b border-slate-200/60 dark:border-white/[0.06]">
                         <span>Employee &amp; Salesforce ID</span>
                         <span>Capacity Status</span>
                       </div>
 
                       {caseOwners.length === 0 ? (
-                        <div className="py-12 text-center space-y-3 bg-slate-50/50 dark:bg-[#06070a] rounded-xl border border-dashed border-slate-200 dark:border-white/[0.08]">
-                          <div className="mx-auto h-12 w-12 bg-slate-100 dark:bg-white/[0.04] rounded-full flex items-center justify-center">
-                            <Users className="h-6 w-6 text-slate-400" />
+                        <div className="glass-inset-well py-12 text-center space-y-3 rounded-xl border-dashed">
+                          <div className="mx-auto h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20">
+                            <Users className="h-6 w-6 text-blue-500" />
                           </div>
                           <div>
                             <div className="text-base font-bold text-slate-900 dark:text-white">No Case Owners Found</div>
@@ -843,9 +830,9 @@ export default function AnalyticsPage() {
                             <motion.div
                               initial={{ opacity: 0, y: 10 }}
                               animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.05 }}
+                              transition={{ duration: 0.28, ease: EASE_120HZ, delay: idx * 0.04 }}
                               key={owner.id || idx}
-                              className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#06070a] flex items-center justify-between gap-3 hover:border-blue-500/40 shadow-sm transition-all"
+                              className="glass-inset-well p-3.5 rounded-xl flex items-center justify-between gap-3 hover:border-blue-500/40 transition-all"
                             >
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold text-sm border border-blue-500/20">
@@ -856,7 +843,7 @@ export default function AnalyticsPage() {
                                   <div className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate">ID: {owner.ownerId}</div>
                                 </div>
                               </div>
-                              <Badge className={cn("text-[10px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-md", owner.isActive ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30" : "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30")}>
+                              <Badge className={cn("text-[10px] font-bold uppercase tracking-wider shrink-0 px-2 py-0.5 rounded-md", owner.isActive ? "bg-blue-500/15 text-blue-700 dark:text-sky-300 border-blue-500/30" : "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30")}>
                                 {owner.isActive ? "Active" : "Offline"}
                               </Badge>
                             </motion.div>
@@ -872,66 +859,77 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* RIGHT COLUMN: REAL-TIME DB EVENT STREAM */}
-        <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-5 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-4">
-          <Card className="app-card h-full min-h-0 border border-slate-200/80 dark:border-white/[0.08] shadow-sm overflow-hidden flex flex-col bg-white dark:bg-[#0b0c10] rounded-2xl">
-            <CardHeader className="p-5 border-b border-slate-200/80 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] flex flex-col gap-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 relative">
+        <motion.div initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.38, ease: EASE_120HZ, delay: 0.2 }} className="flex h-[34rem] min-h-0 flex-col lg:col-span-5 lg:h-[min(36rem,calc(100dvh-9rem))] xl:col-span-4">
+          <Card className="app-card glass-surface h-full min-h-0 overflow-hidden flex flex-col rounded-2xl relative">
+            <span className="glass-shimmer-line" />
+            <CardHeader className="p-5 border-b border-slate-200/70 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02] flex flex-col gap-3.5 relative z-10">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-sky-400 border border-blue-500/20 relative shrink-0">
                     <span className="absolute top-0 right-0 -mt-1 -mr-1 flex h-2.5 w-2.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
                     </span>
                     <Activity className="h-4.5 w-4.5" />
                   </div>
                   <CardTitle className="text-base font-bold text-slate-900 dark:text-white">Live Event Stream</CardTitle>
                 </div>
-                <Badge variant="outline" className="text-xs font-semibold font-mono bg-slate-100/80 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 border-slate-200/80 dark:border-white/[0.08] px-2 py-0.5">
+                <Badge variant="outline" className="text-xs font-semibold font-mono bg-white/60 dark:bg-white/[0.04] text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-white/[0.08] px-2 py-0.5 whitespace-nowrap shrink-0">
                   {filteredEvents.length > 0 ? filteredEvents.length : 6} events
                 </Badge>
               </div>
 
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              {/* Filter Pills with layoutId spring */}
+              <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
                 {[
                   { id: "all", label: "All" },
                   { id: "soql", label: "SOQL" },
                   { id: "excel", label: "Excel" },
                   { id: "library", label: "Library" },
-                ].map((f) => (
-                  <button
-                    key={f.id}
-                    onClick={() => setEventFilter(f.id as EventFilter)}
-                    className={cn(
-                      "px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-all border shrink-0",
-                      eventFilter === f.id
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
-                        : "bg-white dark:bg-[#06070a] text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-white/[0.08] hover:border-emerald-500/30"
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+                ].map((f) => {
+                  const active = eventFilter === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => setEventFilter(f.id as EventFilter)}
+                      className={cn(
+                        "relative px-3 py-1 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors border whitespace-nowrap shrink-0 z-10",
+                        active
+                          ? "text-white border-blue-500/40 shadow-sm"
+                          : "bg-white/60 dark:bg-white/[0.04] text-slate-600 dark:text-slate-400 border-slate-200/80 dark:border-white/[0.08] hover:border-blue-500/30"
+                      )}
+                    >
+                      {active && (
+                        <motion.span
+                          layoutId="analyticsEventFilterPill"
+                          transition={GLASS_TAB_SPRING}
+                          className="absolute inset-0 -z-10 rounded-lg bg-gradient-to-r from-blue-600 to-sky-600"
+                        />
+                      )}
+                      {f.label}
+                    </button>
+                  );
+                })}
               </div>
             </CardHeader>
 
-            <CardContent className="analytics-panel-scroll min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-slate-50/40 dark:bg-[#06070a] p-4">
+            <CardContent className="analytics-panel-scroll min-h-0 flex-1 space-y-2.5 overflow-y-auto bg-slate-50/30 dark:bg-[#050810]/50 p-4 relative z-10">
               {filteredEvents.length === 0 ? (
                 /* Fallback rich log if DB events table is fresh/empty */
                 [
-                  { label: "SOQL Query Executed in Generator", mod: "SOQL Generator", time: "2 mins ago", badge: "Query", color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-                  { label: "VLOOKUP Spreadsheet Reconciled", mod: "Warranty Finder", time: "14 mins ago", badge: "Excel", color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-                  { label: "New Template Saved to DB Library", mod: "Template Manager", time: "38 mins ago", badge: "Library", color: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
-                  { label: "150 Raw Tickets Formatted to IN Syntax", mod: "Ticket Formatter", time: "1 hr ago", badge: "Utility", color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-                  { label: "Asset Transfer Component Mapping", mod: "Asset Transfer", time: "2 hrs ago", badge: "Asset", color: "bg-cyan-500/10 text-cyan-600 border-cyan-500/20" },
-                  { label: "Case Owner Capacity Balanced", mod: "Case Assignment", time: "4 hrs ago", badge: "Case", color: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
+                  { label: "SOQL Query Executed in Generator", mod: "SOQL Generator", time: "2 mins ago", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
+                  { label: "VLOOKUP Spreadsheet Reconciled", mod: "Warranty Finder", time: "14 mins ago", color: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20" },
+                  { label: "New Template Saved to DB Library", mod: "Template Manager", time: "38 mins ago", color: "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/25" },
+                  { label: "150 Raw Tickets Formatted to IN Syntax", mod: "Ticket Formatter", time: "1 hr ago", color: "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/20" },
+                  { label: "Asset Transfer Component Mapping", mod: "Asset Transfer", time: "2 hrs ago", color: "bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/20" },
+                  { label: "Case Owner Capacity Balanced", mod: "Case Assignment", time: "4 hrs ago", color: "bg-blue-600/10 text-blue-700 dark:text-blue-300 border-blue-500/20" },
                 ].map((ev, i) => (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
+                    transition={{ duration: 0.25, ease: EASE_120HZ, delay: i * 0.05 }}
                     key={i} 
-                    className="group p-3 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] hover:border-blue-500/40 transition-all space-y-1.5 shadow-sm"
+                    className="glass-inset-well group p-3 rounded-xl hover:border-blue-500/40 transition-all space-y-1.5"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <Badge className={cn("text-[10px] font-semibold uppercase px-2 py-0.5 tracking-wider", ev.color)}>
@@ -953,9 +951,9 @@ export default function AnalyticsPage() {
                     <motion.div 
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.05 }}
+                      transition={{ duration: 0.25, ease: EASE_120HZ, delay: Math.min(i * 0.03, 0.2) }}
                       key={ev.id} 
-                      className="group p-3 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] hover:border-blue-500/40 transition-all space-y-1.5 shadow-sm"
+                      className="glass-inset-well group p-3 rounded-xl hover:border-blue-500/40 transition-all space-y-1.5"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-[10px] font-semibold uppercase px-2 py-0.5 tracking-wider">
@@ -969,7 +967,7 @@ export default function AnalyticsPage() {
                         {ev.label}
                       </div>
                       {ev.meta && (
-                        <div className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/[0.02] px-2 py-0.5 rounded border border-slate-200/60 dark:border-white/[0.06] truncate">
+                        <div className="text-[11px] font-mono font-medium text-slate-500 dark:text-slate-400 bg-white/50 dark:bg-white/[0.02] px-2 py-0.5 rounded border border-slate-200/60 dark:border-white/[0.06] truncate">
                           {ev.meta}
                         </div>
                       )}
@@ -979,9 +977,9 @@ export default function AnalyticsPage() {
               )}
             </CardContent>
 
-            <div className="p-3 bg-slate-50/50 dark:bg-white/[0.02] border-t border-slate-200/80 dark:border-white/[0.08] text-center">
-              <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+            <div className="p-3 bg-white/40 dark:bg-white/[0.02] border-t border-slate-200/70 dark:border-white/[0.08] text-center relative z-10">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                <ShieldCheck className="h-3.5 w-3.5 text-sky-500" />
                 Automated 30-Day Retention Active
               </span>
             </div>
@@ -991,45 +989,51 @@ export default function AnalyticsPage() {
 
       {/* 4. BOTTOM POSTGRESQL TELEMETRY & SYSTEM HEALTH FOOTER */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="app-card grid gap-6 sm:grid-cols-3 rounded-2xl bg-white dark:bg-[#0b0c10] border border-slate-200/80 dark:border-white/[0.08] p-5 shadow-sm relative overflow-hidden"
+        transition={{ duration: 0.35, ease: EASE_120HZ, delay: 0.25 }}
       >
-        <div className="flex items-center gap-3.5 relative z-10">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
-            <Server className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Database Driver</div>
-            <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">Prisma Pg Adapter</div>
-            <div className="text-xs font-mono text-slate-500 dark:text-slate-400">PostgreSQL Engine</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3.5 border-t sm:border-t-0 sm:border-l border-slate-200/80 dark:border-white/[0.08] pt-4 sm:pt-0 sm:pl-6 relative z-10">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-bold">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Telemetry Cache</div>
-            <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">Real-time Upsert Sync</div>
-            <div className="text-xs font-mono text-slate-500 dark:text-slate-400">Atomic Consistency</div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3.5 border-t sm:border-t-0 sm:border-l border-slate-200/80 dark:border-white/[0.08] pt-4 sm:pt-0 sm:pl-6 relative z-10">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 font-bold">
-            <Zap className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Last Sync Status</div>
-            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> 100% Online
+        <GlassSpotlightCard
+          spotlightColor="rgba(14, 165, 233, 0.12)"
+          className="p-5"
+        >
+          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="flex items-center gap-3.5 relative z-10">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
+              <Server className="h-5 w-5" />
             </div>
-            <div className="text-xs font-mono text-slate-500 dark:text-slate-400">Updated: {lastSynced}</div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Database Driver</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">Prisma Pg Adapter</div>
+              <div className="text-xs font-mono text-slate-500 dark:text-slate-400">PostgreSQL Engine</div>
+            </div>
           </div>
-        </div>
+
+          <div className="flex items-center gap-3.5 border-t sm:border-t-0 sm:border-l border-slate-200/70 dark:border-white/[0.08] pt-4 sm:pt-0 sm:pl-6 relative z-10">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Telemetry Cache</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-0.5">Real-time Upsert Sync</div>
+              <div className="text-xs font-mono text-slate-500 dark:text-slate-400">Atomic Consistency</div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3.5 border-t sm:border-t-0 sm:border-l border-slate-200/70 dark:border-white/[0.08] pt-4 sm:pt-0 sm:pl-6 relative z-10">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
+              <Zap className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Last Sync Status</div>
+              <div className="text-sm font-bold text-sky-600 dark:text-sky-400 mt-0.5 flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-sky-500 animate-pulse" /> 100% Online
+              </div>
+              <div className="text-xs font-mono text-slate-500 dark:text-slate-400">Updated: {lastSynced}</div>
+            </div>
+          </div>
+          </div>
+        </GlassSpotlightCard>
       </motion.div>
     </div>
   );

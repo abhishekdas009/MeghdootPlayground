@@ -1329,12 +1329,12 @@ export function TrainingMOMMaker() {
         {/* Card 1: Session Details */}
         <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl p-0 overflow-visible relative z-20">
           <CardHeader className="pb-4 px-6 pt-5 border-b border-border/70 bg-muted/20 rounded-t-2xl">
-            <CardTitle className="flex items-center justify-between text-lg font-bold text-foreground">
+            <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-lg font-bold text-foreground">
               <div className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-sky-500" />
+                <GraduationCap className="h-5 w-5 text-sky-500 shrink-0" />
                 <span>Training MOM Configuration</span>
               </div>
-              <Badge variant="outline" className="text-[11px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">
+              <Badge variant="outline" className="text-[11px] font-black uppercase tracking-wider bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 whitespace-nowrap shrink-0">
                 {trainingMode} Mode
               </Badge>
             </CardTitle>
@@ -1348,26 +1348,26 @@ export function TrainingMOMMaker() {
                   type="button"
                   onClick={() => setTrainingMode("SDE")}
                   className={cn(
-                    "py-2 px-3 rounded-lg text-xs font-black tracking-wider uppercase transition-all flex items-center justify-center gap-1.5",
+                    "py-2 px-3 rounded-lg text-xs font-black tracking-wider uppercase transition-all flex items-center justify-center gap-1.5 whitespace-nowrap",
                     trainingMode === "SDE"
                       ? "bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-md shadow-sky-500/25 font-bold"
                       : "text-slate-600 dark:text-slate-400 hover:text-foreground"
                   )}
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Sparkles className="h-3.5 w-3.5 shrink-0" />
                   <span>SDE Training</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setTrainingMode("CP")}
                   className={cn(
-                    "py-2 px-3 rounded-lg text-xs font-black tracking-wider uppercase transition-all flex items-center justify-center gap-1.5",
+                    "py-2 px-3 rounded-lg text-xs font-black tracking-wider uppercase transition-all flex items-center justify-center gap-1.5 whitespace-nowrap",
                     trainingMode === "CP"
                       ? "bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/25 font-bold"
                       : "text-slate-600 dark:text-slate-400 hover:text-foreground"
                   )}
                 >
-                  <BookOpen className="h-3.5 w-3.5" />
+                  <BookOpen className="h-3.5 w-3.5 shrink-0" />
                   <span>CP Training</span>
                 </button>
               </div>
@@ -1382,7 +1382,7 @@ export function TrainingMOMMaker() {
                     type="button"
                     onClick={() => setIncludeCP(!includeCP)}
                     className={cn(
-                      "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border flex items-center gap-1.5",
+                      "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border flex items-center gap-1.5 whitespace-nowrap shrink-0",
                       includeCP
                         ? "bg-purple-500/15 text-purple-600 dark:text-purple-300 border-purple-500/40 shadow-xs"
                         : "bg-surface-recessed/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-surface-recessed"
@@ -1397,7 +1397,7 @@ export function TrainingMOMMaker() {
                   type="button"
                   onClick={() => setIncludeFSL(!includeFSL)}
                   className={cn(
-                    "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border flex items-center gap-1.5",
+                    "px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all border flex items-center gap-1.5 whitespace-nowrap shrink-0",
                     includeFSL
                       ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/40 shadow-xs"
                       : "bg-surface-recessed/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-surface-recessed"
@@ -1518,13 +1518,13 @@ export function TrainingMOMMaker() {
                 ({validAttendees.length})
               </span>
             </CardTitle>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setShowBulkPaste(!showBulkPaste)}
-                className="h-7 px-2.5 text-[11px] font-bold rounded-lg border-border/80 dark:border-white/10 hover:bg-surface-elevated gap-1"
+                className="h-7 px-2.5 text-[11px] font-bold rounded-lg border-border/80 dark:border-white/10 hover:bg-surface-elevated gap-1 whitespace-nowrap shrink-0"
                 title="Paste multiple attendees at once"
               >
                 <ListPlus className="h-3 w-3 text-sky-500" />
@@ -1535,7 +1535,7 @@ export function TrainingMOMMaker() {
                 variant="outline"
                 size="sm"
                 onClick={handleAddAttendee}
-                className="h-7 px-2.5 text-[11px] font-bold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30 gap-1"
+                className="h-7 px-2.5 text-[11px] font-bold rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30 gap-1 whitespace-nowrap shrink-0"
               >
                 <Plus className="h-3 w-3" />
                 <span>Add Row</span>
@@ -1716,12 +1716,12 @@ export function TrainingMOMMaker() {
       {/* ── Right Column: Generated Output / Live Email Preview ── */}
       <div className="lg:col-span-7 space-y-6">
         <Card className="app-card h-full border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl flex flex-col p-0 overflow-hidden">
-          {/* Header */}
+              {/* Header */}
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-border/70 bg-muted/20 px-6 py-4 gap-3 flex-wrap">
             <div>
-              <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+              <CardTitle className="text-lg font-bold text-foreground flex flex-wrap items-center gap-2">
                 <span>Generated Output</span>
-                <span className="text-[11px] font-black uppercase px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-500/20">
+                <span className="text-[11px] font-black uppercase px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-500/20 whitespace-nowrap shrink-0">
                   MOM Email Preview
                 </span>
               </CardTitle>
@@ -1763,11 +1763,11 @@ export function TrainingMOMMaker() {
                 <span>Open Mail Draft</span>
               </Button>
 
-              <Button
-                size="sm"
-                onClick={handleCopyEmail}
-                className="flex-1 sm:flex-none gap-2 bg-gradient-to-r from-sky-500 via-blue-600 to-indigo-600 hover:from-sky-400 hover:via-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs h-9 px-4 rounded-xl shadow-md shadow-sky-500/25 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                title="Copy HTML formatted email table to clipboard for Outlook / Gmail"
+                <Button
+                  size="sm"
+                  onClick={handleCopyEmail}
+                  className="flex-1 sm:flex-none gap-2 bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white font-extrabold text-xs h-9 px-4 rounded-xl shadow-md shadow-blue-500/25 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                  title="Copy HTML formatted email table to clipboard for Outlook / Gmail"
               >
                 {copiedType === "html" ? (
                   <>

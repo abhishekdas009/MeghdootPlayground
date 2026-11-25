@@ -9070,16 +9070,16 @@ function AccountCheckHandoverModal({
         </div>
 
         {/* Tab Selector & Action Buttons Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pt-3 pb-2">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 pt-3 pb-2">
           {/* Format Tabs */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200/60 dark:border-white/[0.08]">
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200/60 dark:border-white/[0.08]">
             <button
               type="button"
               onClick={() => setActiveTab("teams")}
               className={cn(
-                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0",
                 activeTab === "teams"
-                  ? "bg-indigo-500 text-white shadow-xs"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -9089,9 +9089,9 @@ function AccountCheckHandoverModal({
               type="button"
               onClick={() => setActiveTab("email")}
               className={cn(
-                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0",
                 activeTab === "email"
-                  ? "bg-indigo-500 text-white shadow-xs"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -9101,9 +9101,9 @@ function AccountCheckHandoverModal({
               type="button"
               onClick={() => setActiveTab("visual")}
               className={cn(
-                "px-3 py-1 text-xs font-bold rounded-lg transition-all",
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all whitespace-nowrap shrink-0",
                 activeTab === "visual"
-                  ? "bg-indigo-500 text-white shadow-xs"
+                  ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -9112,12 +9112,12 @@ function AccountCheckHandoverModal({
           </div>
 
           {/* Quick Copy Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <Button
               size="sm"
               variant="outline"
               onClick={() => handleCopy(summaryData.teamsMarkdown, "Teams / Slack")}
-              className="h-8 gap-1.5 text-xs font-bold border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg shadow-xs"
+              className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg shadow-xs whitespace-nowrap shrink-0"
             >
               {copiedFormat === "Teams / Slack" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
               <span>Copy Teams</span>
@@ -9126,7 +9126,7 @@ function AccountCheckHandoverModal({
               size="sm"
               variant="outline"
               onClick={() => handleCopy(summaryData.emailPlainText, "Email / Plain Text")}
-              className="h-8 gap-1.5 text-xs font-bold border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-lg shadow-xs"
+              className="h-8 gap-1.5 text-xs font-bold border-sky-500/30 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 rounded-lg shadow-xs whitespace-nowrap shrink-0"
             >
               {copiedFormat === "Email / Plain Text" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
               <span>Copy Email</span>
@@ -9135,7 +9135,7 @@ function AccountCheckHandoverModal({
               size="sm"
               variant="outline"
               onClick={handleDownload}
-              className="h-8 gap-1.5 text-xs font-bold border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shadow-xs"
+              className="h-8 gap-1.5 text-xs font-bold border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg shadow-xs whitespace-nowrap shrink-0"
             >
               <Download className="h-3.5 w-3.5" />
               <span>.txt</span>
@@ -9699,56 +9699,56 @@ function CancellationHandoverModal({
         </div>
 
         {/* Tab Selector & Actions Toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 sm:px-6 pt-3 pb-2 border-b border-border/40 dark:border-white/[0.05]">
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200/60 dark:border-white/[0.08]">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 pt-3 pb-2 border-b border-border/40 dark:border-white/[0.05]">
+          <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.05] border border-slate-200/60 dark:border-white/[0.08]">
             <button
               type="button"
               onClick={() => setActiveTab("tickets")}
               className={cn(
-                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
                 activeTab === "tickets"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Users className="h-3.5 w-3.5" />
+              <Users className="h-3.5 w-3.5 shrink-0" />
               <span>All Tickets Explorer ({allTicketsWithCategory.length})</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("teams")}
               className={cn(
-                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
                 activeTab === "teams"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <MessageSquare className="h-3.5 w-3.5" />
+              <MessageSquare className="h-3.5 w-3.5 shrink-0" />
               <span>Teams / Slack</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab("email")}
               className={cn(
-                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5",
+                "px-3 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
                 activeTab === "email"
                   ? "bg-blue-600 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Mail className="h-3.5 w-3.5" />
+              <Mail className="h-3.5 w-3.5 shrink-0" />
               <span>Email Report</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             {activeTab === "tickets" ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleCopyFilteredTickets}
-                className="h-8 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg gap-1.5 shadow-sm"
+                className="h-8 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg gap-1.5 shadow-sm whitespace-nowrap shrink-0"
               >
                 <Copy className="h-3.5 w-3.5" />
                 <span>Copy Visible Tickets ({filteredTickets.length})</span>
@@ -9763,7 +9763,7 @@ function CancellationHandoverModal({
                     activeTab === "teams" ? "Teams / Slack" : "Email"
                   )
                 }
-                className="h-8 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg gap-1.5 shadow-sm"
+                className="h-8 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg gap-1.5 shadow-sm whitespace-nowrap shrink-0"
               >
                 <Copy className="h-3.5 w-3.5" />
                 <span>{copiedFormat ? "Copied!" : `Copy ${activeTab === "teams" ? "Teams Markdown" : "Email Text"}`}</span>
@@ -9774,7 +9774,7 @@ function CancellationHandoverModal({
               variant="outline"
               size="sm"
               onClick={handleDownloadTxt}
-              className="h-8 text-xs font-bold rounded-lg gap-1.5 shadow-sm"
+              className="h-8 text-xs font-bold rounded-lg gap-1.5 shadow-sm whitespace-nowrap shrink-0"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Download .txt</span>
@@ -18183,7 +18183,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-            className="gap-2 h-9 px-3.5 rounded-xl border-slate-200 dark:border-white/[0.08] hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 text-slate-600 dark:text-slate-400 font-bold transition-all bg-white dark:bg-[#0b0c10] shadow-sm text-xs"
+            className="gap-2 h-9 px-3.5 rounded-xl border-slate-200/80 dark:border-white/[0.1] hover:bg-rose-500/10 hover:text-rose-500 hover:border-rose-500/30 text-slate-600 dark:text-slate-300 font-bold transition-all bg-white/70 dark:bg-white/[0.04] backdrop-blur-md shadow-sm text-xs"
 
 
 
@@ -18255,7 +18255,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-          className="rounded-2xl border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-[#0b0c10] p-3 sm:p-3.5 shadow-sm"
+          className="rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/55 dark:bg-[#0b0c10]/45 backdrop-blur-2xl p-3 sm:p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.5)]"
 
 
 
@@ -18363,7 +18363,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-3 relative z-10">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2 mb-3 relative z-10">
 
 
 
@@ -18599,7 +18599,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                  "group p-2.5 rounded-xl flex items-center justify-center gap-2.5 border relative overflow-visible cursor-pointer transition-all duration-200",
+                  "group p-2.5 rounded-xl flex items-center justify-center gap-2 border relative overflow-hidden cursor-pointer transition-all duration-200 min-w-0",
 
 
 
@@ -18775,7 +18775,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                    "text-[10px] uppercase tracking-wider text-center leading-tight truncate transition-colors duration-200",
+                    "text-[10px] uppercase tracking-wider text-center leading-tight line-clamp-2 transition-colors duration-200",
 
 
 
@@ -19531,7 +19531,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-              <div className="p-4 sm:p-5 pb-2 relative z-10 flex items-center justify-between gap-3 mt-4 md:mt-5">
+              <div className="p-4 sm:p-5 pb-2 relative z-10 flex items-center justify-between gap-3 mt-6 md:mt-7">
 
 
 
@@ -20733,11 +20733,11 @@ AND Ticket_Numbers__c IN (
 
 
 
-                <div className="p-4 sm:p-5 pb-2 relative z-10 flex items-center justify-between gap-3 mt-4 md:mt-5">
+                <div className="p-4 sm:p-5 pb-2 relative z-10 flex flex-wrap items-center justify-between gap-2 mt-6 md:mt-7">
 
 
 
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0">
 
 
 
@@ -20765,7 +20765,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                  <div className="flex items-center p-0.5 rounded-xl bg-slate-200/60 dark:bg-black/50 border border-slate-300/60 dark:border-white/[0.08] backdrop-blur-md relative">
+                  <div className="flex items-center p-0.5 rounded-xl bg-slate-200/60 dark:bg-black/50 border border-slate-300/60 dark:border-white/[0.08] backdrop-blur-md relative shrink-0">
 
 
 
@@ -20785,7 +20785,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                        "relative z-10 flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                        "relative z-10 flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-colors duration-200 cursor-pointer whitespace-nowrap shrink-0",
 
 
 
@@ -20865,7 +20865,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                        "relative z-10 flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-colors duration-200 cursor-pointer",
+                        "relative z-10 flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-colors duration-200 cursor-pointer whitespace-nowrap shrink-0",
 
 
 
@@ -22173,11 +22173,11 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <CardHeader className="pb-4 bg-transparent p-6 relative z-10 flex flex-row items-start justify-between">
+                    <CardHeader className="pb-4 bg-transparent p-6 relative z-10 flex flex-row flex-wrap items-start justify-between gap-3">
 
 
 
-                      <div className="flex-1 min-w-[200px]">
+                      <div className="flex-1 min-w-0">
 
 
 
@@ -22189,7 +22189,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6">
+                      <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6 shrink-0">
 
 
 
@@ -22205,7 +22205,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                          className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-md"
+                          className="h-8 px-3 gap-1.5 text-xs font-bold border-slate-200 dark:border-slate-700 shadow-sm bg-white/80 dark:bg-slate-900/80 backdrop-blur-md whitespace-nowrap shrink-0"
 
 
 
@@ -22305,11 +22305,11 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <CardHeader className="pb-4 bg-transparent p-6 relative z-10 flex flex-row items-start justify-between">
+                    <CardHeader className="pb-4 bg-transparent p-6 relative z-10 flex flex-row flex-wrap items-start justify-between gap-3">
 
 
 
-                      <div className="flex-1 min-w-[200px]">
+                      <div className="flex-1 min-w-0">
 
 
 
@@ -22321,7 +22321,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6">
+                      <div className="flex flex-wrap items-center gap-3 mt-5 md:mt-6 shrink-0">
 
 
 
@@ -22341,7 +22341,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                            className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm"
+                            className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm whitespace-nowrap shrink-0"
 
 
 
@@ -22449,7 +22449,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1 flex items-center justify-between">
+                      <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1 flex flex-wrap items-center justify-between gap-2">
 
 
 
@@ -22457,11 +22457,11 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <div className="flex gap-3 text-xs">
+                        <div className="flex flex-wrap gap-2 text-xs shrink-0">
 
 
 
-                          <span className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-md">
+                          <span className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-md whitespace-nowrap">
 
 
 
@@ -22618,28 +22618,22 @@ BSL22295338      CID-6074821`}
 
 
                       <CardHeader className="pb-3 bg-transparent p-6 relative z-10">
-                      <div className="flex items-center justify-between gap-3 mt-5 md:mt-6 flex-wrap w-full">
-                        <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
-                          {cancellationType === "Account Check" ? "Account Check SOQL Batches" : "Cancellation SOQL Batches"}
-                        </CardTitle>
-
-                        <div className="flex items-center gap-2.5">
-                          <span className="font-black uppercase tracking-widest whitespace-nowrap text-[10px] text-slate-500 dark:text-slate-400">
-                            {cancellationQueryBatches.length} BATCH{cancellationQueryBatches.length === 1 ? "" : "ES"}
-                          </span>
+                        <div className="flex flex-wrap items-center justify-between gap-3 w-full mt-5 md:mt-6">
+                          <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                            Asset SOQL Query
+                          </CardTitle>
 
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 gap-2 text-xs font-bold hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm"
-                            onClick={() => handleCopy(cancellationQueryBatches[cancellationExecutionBatchIndex] || "")}
-                            disabled={!cancellationQueryBatches.length || !cancellationQueryBatches[cancellationExecutionBatchIndex]}
+                            className="h-8 gap-2 text-xs font-bold hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm shrink-0 whitespace-nowrap"
+                            onClick={() => handleCopy(assetTransferComponentSOQL)}
+                            disabled={!assetTransferComponentSOQL}
                           >
                             <Copy className="h-3.5 w-3.5" /> Copy
                           </Button>
                         </div>
-                      </div>
-                    </CardHeader>
+                      </CardHeader>
 
 
 
@@ -22651,7 +22645,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <SOQLHighlighter query={assetTransferComponentSOQL || "Paste component pairs to generate Component SOQL"} className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 ${!assetTransferComponentSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`} />
+                        <SOQLHighlighter query={assetTransferComponentSOQL || "Paste component pairs to generate Asset SOQL"} className={`overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed max-h-[320px] min-h-[100px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100 ${!assetTransferComponentSOQL ? "text-slate-400/60 dark:text-slate-500/50 font-medium" : "text-slate-800 dark:text-sky-200"}`} />
 
 
 
@@ -22711,7 +22705,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
+                      <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
 
 
 
@@ -22719,11 +22713,11 @@ BSL22295338      CID-6074821`}
 
 
 
-                          <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white">
+                          <CardTitle className="text-lg xl:text-xl font-black tracking-tight flex-1 leading-tight text-slate-800 dark:text-white">
 
 
 
-                            Asset SOQL<br />Result
+                            Asset SOQL Result
 
 
 
@@ -22871,15 +22865,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <div className="flex flex-col w-full relative mt-5 md:mt-6">
+                        <div className="flex flex-wrap items-center justify-between gap-3 w-full mt-5 md:mt-6">
 
 
 
-                            <div className="absolute top-0 right-0 -mt-1">
+                            <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Account SOQL Query</CardTitle>
 
 
 
-                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm" onClick={() => handleCopy(assetTransferAccountSOQL)} disabled={!assetTransferAccountSOQL}>
+                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-slate-200 dark:border-slate-700 rounded-lg shadow-sm shrink-0 whitespace-nowrap" onClick={() => handleCopy(assetTransferAccountSOQL)} disabled={!assetTransferAccountSOQL}>
 
 
 
@@ -22888,14 +22882,6 @@ BSL22295338      CID-6074821`}
 
 
                               </Button>
-
-
-
-                            </div>
-
-
-
-                            <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground pr-20">Account SOQL Query</CardTitle>
 
 
 
@@ -22975,7 +22961,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
+                      <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
 
 
 
@@ -22983,11 +22969,23 @@ BSL22295338      CID-6074821`}
 
 
 
-                          <div className="absolute top-0 right-0">
+                          <div className="flex flex-wrap items-start justify-between gap-2 w-full">
 
 
 
-                            <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold gap-2 h-8 px-4 rounded-lg text-[10px] shadow-md shadow-fuchsia-500/20 transition-all hover:-translate-y-0.5" onClick={handleProcessTransfer} disabled={!assetSOQLResult || !accountSOQLResult}>
+                            <CardTitle className="text-lg xl:text-xl font-black tracking-tight leading-tight text-slate-800 dark:text-white">
+
+
+
+                              Account SOQL Result
+
+
+
+                            </CardTitle>
+
+
+
+                            <Button className="bg-gradient-to-r from-fuchsia-600 to-purple-600 hover:from-fuchsia-500 hover:to-purple-500 text-white font-bold gap-2 h-8 px-4 rounded-lg text-[10px] shadow-md shadow-fuchsia-500/20 transition-all hover:-translate-y-0.5 shrink-0 whitespace-nowrap" onClick={handleProcessTransfer} disabled={!assetSOQLResult || !accountSOQLResult}>
 
 
 
@@ -23000,18 +22998,6 @@ BSL22295338      CID-6074821`}
 
 
                           </div>
-
-
-
-                          <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-slate-800 dark:text-white pr-[120px]">
-
-
-
-                            Account<br />SOQL Result
-
-
-
-                          </CardTitle>
 
 
 
@@ -23172,7 +23158,7 @@ BSL22295338      CID-6074821`}
 
 
                       <CardHeader className="pb-3 bg-transparent p-4 md:p-5 relative z-10">
-                        <div className="flex flex-col gap-3 w-full mt-1">
+                        <div className="flex flex-col gap-3 w-full mt-5 md:mt-6">
                           <div className="flex items-center justify-between">
                             <div>
                               <CardTitle className="text-xl md:text-2xl font-black tracking-tight leading-tight text-slate-800 dark:text-white">
@@ -23300,7 +23286,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
+                        <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
 
 
 
@@ -25193,7 +25179,7 @@ BSL22295338      CID-6074821`}
                     </div>
 
                     <CardHeader className="pb-2 bg-transparent p-3.5 sm:p-4 relative z-10">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mt-2 md:mt-3 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mt-3 md:mt-4 w-full">
                         <div className="flex items-center gap-2.5 flex-wrap">
                           <CardTitle className="text-sm md:text-base font-black tracking-tight leading-tight text-foreground">
                             {cancellationType === "NAMO" ? "NAMO Operational Insights & Segregation" : cancellationType === "NON NAMO" ? "NON-NAMO Operational Insights & Segregation" : "CCO Operational Insights & Segregation"}
@@ -25217,7 +25203,7 @@ BSL22295338      CID-6074821`}
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm"
+                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg shadow-sm whitespace-nowrap shrink-0"
                                 onClick={() => setShowCancellationHandoverModal(true)}
                                 title="Open Executive Shift Handover & Segregation Audit"
                               >
@@ -25227,7 +25213,7 @@ BSL22295338      CID-6074821`}
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 gap-1.5 text-xs font-bold border-blue-400/40 bg-blue-500/15 hover:bg-blue-500/25 text-blue-200 rounded-lg shadow-sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-blue-400/40 bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-200 rounded-lg shadow-sm whitespace-nowrap shrink-0"
                                   onClick={() => {
                                     const tkts = readyList.map((t) => t.ticket).filter(Boolean);
                                     navigator.clipboard.writeText(tkts.join("\n"));
@@ -25241,7 +25227,7 @@ BSL22295338      CID-6074821`}
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 gap-1.5 text-xs font-bold border-white/15 bg-white/[0.05] hover:bg-white/10 text-slate-300 rounded-lg shadow-sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-slate-300/60 dark:border-white/15 bg-slate-100/70 dark:bg-white/[0.05] hover:bg-slate-200/70 dark:hover:bg-white/10 text-slate-700 dark:text-slate-300 rounded-lg shadow-sm whitespace-nowrap shrink-0"
                                   onClick={() => {
                                     const tkts = skippedList.map((t) => t.ticket).filter(Boolean);
                                     navigator.clipboard.writeText(tkts.join("\n"));
@@ -25255,7 +25241,7 @@ BSL22295338      CID-6074821`}
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm"
+                                  className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg shadow-sm whitespace-nowrap shrink-0"
                                   onClick={() => {
                                     downloadExcludedInsightsExcel({
                                       cancellationType,
@@ -25266,7 +25252,7 @@ BSL22295338      CID-6074821`}
                                   }}
                                   title="Download Multi-Sheet Excluded Tickets Excel (.xlsx)"
                                 >
-                                  <FileSpreadsheet className="h-3.5 w-3.5 text-blue-400" /> Excluded Sheet ({skippedList.length})
+                                  <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /> Excluded Sheet ({skippedList.length})
                                 </Button>
                               )}
                             </div>
@@ -25336,7 +25322,7 @@ BSL22295338      CID-6074821`}
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-white dark:text-blue-100 leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-slate-900 dark:text-blue-100 leading-none">
                                       {readyList.length.toLocaleString()}
                                     </span>
                                     <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
@@ -25372,14 +25358,14 @@ BSL22295338      CID-6074821`}
                                 className="relative rounded-xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(255,255,255,0.05)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-200 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 leading-none truncate">
                                     Approval Pending
                                   </span>
                                   <span className="inline-flex h-2 w-2 rounded-full bg-slate-400 dark:bg-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-white leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
                                       {approvalPendingList.length.toLocaleString()}
                                     </span>
                                     <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
@@ -25415,14 +25401,14 @@ BSL22295338      CID-6074821`}
                                 className="relative rounded-xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(255,255,255,0.05)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-200 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 leading-none truncate">
                                     Parent Tickets
                                   </span>
                                   <span className="inline-flex h-2 w-2 rounded-full bg-slate-400 dark:bg-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-white leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
                                       {parentList.length.toLocaleString()}
                                     </span>
                                     <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
@@ -25458,14 +25444,14 @@ BSL22295338      CID-6074821`}
                                 className="relative rounded-xl border border-blue-400/25 bg-blue-500/[0.05] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-blue-400/40 hover:bg-blue-500/10 hover:shadow-[0_4px_16px_rgba(59,130,246,0.1)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 dark:text-sky-300 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-sky-300 leading-none truncate">
                                     MR Raised
                                   </span>
                                   <span className="inline-flex h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.7)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-white dark:text-sky-100 leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-slate-900 dark:text-sky-100 leading-none">
                                       {mrCreatedList.length.toLocaleString()}
                                     </span>
                                     <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
@@ -25501,14 +25487,14 @@ BSL22295338      CID-6074821`}
                                 className="relative rounded-xl border border-white/10 bg-white/[0.03] p-2.5 flex flex-col justify-between cursor-pointer transition-all duration-200 hover:border-white/20 hover:bg-white/[0.06] hover:shadow-[0_4px_16px_rgba(255,255,255,0.05)] group select-none active:scale-[0.98]"
                               >
                                 <div className="flex items-center justify-between gap-1.5">
-                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 dark:text-slate-200 leading-none truncate">
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 leading-none truncate">
                                     {isCco ? "AUTO PMS (EXCLUDED)" : isNamo ? "NON-NAMO GROUP" : "NAMO GROUP"}
                                   </span>
                                   <span className="inline-flex h-2 w-2 rounded-full bg-slate-400 dark:bg-white/70 shadow-[0_0_6px_rgba(255,255,255,0.4)] shrink-0" />
                                 </div>
                                 <div className="flex items-baseline justify-between mt-2 gap-1">
                                   <div className="flex items-baseline gap-1 min-w-0">
-                                    <span className="text-xl font-black font-mono tracking-tight text-white leading-none">
+                                    <span className="text-xl font-black font-mono tracking-tight text-slate-900 dark:text-white leading-none">
                                       {groupMismatchList.length.toLocaleString()}
                                     </span>
                                     <span className="text-[8px] font-bold text-slate-400 uppercase">WOs</span>
@@ -25679,7 +25665,7 @@ BSL22295338      CID-6074821`}
                     </div>
 
                     <CardHeader className="pb-3 bg-transparent p-5 sm:p-6 relative z-10">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4 md:mt-5 w-full">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 md:mt-7 w-full">
                         <div className="flex items-center gap-2.5 flex-wrap">
                           <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
                             Operational Insights & Classification
@@ -25893,7 +25879,7 @@ BSL22295338      CID-6074821`}
                                   type="button"
                                   onClick={() => setAccountCheckFilter(tab.id as any)}
                                   className={cn(
-                                    "px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center gap-1",
+                                    "px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all flex items-center gap-1 whitespace-nowrap shrink-0",
                                     accountCheckFilter === tab.id
                                       ? "bg-sky-500 text-white shadow-sm"
                                       : "bg-slate-100/80 dark:bg-white/[0.05] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
@@ -26133,7 +26119,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
 
 
 
@@ -26161,7 +26147,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                          className="h-7 px-2.5 text-[11px] font-bold border-sky-400/30 hover:border-sky-400 bg-sky-500/10 text-sky-600 dark:text-sky-300 rounded-lg shadow-sm gap-1"
+                          className="h-7 px-2.5 text-[11px] font-bold border-sky-400/30 hover:border-sky-400 bg-sky-500/10 text-sky-600 dark:text-sky-300 rounded-lg shadow-sm gap-1 whitespace-nowrap shrink-0"
 
 
 
@@ -26631,15 +26617,15 @@ BSL22295338      CID-6074821`}
 
 
 
-  <div className="flex items-center justify-between gap-3">
+  <div className="flex flex-wrap items-center justify-between gap-3 mt-6 md:mt-7 w-full">
 
 
 
-  <div className="flex items-center gap-3">
+  <div className="flex items-center gap-3 min-w-0">
 
 
 
-  <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Email Template Output</CardTitle>
+  <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground whitespace-nowrap">Email Template Output</CardTitle>
 
 
 
@@ -26647,13 +26633,13 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <div className="flex items-center gap-2 mt-5 md:mt-6">
-                              <div className="flex items-center p-0.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04]">
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <div className="inline-flex items-center p-0.5 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => setStep5EmailTab("preview")}
                                   className={cn(
-                                    "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                                    "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer whitespace-nowrap shrink-0",
                                     step5EmailTab === "preview"
                                       ? "bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-xs"
                                       : "text-muted-foreground hover:text-foreground"
@@ -26665,7 +26651,7 @@ BSL22295338      CID-6074821`}
                                   type="button"
                                   onClick={() => setStep5EmailTab("text")}
                                   className={cn(
-                                    "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer",
+                                    "px-2.5 py-1 text-xs font-bold rounded-md transition-all cursor-pointer whitespace-nowrap shrink-0",
                                     step5EmailTab === "text"
                                       ? "bg-white dark:bg-slate-800 text-sky-600 dark:text-sky-400 shadow-xs"
                                       : "text-muted-foreground hover:text-foreground"
@@ -26677,15 +26663,15 @@ BSL22295338      CID-6074821`}
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm cursor-pointer"
+                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg shadow-sm cursor-pointer whitespace-nowrap shrink-0"
                                 onClick={handleDownloadStep5Excel}
                                 disabled={totalStep5Excluded === 0}
                                 title="Download Multi-Sheet Excluded Tickets Excel (.xlsx) for Email Attachment"
                               >
-                                <FileSpreadsheet className="h-3.5 w-3.5 text-blue-400" />
+                                <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                                 <span>Sheet (.xlsx)</span>
                               </Button>
-                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm cursor-pointer" onClick={() => handleCopy(mailTemplateText, mailHtmlText)} disabled={!mailTemplateText}>
+                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm cursor-pointer whitespace-nowrap shrink-0" onClick={() => handleCopy(mailTemplateText, mailHtmlText)} disabled={!mailTemplateText}>
 
 
 
@@ -26772,15 +26758,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3 mt-6 md:mt-7 w-full">
 
 
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
 
 
 
-                              <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">Post Template Output</CardTitle>
+                              <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground whitespace-nowrap">Post Template Output</CardTitle>
 
 
 
@@ -26788,19 +26774,19 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <div className="flex items-center gap-2 mt-5 md:mt-6">
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 rounded-lg shadow-sm cursor-pointer"
+                                className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg shadow-sm cursor-pointer whitespace-nowrap shrink-0"
                                 onClick={handleDownloadStep5Excel}
                                 disabled={totalStep5Excluded === 0}
                                 title="Download Multi-Sheet Excluded Tickets Excel (.xlsx) for Teams Post"
                               >
-                                <FileSpreadsheet className="h-3.5 w-3.5 text-blue-400" />
+                                <FileSpreadsheet className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                                 <span>Sheet (.xlsx)</span>
                               </Button>
-                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(postTemplateText, postHtmlText)} disabled={!postTemplateText}>
+                              <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-primary/10 hover:text-primary transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm cursor-pointer whitespace-nowrap shrink-0" onClick={() => handleCopy(postTemplateText, postHtmlText)} disabled={!postTemplateText}>
 
 
 
@@ -26881,15 +26867,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
 
 
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
 
 
 
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-500/10 text-muted-foreground shadow-inner">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-500/10 text-muted-foreground shadow-inner">
 
 
 
@@ -26909,7 +26895,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-surface-elevated transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(cancellationUpdateDebug)}>
+                        <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-surface-elevated transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm shrink-0 whitespace-nowrap" onClick={() => handleCopy(cancellationUpdateDebug)}>
 
 
 
@@ -27046,7 +27032,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                    <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
 
 
 
@@ -27070,7 +27056,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
+                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
 
 
 
@@ -27078,27 +27064,27 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <div className="absolute top-0 right-0">
+                        <div className="flex flex-wrap items-start justify-between gap-2 w-full">
 
 
 
-                          <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 shadow-sm">Randomized</span>
+                          <CardTitle className="text-lg xl:text-xl font-black tracking-tight leading-tight text-foreground">
+
+
+
+                            Assignment Mode &amp; Execution
+
+
+
+                          </CardTitle>
+
+
+
+                          <span className="text-[10px] font-black text-purple-500 uppercase tracking-widest bg-purple-500/10 px-2 py-1 rounded-md border border-purple-500/20 shadow-sm shrink-0 whitespace-nowrap">Randomized</span>
 
 
 
                         </div>
-
-
-
-                        <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-foreground pr-20">
-
-
-
-                          Assignment Mode<br />&amp; Execution
-
-
-
-                        </CardTitle>
 
 
 
@@ -27882,7 +27868,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                    <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
 
 
 
@@ -27906,7 +27892,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-2 md:mt-3">
+                    <div className="flex items-center gap-3 flex-wrap relative z-10 w-full pr-2 mt-5 md:mt-6">
 
 
 
@@ -27914,47 +27900,55 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <div className="absolute top-0 right-0 flex gap-2">
+                        <div className="flex flex-wrap items-start justify-between gap-3 w-full">
 
 
 
-                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput}>
+                          <CardTitle className="text-lg xl:text-xl font-black tracking-tight leading-tight text-foreground">
 
 
 
-                            <Copy className="h-3.5 w-3.5" /> Copy
+                            Final Assignment Output
 
 
 
-                          </Button>
+                          </CardTitle>
 
 
 
-                          <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput}>
+                          <div className="flex flex-wrap items-center gap-2 shrink-0">
 
 
 
-                            <Download className="h-3.5 w-3.5" /> CSV
+                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm whitespace-nowrap shrink-0" onClick={() => handleCopy(caseAssignOutput)} disabled={!caseAssignOutput}>
 
 
 
-                          </Button>
+                              <Copy className="h-3.5 w-3.5" /> Copy
+
+
+
+                            </Button>
+
+
+
+                            <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-bold hover:bg-emerald-500/10 hover:text-emerald-600 hover:border-emerald-500/30 transition-all border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 rounded-lg shadow-sm whitespace-nowrap shrink-0" onClick={handleDownloadCaseAssignment} disabled={!caseAssignOutput}>
+
+
+
+                              <Download className="h-3.5 w-3.5" /> CSV
+
+
+
+                            </Button>
+
+
+
+                          </div>
 
 
 
                         </div>
-
-
-
-                        <CardTitle className="text-xl md:text-2xl font-black tracking-tight flex-1 leading-[1.1] text-foreground pr-[160px]">
-
-
-
-                          Final Assignment<br />Output
-
-
-
-                        </CardTitle>
 
 
 
@@ -29126,7 +29120,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1 flex items-center justify-between">
+                      <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground flex-1 flex flex-wrap items-center justify-between gap-2">
 
 
 
@@ -29134,11 +29128,11 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <div className="flex gap-3 text-xs">
+                        <div className="flex flex-wrap gap-2 text-xs shrink-0">
 
 
 
-                          <span className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-md">
+                          <span className="bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 px-2 py-1 rounded-md whitespace-nowrap">
 
 
 

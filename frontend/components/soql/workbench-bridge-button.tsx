@@ -56,7 +56,7 @@ export function WorkbenchBridgeButton({
   };
 
   return (
-    <div className={cn("inline-flex items-center gap-1", className)}>
+    <div className={cn("inline-flex items-center gap-1 shrink-0", className)}>
       <Button
         type="button"
         variant="outline"
@@ -64,11 +64,11 @@ export function WorkbenchBridgeButton({
         onClick={handleOpenWorkbench}
         disabled={!query || !query.trim()}
         title="Open in Salesforce Workbench with pre-loaded query"
-        className="h-8 px-3 rounded-xl border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 font-bold text-xs gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer"
+        className="h-8 px-3 rounded-xl border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-700 dark:text-sky-300 font-bold text-xs gap-1.5 shadow-2xs transition-all active:scale-95 cursor-pointer whitespace-nowrap shrink-0"
       >
-        <Terminal className="h-3.5 w-3.5 text-sky-500" />
+        <Terminal className="h-3.5 w-3.5 text-sky-500 shrink-0" />
         <span>Open in Workbench</span>
-        <ExternalLink className="h-3 w-3 opacity-70 ml-0.5" />
+        <ExternalLink className="h-3 w-3 opacity-70 ml-0.5 shrink-0" />
       </Button>
 
       <Button
@@ -78,7 +78,7 @@ export function WorkbenchBridgeButton({
         onClick={handleCopyWorkbenchLink}
         disabled={!query || !query.trim()}
         title="Copy Workbench URL"
-        className="h-8 w-8 rounded-xl text-sky-700 dark:text-sky-300 hover:bg-sky-500/10 transition-colors"
+        className="h-8 w-8 rounded-xl text-sky-700 dark:text-sky-300 hover:bg-sky-500/10 transition-colors shrink-0"
       >
         {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
       </Button>

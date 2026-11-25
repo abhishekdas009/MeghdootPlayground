@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassHero, GlassSpotlightCard } from "@/components/ui/glass-primitives";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { GLASS_TAB_SPRING } from "@/lib/motion";
 import {
   Copy,
   Download,
@@ -15,6 +17,7 @@ import {
   Sparkles,
   Ticket,
   Filter,
+  ClipboardPaste,
 } from "lucide-react";
 import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 import { showDataFeedbackToast } from "@/lib/custom-toasts";
@@ -54,14 +57,6 @@ const FORMATS: FormatOption[] = [
 ];
 
 const DEFAULT_BATCH_SIZE = 500;
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-};
 
 export default function TicketFormatterPage() {
   const [input, setInput] = React.useState("");
@@ -166,78 +161,80 @@ export default function TicketFormatterPage() {
     toast.success(`Removed ${analysis.invalidTokens.length} invalid token(s)`);
   };
 
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        toast.info("Clipboard is empty");
+        return;
+      }
+      setInput(text);
+      toast.success("Pasted ticket list from clipboard");
+    } catch {
+      toast.error("Unable to access clipboard automatically — press Ctrl+V");
+    }
+  };
+
   const ruleObj = VALIDATION_RULES[selectedRule] || VALIDATION_RULES["sf-digits"];
 
   return (
     <div className="workspace-page mx-auto min-h-screen w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* ─── Top Control & Header Bar ────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-3xl bg-card/60 dark:bg-[#08090d]/80 border border-border/80 backdrop-blur-md shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-            <Ticket className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-base font-black tracking-tight text-foreground flex items-center gap-2">
-              Ticket Formatter & Exporter
-              <Badge className="bg-primary/10 text-primary border-primary/30 text-[10px] font-bold px-2 py-0.2">
-                Batch Presets
-              </Badge>
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Format ticket numbers into SOQL queries, Excel columns, CSV, JSON, and list formats.
-            </p>
-          </div>
-        </div>
+      <GlassHero
+        icon={Ticket}
+        badge="Batch Presets & Sanitizer"
+        title="Ticket Formatter &"
+        highlight="Exporter"
+        description="Clean messy email threads or spreadsheets, deduplicate IDs, and convert into syntax-perfect SOQL, SQL, JSON, or CSV batches."
+        watermark="FORMAT"
+        actions={
+          <>
+            <div className="glass-surface flex items-center gap-2 rounded-xl px-3 py-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                Rule:
+              </span>
+              <select
+                value={selectedRule}
+                onChange={(e) => setSelectedRule(e.target.value as ValidationRuleId)}
+                className="cursor-pointer bg-transparent text-xs font-bold text-foreground focus:outline-none"
+              >
+                {Object.values(VALIDATION_RULES).map((r) => (
+                  <option key={r.id} value={r.id} className="bg-white dark:bg-[#0b0c10] text-foreground">
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Validation Rule Selector */}
-          <div className="flex items-center gap-2 bg-background/80 dark:bg-card px-3 py-1.5 rounded-2xl border border-border/80 shadow-2xs">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Rule:
-            </span>
-            <select
-              value={selectedRule}
-              onChange={(e) => setSelectedRule(e.target.value as ValidationRuleId)}
-              className="text-xs font-bold bg-transparent text-foreground focus:outline-hidden cursor-pointer"
-            >
-              {Object.values(VALIDATION_RULES).map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Filter Valid Only Toggle */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setFilterValidOnly(!filterValidOnly)}
-            className={cn(
-              "h-9 px-3 rounded-2xl border text-xs font-bold gap-1.5 shadow-2xs transition-all",
-              filterValidOnly
-                ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40"
-                : "bg-background/80 border-border/80 text-foreground hover:bg-card"
-            )}
-          >
-            <Filter className="h-3.5 w-3.5" />
-            <span>{filterValidOnly ? "Format: Valid Only" : "Format: All Unique"}</span>
-          </Button>
-
-          {input && (
             <Button
+              type="button"
               variant="outline"
               size="sm"
-              onClick={() => setInput("")}
-              className="h-9 px-3 rounded-2xl border-border/80 bg-background/80 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 text-xs font-bold gap-1.5 shadow-2xs"
+              onClick={() => setFilterValidOnly(!filterValidOnly)}
+              className={cn(
+                "h-9 px-3 rounded-xl border text-xs font-bold gap-1.5 transition-all",
+                filterValidOnly
+                  ? "bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 text-white border-sky-400/40 shadow-md shadow-blue-500/25"
+                  : "bg-white/60 dark:bg-white/[0.05] backdrop-blur-md border-border/70 text-foreground hover:border-blue-500/40"
+              )}
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span>Clear</span>
+              <Filter className="h-3.5 w-3.5" />
+              <span>{filterValidOnly ? "Filter: Valid Only" : "Filter: All Unique"}</span>
             </Button>
-          )}
-        </div>
-      </div>
+
+            {input && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setInput("")}
+                className="h-9 px-3 rounded-xl border-border/70 bg-white/60 dark:bg-white/[0.05] backdrop-blur-md hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 text-xs font-bold gap-1.5"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Clear</span>
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {/* ─── 1-Click Multi-Target Quick Exporters Bar ────────────────────────────── */}
       <QuickExporterBar
@@ -258,118 +255,126 @@ export default function TicketFormatterPage() {
       />
 
       {/* ─── Main Content Grid ─────────────────────────────────────────────────── */}
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-6 lg:gap-8 lg:grid-cols-2">
         {/* Left Side: Input Panel */}
-        <motion.div initial="hidden" animate="show" variants={containerVariants} className="h-full">
-          <Card className="h-full rounded-3xl overflow-hidden relative group border-border/80 shadow-xs flex flex-col">
-            <CardHeader className="px-6 py-4 border-b border-border/60 flex flex-col gap-3 relative z-10">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-black tracking-tight text-foreground flex items-center gap-2">
+        <GlassSpotlightCard delay={0.05} className="h-full">
+          <CardHeader className="px-6 py-4 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.6)] shrink-0" />
+                <CardTitle className="text-sm font-black tracking-tight text-foreground">
                   Input Case Numbers
                 </CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-primary border-primary/30">
-                    {activeTickets.length} active tickets
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-blue-700 dark:text-sky-300 border-blue-500/30 bg-blue-500/10 whitespace-nowrap shrink-0">
+                  {activeTickets.length} active
+                </Badge>
+                {batchCount > 1 && (
+                  <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-sky-700 dark:text-sky-200 border-sky-400/30 bg-sky-500/10 whitespace-nowrap shrink-0">
+                    {batchCount} batches
                   </Badge>
-                  {batchCount > 1 && (
-                    <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-secondary border-secondary/30">
-                      {batchCount} batches
-                    </Badge>
-                  )}
-                </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePaste}
+                  className="h-7 px-2 text-xs font-bold text-muted-foreground hover:text-blue-600 dark:hover:text-sky-300 rounded-lg gap-1 shrink-0"
+                  title="Paste from Clipboard"
+                >
+                  <ClipboardPaste className="h-3.5 w-3.5" />
+                </Button>
               </div>
+            </div>
 
-              {/* Real-Time Stats Pills */}
-              <TicketStatsPills
-                totalRaw={analysis.totalRawCount}
-                validCount={analysis.validTickets.length}
-                invalidCount={analysis.invalidTokens.length}
-                duplicateCount={analysis.duplicateCount}
-                selectedRule={selectedRule}
+            <TicketStatsPills
+              totalRaw={analysis.totalRawCount}
+              validCount={analysis.validTickets.length}
+              invalidCount={analysis.invalidTokens.length}
+              duplicateCount={analysis.duplicateCount}
+              selectedRule={selectedRule}
+            />
+          </CardHeader>
+
+          <CardContent className="p-5 flex-1 flex flex-col gap-3.5">
+            <InvalidTokensInspector
+              invalidTokens={analysis.invalidTokens}
+              ruleBadge={ruleObj.badge}
+              onStripInvalid={handleStripInvalid}
+            />
+
+            <DeduplicationInspector
+              duplicateCount={analysis.duplicateCount}
+              duplicateItems={analysis.duplicateItems}
+              deduplicateEnabled={deduplicateEnabled}
+              onToggleDeduplicate={setDeduplicateEnabled}
+            />
+
+            <div className="glass-inset-well relative flex-1 flex flex-col min-h-[300px] rounded-2xl overflow-hidden">
+              <Textarea
+                placeholder={`Paste ticket numbers here...\n\n2713009\n27127281\n27128910\n2713009 (auto-deduplicated)`}
+                className="flex-1 min-h-[300px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-foreground focus-visible:ring-0 focus-visible:outline-none p-5 shadow-none resize-none placeholder:text-muted-foreground"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
               />
-            </CardHeader>
+            </div>
 
-            <CardContent className="p-5 relative z-10 flex-1 flex flex-col gap-3.5">
-              {/* Invalid Tokens Inspector */}
-              <InvalidTokensInspector
-                invalidTokens={analysis.invalidTokens}
-                ruleBadge={ruleObj.badge}
-                onStripInvalid={handleStripInvalid}
-              />
-
-              {/* Deduplication Inspector */}
-              <DeduplicationInspector
-                duplicateCount={analysis.duplicateCount}
-                duplicateItems={analysis.duplicateItems}
-                deduplicateEnabled={deduplicateEnabled}
-                onToggleDeduplicate={setDeduplicateEnabled}
-              />
-
-              <div className="relative flex-1 flex flex-col min-h-[300px] rounded-2xl overflow-hidden bg-card/60 dark:bg-[#06070a] border border-border/80">
-                <Textarea
-                  placeholder={`Paste ticket numbers here...\n\n2713009\n27127281\n27128910\n2713009 (auto-deduplicated)`}
-                  className="flex-1 min-h-[300px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-foreground focus-visible:ring-0 focus-visible:outline-none p-5 shadow-none resize-none placeholder:text-muted-foreground"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                />
-              </div>
-
-              <p className="text-xs text-muted-foreground flex items-center gap-2 font-medium bg-muted/60 dark:bg-[#08090d] p-3 rounded-xl border border-border/60">
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                <span>
-                  Automatic batch chunking at {batchSize} tickets per query for optimal database performance.
-                </span>
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
+            <p className="glass-surface text-xs text-muted-foreground flex items-center gap-2 font-medium p-3 rounded-xl">
+              <Sparkles className="h-4 w-4 text-blue-600 dark:text-sky-400 shrink-0" />
+              <span>
+                Automatic batch chunking at <strong className="text-foreground">{batchSize}</strong> tickets per query for optimal Salesforce performance.
+              </span>
+            </p>
+          </CardContent>
+        </GlassSpotlightCard>
 
         {/* Right Side: Options and Result */}
         <div className="space-y-6 flex flex-col h-full">
           {/* Format Options */}
-          <motion.div initial="hidden" animate="show" variants={containerVariants}>
-            <Card className="rounded-3xl overflow-hidden border-border/80 shadow-xs">
-              <CardHeader className="bg-transparent px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60">
-                <CardTitle className="text-xs font-black tracking-widest uppercase text-muted-foreground">
-                  Select Output Format
-                </CardTitle>
+          <GlassSpotlightCard delay={0.1}>
+            <CardHeader className="px-6 py-4 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md flex flex-row flex-wrap items-center justify-between gap-4">
+              <CardTitle className="text-xs font-black tracking-widest uppercase text-muted-foreground whitespace-nowrap">
+                Select Output Format
+              </CardTitle>
 
-                {/* Batch Size Slider */}
-                <div className="flex flex-col gap-1.5 w-full sm:w-[170px] ml-auto">
-                  <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[9px] font-black tracking-widest uppercase text-muted-foreground">
-                      Batch Size
-                    </span>
-                    <span className="text-[10px] font-bold text-primary tracking-wide">
-                      {batchSize} tickets
-                    </span>
-                  </div>
-                  <div className="relative flex items-center h-1 w-full bg-border/60 dark:bg-white/10 rounded-full">
-                    <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-primary"
-                      style={{ width: `${(batchSize / 2000) * 100}%` }}
-                    />
-                    <input
-                      type="range"
-                      min="10"
-                      max="2000"
-                      step="10"
-                      value={batchSize}
-                      onChange={(e) => setBatchSize(Number(e.target.value))}
-                      className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:shadow-md"
-                    />
-                  </div>
-                  <div className="flex justify-between text-[8px] font-bold text-muted-foreground leading-none mt-1">
-                    <span>10</span>
-                    <span>1000</span>
-                    <span>2000</span>
-                  </div>
+              {/* Batch Size Slider */}
+              <div className="flex flex-col gap-1.5 w-full sm:w-[175px] sm:ml-auto">
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[9px] font-black tracking-widest uppercase text-muted-foreground">
+                    Batch Size
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-sky-300 tracking-wide font-mono">
+                    {batchSize} tickets
+                  </span>
                 </div>
-              </CardHeader>
+                <div className="relative flex items-center h-1.5 w-full bg-slate-200/80 dark:bg-white/10 rounded-full">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-sky-400 to-blue-600"
+                    style={{ width: `${(batchSize / 2000) * 100}%` }}
+                  />
+                  <input
+                    type="range"
+                    min="10"
+                    max="2000"
+                    step="10"
+                    value={batchSize}
+                    onChange={(e) => setBatchSize(Number(e.target.value))}
+                    className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-blue-600 [&::-webkit-slider-thumb]:shadow-md"
+                  />
+                </div>
+                <div className="flex justify-between text-[8px] font-bold text-muted-foreground leading-none mt-0.5 font-mono">
+                  <span>10</span>
+                  <span>1000</span>
+                  <span>2000</span>
+                </div>
+              </div>
+            </CardHeader>
 
-              <CardContent className="p-5 max-h-[220px] overflow-y-auto no-scrollbar">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 xl:grid-cols-3 gap-2.5">
-                  {FORMATS.map((f) => (
+            <CardContent className="p-5 max-h-[260px] overflow-y-auto no-scrollbar">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 2xl:grid-cols-3 gap-2.5">
+                {FORMATS.map((f) => {
+                  const active = selectedFormat === f.id;
+                  return (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -377,106 +382,112 @@ export default function TicketFormatterPage() {
                       key={f.id}
                       onClick={() => setSelectedFormat(f.id)}
                       className={cn(
-                        "flex items-center justify-center min-h-[42px] rounded-xl border px-3 py-2 text-xs font-bold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 shadow-xs cursor-pointer",
-                        selectedFormat === f.id
-                          ? "border-primary bg-primary text-primary-foreground shadow-md font-extrabold"
-                          : "border-border/80 bg-card/70 text-foreground hover:bg-hover hover:border-primary/40"
+                        "relative flex items-center justify-center min-h-[42px] rounded-xl border px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 cursor-pointer overflow-hidden",
+                        active
+                          ? "border-sky-400/50 text-white shadow-md font-extrabold"
+                          : "border-slate-200/70 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.04] text-foreground hover:border-blue-500/40 hover:bg-blue-500/[0.06]"
                       )}
                     >
-                      <span className="truncate">{f.label}</span>
+                      {active && (
+                        <motion.div
+                          layoutId="activeFormatGridPill"
+                          transition={GLASS_TAB_SPRING}
+                          className="absolute inset-0 z-0 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700"
+                        />
+                      )}
+                      <span className="relative z-10 text-center leading-tight">{f.label}</span>
                     </motion.button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </GlassSpotlightCard>
 
           {/* Output Result panel */}
-          <motion.div initial="hidden" animate="show" variants={containerVariants} className="flex-1 min-h-[300px]">
-            <Card className="h-full rounded-3xl overflow-hidden flex flex-col relative border-border/80 shadow-xs">
-              <CardHeader className="px-6 py-4 border-b border-border/60 relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <CardTitle className="text-sm font-black tracking-tight text-foreground">
-                    Formatted Output
-                  </CardTitle>
-                  {batchCount > 1 && (
-                    <Badge className="bg-primary/10 text-primary border border-primary/30 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
-                      {batchCount} batch{batchCount === 1 ? "" : "es"}
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    onClick={handleCopyAll}
-                    disabled={outputBatches.length === 0}
-                    className="h-9 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-xs text-xs gap-1.5 transition-all active:scale-95"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span>Copy All</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleDownload}
-                    disabled={outputBatches.length === 0}
-                    className="h-9 px-4 rounded-xl border-border/80 bg-background/80 hover:bg-card font-bold text-xs gap-1.5 transition-all active:scale-95 text-foreground"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    <span>Download</span>
-                  </Button>
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-5 flex-1 flex flex-col gap-3 relative z-10">
+          <GlassSpotlightCard delay={0.16} className="flex-1 min-h-[300px]">
+            <CardHeader className="px-6 py-4 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md flex flex-row flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="h-2.5 w-2.5 rounded-full bg-sky-500 shadow-[0_0_10px_rgba(56,189,248,0.8)] shrink-0" />
+                <CardTitle className="text-sm font-black tracking-tight text-foreground">
+                  Formatted Output
+                </CardTitle>
                 {batchCount > 1 && (
-                  <div className="flex items-center justify-between rounded-xl border border-border/80 bg-card/80 dark:bg-[#08090d] px-4 py-2 shadow-2xs">
-                    <span className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-                      Batch <span className="text-foreground">{batchIndex + 1}</span> of {batchCount}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7 rounded-lg"
-                        disabled={batchIndex <= 0}
-                        onClick={() => setBatchIndex((i) => Math.max(0, i - 1))}
-                      >
-                        <ChevronLeft className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-7 w-7 rounded-lg"
-                        disabled={batchIndex >= batchCount - 1}
-                        onClick={() => setBatchIndex((i) => Math.min(batchCount - 1, i + 1))}
-                      >
-                        <ChevronRight className="h-3.5 w-3.5" />
-                      </Button>
-                      <div className="w-px h-4 bg-border mx-1" />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2.5 rounded-lg text-primary font-bold hover:bg-primary/10 gap-1 text-xs"
-                        onClick={() => handleCopy(currentOutput)}
-                      >
-                        <Copy className="h-3 w-3" />
-                        <span>Copy Batch</span>
-                      </Button>
-                    </div>
-                  </div>
+                  <Badge className="bg-blue-500/15 text-blue-700 dark:text-sky-300 border border-blue-500/30 text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider whitespace-nowrap shrink-0">
+                    {batchCount} batch{batchCount === 1 ? "" : "es"}
+                  </Badge>
                 )}
+              </div>
 
-                <div className="relative flex-1 flex flex-col min-h-[220px] rounded-2xl overflow-hidden bg-card/60 dark:bg-[#06070a] border border-border/80 h-full">
-                  <Textarea
-                    readOnly
-                    value={currentOutput}
-                    placeholder="Formatted tickets will appear here..."
-                    className="h-full min-h-[220px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-foreground p-5 shadow-none resize-none no-scrollbar focus-visible:ring-0 focus-visible:outline-none"
-                  />
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                <Button
+                  onClick={handleCopyAll}
+                  disabled={outputBatches.length === 0}
+                  className="h-9 px-4 rounded-xl bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 hover:brightness-110 text-white font-bold shadow-md shadow-blue-500/20 text-xs gap-1.5 transition-all active:scale-95 whitespace-nowrap shrink-0"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>Copy All</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleDownload}
+                  disabled={outputBatches.length === 0}
+                  className="h-9 px-4 rounded-xl border-border/70 bg-white/60 dark:bg-white/[0.05] backdrop-blur-md hover:border-blue-500/40 font-bold text-xs gap-1.5 transition-all active:scale-95 text-foreground whitespace-nowrap shrink-0"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download</span>
+                </Button>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-5 flex-1 flex flex-col gap-3">
+              {batchCount > 1 && (
+                <div className="glass-surface flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2">
+                  <span className="text-xs font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                    Batch <span className="text-foreground">{batchIndex + 1}</span> of {batchCount}
+                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7 rounded-lg"
+                      disabled={batchIndex <= 0}
+                      onClick={() => setBatchIndex((i) => Math.max(0, i - 1))}
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-7 w-7 rounded-lg"
+                      disabled={batchIndex >= batchCount - 1}
+                      onClick={() => setBatchIndex((i) => Math.min(batchCount - 1, i + 1))}
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </Button>
+                    <div className="w-px h-4 bg-border mx-1" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2.5 rounded-lg text-blue-700 dark:text-sky-300 font-bold hover:bg-blue-500/10 gap-1 text-xs whitespace-nowrap shrink-0"
+                      onClick={() => handleCopy(currentOutput)}
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span>Copy Batch</span>
+                    </Button>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              )}
+
+              <div className="glass-inset-well relative flex-1 flex flex-col min-h-[220px] rounded-2xl overflow-hidden h-full">
+                <Textarea
+                  readOnly
+                  value={currentOutput}
+                  placeholder="Formatted tickets will appear here..."
+                  className="h-full min-h-[220px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-blue-700 dark:text-sky-200 p-5 shadow-none resize-none no-scrollbar focus-visible:ring-0 focus-visible:outline-none"
+                />
+              </div>
+            </CardContent>
+          </GlassSpotlightCard>
         </div>
       </div>
     </div>

@@ -57,11 +57,11 @@ export function DeduplicationInspector({
             <Layers className="h-4 w-4" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-black tracking-tight text-amber-950 dark:text-amber-200">
                 Deduplication Inspector
               </span>
-              <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-extrabold px-2 py-0.2">
+              <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30 text-[10px] font-extrabold px-2 py-0.2 whitespace-nowrap">
                 {duplicateCount} duplicate{duplicateCount === 1 ? "" : "s"} {deduplicateEnabled ? "pruned" : "detected"}
               </Badge>
             </div>
@@ -71,13 +71,13 @@ export function DeduplicationInspector({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 ml-auto">
+        <div className="flex flex-wrap items-center gap-2 ml-auto shrink-0">
           {onToggleDeduplicate && (
             <button
               type="button"
               onClick={() => onToggleDeduplicate(!deduplicateEnabled)}
               className={cn(
-                "text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer",
+                "text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all cursor-pointer whitespace-nowrap shrink-0",
                 deduplicateEnabled
                   ? "bg-amber-500/25 text-amber-900 dark:text-amber-200 border-amber-500/40 hover:bg-amber-500/35"
                   : "bg-background/80 text-muted-foreground border-border/80 hover:bg-card"
@@ -92,7 +92,7 @@ export function DeduplicationInspector({
             variant="ghost"
             size="sm"
             onClick={() => setIsOpen(!isOpen)}
-            className="h-7 px-2.5 rounded-lg text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 text-xs font-bold gap-1"
+            className="h-7 px-2.5 rounded-lg text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 text-xs font-bold gap-1 whitespace-nowrap shrink-0"
           >
             <span>{isOpen ? "Hide List" : "Inspect Duplicates"}</span>
             {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -110,7 +110,7 @@ export function DeduplicationInspector({
             className="overflow-hidden"
           >
             <div className="pt-3 mt-3 border-t border-amber-500/20 flex flex-col gap-2.5">
-              <div className="flex items-center justify-between text-[11px] text-amber-900 dark:text-amber-300">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-amber-900 dark:text-amber-300">
                 <span className="font-semibold flex items-center gap-1">
                   <Info className="h-3 w-3 text-amber-600 dark:text-amber-400" />
                   Click any pill to copy that ticket:
@@ -120,7 +120,7 @@ export function DeduplicationInspector({
                   variant="outline"
                   size="sm"
                   onClick={handleCopyAllDuplicates}
-                  className="h-6 px-2 text-[10px] font-bold rounded-md bg-white/70 dark:bg-black/30 border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 gap-1"
+                  className="h-6 px-2 text-[10px] font-bold rounded-md bg-white/70 dark:bg-black/30 border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 gap-1 whitespace-nowrap shrink-0"
                 >
                   <Copy className="h-3 w-3" /> Copy All Duplicates
                 </Button>

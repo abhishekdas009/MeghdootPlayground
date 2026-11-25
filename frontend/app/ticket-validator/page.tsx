@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { motion, AnimatePresence } from "framer-motion";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassHero, GlassSpotlightCard, AnimatedNumber } from "@/components/ui/glass-primitives";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { EASE_120HZ } from "@/lib/motion";
 import {
   CheckCircle2,
   AlertTriangle,
@@ -15,6 +17,8 @@ import {
   ArrowRightLeft,
   ShieldCheck,
   Percent,
+  ClipboardPaste,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,20 +32,13 @@ import { DeduplicationInspector } from "@/components/tickets/deduplication-inspe
 import { InvalidTokensInspector } from "@/components/tickets/invalid-tokens-inspector";
 import { TicketStatsPills } from "@/components/tickets/ticket-stats-pills";
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-};
-
 export default function TicketValidatorPage() {
   const [masterInput, setMasterInput] = React.useState("");
   const [compareInput, setCompareInput] = React.useState("");
   const [selectedRule, setSelectedRule] = React.useState<ValidationRuleId>("sf-digits");
   const [deduplicateMaster, setDeduplicateMaster] = React.useState(true);
   const [deduplicateCompare, setDeduplicateCompare] = React.useState(true);
+  const [swapRotation, setSwapRotation] = React.useState(0);
 
   // Analyze Master Block in real time
   const masterAnalysis = React.useMemo(() => {
@@ -82,9 +79,8 @@ export default function TicketValidatorPage() {
 
     if (missing.length === 0) {
       return { status: "success" as const, missing, matching, matchPercentage };
-    } else {
-      return { status: "mismatch" as const, missing, matching, matchPercentage };
     }
+    return { status: "mismatch" as const, missing, matching, matchPercentage };
   }, [masterTickets, compareTickets]);
 
   const handleCopyMissing = () => {
@@ -118,97 +114,127 @@ export default function TicketValidatorPage() {
   };
 
   const handleSwapBlocks = () => {
-    const temp = masterInput;
+    setSwapRotation((r) => r + 180);
     setMasterInput(compareInput);
-    setCompareInput(temp);
+    setCompareInput(masterInput);
     toast.info("Swapped Block 1 and Block 2 contents");
+  };
+
+  const handlePaste = async (setter: React.Dispatch<React.SetStateAction<string>>, label: string) => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        toast.info("Clipboard is empty");
+        return;
+      }
+      setter(text);
+      toast.success(`Pasted clipboard contents into ${label}`);
+    } catch {
+      toast.error("Unable to access clipboard automatically — use Ctrl+V");
+    }
+  };
+
+  const handleLoadSample = () => {
+    setMasterInput("2713009\n27127281\n27128910\n27134412\n27135501");
+    setCompareInput("2713009\n27127281\n27199999\n27188888");
+    toast.info("Loaded sample batch comparison");
   };
 
   const ruleObj = VALIDATION_RULES[selectedRule] || VALIDATION_RULES["sf-digits"];
 
   return (
     <div className="workspace-page mx-auto min-h-screen w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:p-8">
-      {/* ─── Top Control & Rule Bar ──────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-3xl bg-card/60 dark:bg-[#08090d]/80 border border-border/80 backdrop-blur-md shadow-xs">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-xs">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-base font-black tracking-tight text-foreground flex items-center gap-2">
-              Ticket Validator & Cross-Checker
-              <Badge className="bg-primary/10 text-primary border-primary/30 text-[10px] font-bold px-2 py-0.2">
-                Real-Time Validation
-              </Badge>
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Compare ticket batches, inspect duplicates, and validate against Salesforce case formats.
-            </p>
-          </div>
-        </div>
+      <GlassHero
+        icon={ShieldCheck}
+        badge="Real-Time Cross-Check Engine"
+        title="Ticket Validator &"
+        highlight="Cross-Checker"
+        description="Compare WorkOrder batches in real time, auto-detect duplicates, isolate missing records, and export pristine lists."
+        watermark="VALIDATE"
+        actions={
+          <>
+            <div className="glass-surface flex items-center gap-2 rounded-xl px-3 py-1.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                Rule:
+              </span>
+              <select
+                value={selectedRule}
+                onChange={(e) => setSelectedRule(e.target.value as ValidationRuleId)}
+                className="cursor-pointer bg-transparent text-xs font-bold text-foreground focus:outline-none"
+              >
+                {Object.values(VALIDATION_RULES).map((r) => (
+                  <option key={r.id} value={r.id} className="bg-white dark:bg-[#0b0c10] text-foreground">
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          {/* Validation Rule Selector */}
-          <div className="flex items-center gap-2 bg-background/80 dark:bg-card px-3 py-1.5 rounded-2xl border border-border/80 shadow-2xs">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Rule:
-            </span>
-            <select
-              value={selectedRule}
-              onChange={(e) => setSelectedRule(e.target.value as ValidationRuleId)}
-              className="text-xs font-bold bg-transparent text-foreground focus:outline-hidden cursor-pointer"
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLoadSample}
+              className="h-9 gap-1.5 rounded-xl border-blue-500/30 bg-blue-500/10 text-blue-700 dark:border-sky-400/30 dark:bg-sky-400/15 dark:text-sky-200 hover:bg-blue-500/20 text-xs font-bold"
             >
-              {Object.values(VALIDATION_RULES).map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-          </div>
+              <Wand2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Sample</span>
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSwapBlocks}
-            disabled={!masterInput && !compareInput}
-            title="Swap Block 1 and Block 2"
-            className="h-9 px-3 rounded-2xl border-border/80 bg-background/80 hover:bg-primary/10 hover:text-primary text-xs font-bold gap-1.5 shadow-2xs"
-          >
-            <ArrowRightLeft className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Swap Blocks</span>
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSwapBlocks}
+              disabled={!masterInput && !compareInput}
+              title="Swap Block 1 and Block 2"
+              className="h-9 gap-1.5 rounded-xl border-border/70 bg-white/60 dark:bg-white/[0.05] backdrop-blur-md hover:border-blue-500/40 hover:text-blue-600 dark:hover:text-sky-300 text-xs font-bold"
+            >
+              <motion.div animate={{ rotate: swapRotation }} transition={{ duration: 0.35, ease: EASE_120HZ }}>
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+              </motion.div>
+              <span className="hidden sm:inline">Swap</span>
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleClearAll}
-            disabled={!masterInput && !compareInput}
-            className="h-9 px-3 rounded-2xl border-border/80 bg-background/80 hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 text-xs font-bold gap-1.5 shadow-2xs"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Clear All</span>
-          </Button>
-        </div>
-      </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearAll}
+              disabled={!masterInput && !compareInput}
+              className="h-9 gap-1.5 rounded-xl border-border/70 bg-white/60 dark:bg-white/[0.05] backdrop-blur-md hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/30 text-xs font-bold"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span>Clear</span>
+            </Button>
+          </>
+        }
+      />
 
       {/* ─── Main Content Grid ─────────────────────────────────────────────────── */}
-      <motion.div initial="hidden" animate="show" variants={containerVariants} className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Left Column: Input Blocks */}
         <div className="flex flex-col gap-6">
           {/* Block 1: Master Tickets */}
-          <Card className="flex flex-col rounded-3xl overflow-hidden relative group border-border/80 shadow-xs">
-            <CardHeader className="px-6 py-4 flex flex-col gap-3 relative z-10 border-b border-border/60">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-blue-500" />
+          <GlassSpotlightCard delay={0.05}>
+            <CardHeader className="px-6 py-4 flex flex-col gap-3 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-full bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.6)] shrink-0" />
                   <CardTitle className="text-sm font-black tracking-tight text-foreground">
                     Block 1: Master List (Total Tickets)
                   </CardTitle>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-blue-700 dark:text-sky-300 border-blue-500/30 bg-blue-500/10 whitespace-nowrap">
                     {masterTickets.length} unique
                   </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePaste(setMasterInput, "Block 1")}
+                    className="h-7 px-2 text-xs font-bold text-muted-foreground hover:text-blue-600 dark:hover:text-sky-300 rounded-lg gap-1"
+                    title="Paste from Clipboard"
+                  >
+                    <ClipboardPaste className="h-3.5 w-3.5" />
+                  </Button>
                   {masterInput && (
                     <Button
                       variant="ghost"
@@ -223,7 +249,6 @@ export default function TicketValidatorPage() {
                 </div>
               </div>
 
-              {/* Real-time stats pills for Block 1 */}
               <TicketStatsPills
                 totalRaw={masterAnalysis.totalRawCount}
                 validCount={masterAnalysis.validTickets.length}
@@ -233,15 +258,13 @@ export default function TicketValidatorPage() {
               />
             </CardHeader>
 
-            <CardContent className="p-5 flex-1 flex flex-col gap-3 relative z-10">
-              {/* Invalid Tokens Inspector for Block 1 */}
+            <CardContent className="p-5 flex-1 flex flex-col gap-3">
               <InvalidTokensInspector
                 invalidTokens={masterAnalysis.invalidTokens}
                 ruleBadge={ruleObj.badge}
                 onStripInvalid={handleStripMasterInvalid}
               />
 
-              {/* Deduplication Inspector for Block 1 */}
               <DeduplicationInspector
                 duplicateCount={masterAnalysis.duplicateCount}
                 duplicateItems={masterAnalysis.duplicateItems}
@@ -249,7 +272,7 @@ export default function TicketValidatorPage() {
                 onToggleDeduplicate={setDeduplicateMaster}
               />
 
-              <div className="relative flex-1 flex flex-col min-h-[220px] rounded-2xl bg-card/60 dark:bg-[#06070a] border border-border/80">
+              <div className="glass-inset-well relative flex-1 flex flex-col min-h-[220px] rounded-2xl overflow-hidden">
                 <Textarea
                   placeholder={`Paste master ticket list here...\n\n2713009\n27127281\n27128910`}
                   className="flex-1 min-h-[220px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-foreground p-4 focus-visible:ring-0 focus-visible:outline-none resize-none no-scrollbar placeholder:text-muted-foreground"
@@ -258,22 +281,31 @@ export default function TicketValidatorPage() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </GlassSpotlightCard>
 
           {/* Block 2: Compare Tickets */}
-          <Card className="flex flex-col rounded-3xl overflow-hidden relative group border-border/80 shadow-xs">
-            <CardHeader className="px-6 py-4 flex flex-col gap-3 relative z-10 border-b border-border/60">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-violet-500" />
+          <GlassSpotlightCard delay={0.1}>
+            <CardHeader className="px-6 py-4 flex flex-col gap-3 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="h-2.5 w-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_rgba(56,189,248,0.8)] shrink-0" />
                   <CardTitle className="text-sm font-black tracking-tight text-foreground">
                     Block 2: Tickets to Check
                   </CardTitle>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-violet-600 dark:text-violet-400 border-violet-500/30">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <Badge variant="outline" className="text-xs font-bold px-2.5 py-0.5 text-sky-700 dark:text-sky-300 border-sky-500/30 bg-sky-500/10 whitespace-nowrap">
                     {compareTickets.length} unique
                   </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handlePaste(setCompareInput, "Block 2")}
+                    className="h-7 px-2 text-xs font-bold text-muted-foreground hover:text-blue-600 dark:hover:text-sky-300 rounded-lg gap-1"
+                    title="Paste from Clipboard"
+                  >
+                    <ClipboardPaste className="h-3.5 w-3.5" />
+                  </Button>
                   {compareInput && (
                     <Button
                       variant="ghost"
@@ -288,7 +320,6 @@ export default function TicketValidatorPage() {
                 </div>
               </div>
 
-              {/* Real-time stats pills for Block 2 */}
               <TicketStatsPills
                 totalRaw={compareAnalysis.totalRawCount}
                 validCount={compareAnalysis.validTickets.length}
@@ -298,15 +329,13 @@ export default function TicketValidatorPage() {
               />
             </CardHeader>
 
-            <CardContent className="p-5 flex-1 flex flex-col gap-3 relative z-10">
-              {/* Invalid Tokens Inspector for Block 2 */}
+            <CardContent className="p-5 flex-1 flex flex-col gap-3">
               <InvalidTokensInspector
                 invalidTokens={compareAnalysis.invalidTokens}
                 ruleBadge={ruleObj.badge}
                 onStripInvalid={handleStripCompareInvalid}
               />
 
-              {/* Deduplication Inspector for Block 2 */}
               <DeduplicationInspector
                 duplicateCount={compareAnalysis.duplicateCount}
                 duplicateItems={compareAnalysis.duplicateItems}
@@ -314,7 +343,7 @@ export default function TicketValidatorPage() {
                 onToggleDeduplicate={setDeduplicateCompare}
               />
 
-              <div className="relative flex-1 flex flex-col min-h-[220px] rounded-2xl bg-card/60 dark:bg-[#06070a] border border-border/80">
+              <div className="glass-inset-well relative flex-1 flex flex-col min-h-[220px] rounded-2xl overflow-hidden">
                 <Textarea
                   placeholder={`Paste tickets to verify against Block 1...\n\n2713009\n27127281`}
                   className="flex-1 min-h-[220px] font-mono text-sm leading-relaxed rounded-2xl border-none bg-transparent text-foreground p-4 focus-visible:ring-0 focus-visible:outline-none resize-none no-scrollbar placeholder:text-muted-foreground"
@@ -323,95 +352,109 @@ export default function TicketValidatorPage() {
                 />
               </div>
             </CardContent>
-          </Card>
+          </GlassSpotlightCard>
         </div>
 
         {/* Right Column: Result Cards */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="flex flex-col gap-6 h-full">
+        <div className="flex flex-col gap-6 h-full">
           {/* Summary Dashboard Card */}
-          <Card className="flex flex-col rounded-3xl overflow-hidden relative border-border/80 shadow-xs">
-            <CardHeader className="px-6 py-4 flex flex-row items-center justify-between relative z-10 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
-                <Sparkles className="h-5 w-5 text-primary" />
+          <GlassSpotlightCard delay={0.12}>
+            <CardHeader className="px-6 py-4 flex flex-row flex-wrap items-center justify-between gap-2.5 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Sparkles className="h-5 w-5 text-blue-600 dark:text-sky-400 shrink-0" />
                 <CardTitle className="text-sm font-black tracking-tight text-foreground">
                   Verification Summary
                 </CardTitle>
               </div>
 
-              {validationResult.status !== "idle" && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-primary/10 border border-primary/20 text-xs font-bold text-primary">
-                  <Percent className="h-3.5 w-3.5" />
-                  <span>{validationResult.matchPercentage}% Match</span>
-                </div>
-              )}
+              <AnimatePresence>
+                {validationResult.status !== "idle" && (
+                  <motion.div
+                    initial={{ scale: 0.85, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.85, opacity: 0 }}
+                    className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-blue-500/15 border border-blue-500/30 text-xs font-black text-blue-700 dark:text-sky-300"
+                  >
+                    <Percent className="h-3.5 w-3.5" />
+                    <span>{validationResult.matchPercentage}% Match</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </CardHeader>
             <CardContent className="p-5 flex flex-col gap-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="flex flex-col gap-1 p-3.5 rounded-2xl bg-card/70 dark:bg-[#08090d] border border-border/80">
+                <div className="glass-surface flex flex-col gap-1 p-3.5 rounded-2xl">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Master (B1)</span>
-                  <span className="text-2xl font-black text-foreground">{masterTickets.length}</span>
+                  <span className="text-2xl font-black text-foreground">
+                    <AnimatedNumber value={masterTickets.length} />
+                  </span>
                 </div>
-                <div className="flex flex-col gap-1 p-3.5 rounded-2xl bg-card/70 dark:bg-[#08090d] border border-border/80">
+                <div className="glass-surface flex flex-col gap-1 p-3.5 rounded-2xl">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">To Check (B2)</span>
-                  <span className="text-2xl font-black text-foreground">{compareTickets.length}</span>
+                  <span className="text-2xl font-black text-foreground">
+                    <AnimatedNumber value={compareTickets.length} />
+                  </span>
                 </div>
-                <div className="flex flex-col gap-1 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Matching</span>
-                  <span className="text-2xl font-black text-emerald-700 dark:text-emerald-300">{validationResult.matching.length}</span>
+                <div className="flex flex-col gap-1 p-3.5 rounded-2xl bg-blue-500/12 border border-blue-500/30 backdrop-blur-md">
+                  <span className="text-[10px] font-bold text-blue-700 dark:text-sky-300 uppercase tracking-wider">Matching</span>
+                  <span className="text-2xl font-black text-blue-800 dark:text-sky-200">
+                    <AnimatedNumber value={validationResult.matching.length} />
+                  </span>
                 </div>
-                <div className="flex flex-col gap-1 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30">
-                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider">Missing</span>
-                  <span className="text-2xl font-black text-rose-700 dark:text-rose-300">{validationResult.missing.length}</span>
+                <div className="flex flex-col gap-1 p-3.5 rounded-2xl bg-slate-500/10 dark:bg-white/[0.05] border border-slate-300/60 dark:border-white/15 backdrop-blur-md">
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Missing</span>
+                  <span className="text-2xl font-black text-slate-900 dark:text-white">
+                    <AnimatedNumber value={validationResult.missing.length} />
+                  </span>
                 </div>
               </div>
 
-              {/* Progress bar */}
               {validationResult.status !== "idle" && (
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-[11px] font-bold text-muted-foreground">
                     <span>Cross-Check Match Rate</span>
-                    <span className="text-foreground">{validationResult.matching.length} of {compareTickets.length} tickets matched</span>
+                    <span className="text-foreground">
+                      {validationResult.matching.length} of {compareTickets.length} tickets matched
+                    </span>
                   </div>
-                  <div className="h-2 w-full bg-border/60 dark:bg-white/10 rounded-full overflow-hidden flex">
-                    <div
-                      className="bg-emerald-500 transition-all duration-500"
-                      style={{ width: `${validationResult.matchPercentage}%` }}
-                    />
-                    <div
-                      className="bg-rose-500 transition-all duration-500"
-                      style={{ width: `${100 - validationResult.matchPercentage}%` }}
+                  <div className="h-2.5 w-full bg-slate-200/70 dark:bg-white/10 rounded-full overflow-hidden flex p-0.5">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${validationResult.matchPercentage}%` }}
+                      transition={{ duration: 0.45, ease: EASE_120HZ }}
+                      className="h-full rounded-full bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 shadow-[0_0_12px_rgba(56,189,248,0.5)]"
                     />
                   </div>
                 </div>
               )}
             </CardContent>
-          </Card>
+          </GlassSpotlightCard>
 
           {/* Missing Tickets Card */}
-          <Card
+          <GlassSpotlightCard
+            delay={0.16}
             className={cn(
-              "flex flex-col rounded-3xl overflow-hidden relative transition-all duration-300 border-border/80 shadow-xs",
-              validationResult.status === "mismatch" && "border-rose-500/40"
+              validationResult.status === "mismatch" && "ring-1 ring-blue-400/40"
             )}
           >
-            <CardHeader className="px-6 py-4 flex flex-row items-center justify-between relative z-10 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
+            <CardHeader className="px-6 py-4 flex flex-row flex-wrap items-center justify-between gap-2.5 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <AlertTriangle
                   className={cn(
-                    "h-5 w-5",
+                    "h-5 w-5 shrink-0",
                     validationResult.status === "mismatch" ? "text-rose-500" : "text-muted-foreground"
                   )}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <CardTitle className="text-sm font-black tracking-tight text-foreground">
                     Missing Tickets (In B2, Not in B1)
                   </CardTitle>
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-xs font-bold px-2 py-0.2",
+                      "text-xs font-bold px-2 py-0.5 shrink-0",
                       validationResult.missing.length > 0
-                        ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                        ? "bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/30"
                         : "text-muted-foreground border-border/80"
                     )}
                   >
@@ -423,16 +466,16 @@ export default function TicketValidatorPage() {
               {validationResult.status === "mismatch" && (
                 <Button
                   onClick={handleCopyMissing}
-                  className="h-8 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold shadow-xs text-xs gap-1.5 transition-all"
+                  size="sm"
+                  className="h-8 px-3 rounded-xl bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 hover:brightness-110 text-white font-bold shadow-xs text-xs gap-1.5 transition-all whitespace-nowrap shrink-0"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  <span>Copy List</span>
+                  <span>Copy Missing</span>
                 </Button>
               )}
             </CardHeader>
 
             <CardContent className="p-5 flex-1 flex flex-col gap-3">
-              {/* Quick Exporters for Missing Tickets */}
               {validationResult.missing.length > 0 && (
                 <QuickExporterBar
                   tickets={validationResult.missing}
@@ -440,14 +483,14 @@ export default function TicketValidatorPage() {
                 />
               )}
 
-              <div className="p-1 rounded-2xl bg-card/60 dark:bg-[#06070a] border border-border/80 flex-1 flex flex-col min-h-[140px]">
+              <div className="glass-inset-well p-1 rounded-2xl flex-1 flex flex-col min-h-[140px]">
                 {validationResult.status === "idle" ? (
                   <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs font-medium p-4">
-                    Paste tickets into Block 1 & 2 to run instant validation...
+                    Paste tickets into Block 1 &amp; 2 to run instant validation...
                   </div>
                 ) : validationResult.status === "success" ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-emerald-600 dark:text-emerald-400 text-xs font-bold p-4 gap-1.5">
-                    <CheckCircle2 className="h-6 w-6 text-emerald-500" />
+                  <div className="flex-1 flex flex-col items-center justify-center text-blue-700 dark:text-sky-300 text-xs font-bold p-4 gap-1.5">
+                    <CheckCircle2 className="h-6 w-6 text-sky-500" />
                     <span>All tickets in Block 2 exist in Block 1! Perfect match.</span>
                   </div>
                 ) : (
@@ -459,33 +502,28 @@ export default function TicketValidatorPage() {
                 )}
               </div>
             </CardContent>
-          </Card>
+          </GlassSpotlightCard>
 
           {/* Matching Tickets Card */}
-          <Card
-            className={cn(
-              "flex flex-col rounded-3xl overflow-hidden relative transition-all duration-300 border-border/80 shadow-xs",
-              validationResult.matching.length > 0 && "border-emerald-500/40"
-            )}
-          >
-            <CardHeader className="px-6 py-4 flex flex-row items-center justify-between relative z-10 border-b border-border/60">
-              <div className="flex items-center gap-2.5">
+          <GlassSpotlightCard delay={0.2}>
+            <CardHeader className="px-6 py-4 flex flex-row flex-wrap items-center justify-between gap-2.5 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <CheckCircle2
                   className={cn(
-                    "h-5 w-5",
-                    validationResult.matching.length > 0 ? "text-emerald-500" : "text-muted-foreground"
+                    "h-5 w-5 shrink-0",
+                    validationResult.matching.length > 0 ? "text-blue-600 dark:text-sky-400" : "text-muted-foreground"
                   )}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
                   <CardTitle className="text-sm font-black tracking-tight text-foreground">
                     Matching Tickets (Present in Both)
                   </CardTitle>
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-xs font-bold px-2 py-0.2",
+                      "text-xs font-bold px-2 py-0.5 shrink-0",
                       validationResult.matching.length > 0
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                        ? "bg-blue-500/10 text-blue-700 dark:text-sky-300 border-blue-500/30"
                         : "text-muted-foreground border-border/80"
                     )}
                   >
@@ -497,16 +535,16 @@ export default function TicketValidatorPage() {
               {validationResult.matching.length > 0 && (
                 <Button
                   onClick={handleCopyMatching}
-                  className="h-8 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs text-xs gap-1.5 transition-all"
+                  size="sm"
+                  className="h-8 px-3 rounded-xl bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 hover:brightness-110 text-white font-bold shadow-xs text-xs gap-1.5 transition-all whitespace-nowrap shrink-0"
                 >
                   <Copy className="h-3.5 w-3.5" />
-                  <span>Copy List</span>
+                  <span>Copy Matching</span>
                 </Button>
               )}
             </CardHeader>
 
             <CardContent className="p-5 flex-1 flex flex-col gap-3">
-              {/* Quick Exporters for Matching Tickets */}
               {validationResult.matching.length > 0 && (
                 <QuickExporterBar
                   tickets={validationResult.matching}
@@ -514,7 +552,7 @@ export default function TicketValidatorPage() {
                 />
               )}
 
-              <div className="p-1 rounded-2xl bg-card/60 dark:bg-[#06070a] border border-border/80 flex-1 flex flex-col min-h-[140px]">
+              <div className="glass-inset-well p-1 rounded-2xl flex-1 flex flex-col min-h-[140px]">
                 {validationResult.status === "idle" ? (
                   <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs font-medium p-4">
                     Waiting for tickets...
@@ -532,9 +570,9 @@ export default function TicketValidatorPage() {
                 )}
               </div>
             </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
+          </GlassSpotlightCard>
+        </div>
+      </div>
     </div>
   );
 }

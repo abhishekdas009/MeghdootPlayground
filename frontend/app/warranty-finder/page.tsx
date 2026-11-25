@@ -30,6 +30,8 @@ import {
   LayoutGrid,
   List,
 } from "lucide-react";
+import { GlassSpotlightCard } from "@/components/ui/glass-primitives";
+import { GLASS_TAB_SPRING, EASE_120HZ, PANEL_SWAP_MOTION } from "@/lib/motion";
 const BRANCHES = [
   "Mumbai",
   "Coimbatore",
@@ -566,7 +568,7 @@ export default function WarrantyFinderPage() {
                           options={BRANCHES}
                           value={branch}
                           onChange={setBranch}
-                          placeholder="Optional branch..."
+                          placeholder="Branch..."
                         />
                       </div>
                     </div>
@@ -675,17 +677,24 @@ export default function WarrantyFinderPage() {
                 </div>
 
                 {/* View Mode Toggle: Compact Cards vs Table */}
-                <div className="flex items-center gap-1 p-0.5 rounded-xl bg-slate-200/80 dark:bg-white/5 border border-slate-300/80 dark:border-white/10 text-xs">
+                <div className="relative flex items-center gap-1 p-1 rounded-xl bg-slate-100/80 dark:bg-white/[0.04] backdrop-blur-xl border border-slate-200/80 dark:border-white/[0.1] text-xs">
                   <button
                     type="button"
                     onClick={() => setResultsView('compact')}
                     className={cn(
-                      "px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all text-[11px]",
+                      "relative px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors text-[11px] z-10",
                       resultsView === 'compact'
-                        ? "bg-white dark:bg-sky-600 text-slate-900 dark:text-white shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
+                    {resultsView === 'compact' && (
+                      <motion.span
+                        layoutId="warrantyResultsViewPill"
+                        transition={GLASS_TAB_SPRING}
+                        className="absolute inset-0 -z-10 rounded-lg bg-gradient-to-r from-blue-600 to-sky-600 shadow-sm shadow-blue-500/25"
+                      />
+                    )}
                     <LayoutGrid className="w-3.5 h-3.5" />
                     <span>Cards</span>
                   </button>
@@ -693,31 +702,40 @@ export default function WarrantyFinderPage() {
                     type="button"
                     onClick={() => setResultsView('table')}
                     className={cn(
-                      "px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all text-[11px]",
+                      "relative px-3 py-1.5 rounded-lg font-bold flex items-center gap-1.5 transition-colors text-[11px] z-10",
                       resultsView === 'table'
-                        ? "bg-white dark:bg-sky-600 text-slate-900 dark:text-white shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "text-white"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
+                    {resultsView === 'table' && (
+                      <motion.span
+                        layoutId="warrantyResultsViewPill"
+                        transition={GLASS_TAB_SPRING}
+                        className="absolute inset-0 -z-10 rounded-lg bg-gradient-to-r from-blue-600 to-sky-600 shadow-sm shadow-blue-500/25"
+                      />
+                    )}
                     <List className="w-3.5 h-3.5" />
                     <span>Table</span>
                   </button>
                 </div>
               </div>
 
+              <AnimatePresence mode="wait">
               {/* View 1: Compact Cards */}
               {resultsView === 'compact' ? (
-                <div className="space-y-3">
+                <motion.div key="warranty-compact-view" {...PANEL_SWAP_MOTION} className="space-y-3">
                   {searchResult.map((result, idx) => (
                     <motion.div
-                      initial={{ opacity: 0, y: 15 }}
+                      initial={{ opacity: 0, y: 12 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.25, delay: idx * 0.04 }}
+                      transition={{ duration: 0.25, ease: EASE_120HZ, delay: Math.min(idx * 0.035, 0.2) }}
                       key={idx}
-                      className="relative rounded-2xl p-4 sm:p-4.5 overflow-hidden bg-gradient-to-b from-white/20 via-sky-50/15 to-blue-50/20 dark:from-[#091738]/20 dark:via-[#061026]/20 dark:to-[#030816]/20 border border-sky-300/40 dark:border-sky-500/25 shadow-md dark:shadow-[0_4px_25px_rgba(0,0,0,0.25)] backdrop-blur-2xl transition-all group hover:border-sky-400/60"
                     >
-                      {/* Top Specular Line */}
-                      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-400/60 dark:via-sky-300/70 to-transparent pointer-events-none" />
+                      <GlassSpotlightCard
+                        spotlightColor="rgba(56, 189, 248, 0.16)"
+                        className="rounded-2xl p-4 sm:p-4.5 border-sky-300/40 dark:border-sky-500/25 hover:border-sky-400/60 group"
+                      >
 
                       {/* Header Row: Shield + Term Title + Copy + Applicable Badge */}
                       <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
@@ -852,12 +870,14 @@ export default function WarrantyFinderPage() {
                           </>
                         )}
                       </div>
+                      </GlassSpotlightCard>
                     </motion.div>
                   ))}
-                </div>
+                </motion.div>
               ) : (
                 /* View 2: High-Density Table */
-                <div className="overflow-x-auto rounded-2xl border border-sky-200/40 dark:border-white/10 bg-white/20 dark:bg-[#0a0f1d]/20 backdrop-blur-2xl shadow-lg">
+                <motion.div key="warranty-table-view" {...PANEL_SWAP_MOTION} className="app-card glass-surface overflow-x-auto rounded-2xl relative">
+                  <span className="glass-shimmer-line" />
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-border/80 bg-sky-50/50 dark:bg-white/[0.03] text-muted-foreground font-black text-[10px] uppercase tracking-wider">
@@ -904,8 +924,9 @@ export default function WarrantyFinderPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
             </motion.div>
           )}{" "}
         </AnimatePresence>{" "}
@@ -917,24 +938,23 @@ export default function WarrantyFinderPage() {
           className="max-w-5xl mx-auto mt-16 relative z-0"
         >
           {" "}
-          <div className="app-card p-6 md:p-8 shadow-xl">
-            {" "}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
-              {" "}
-              <div>
-                {" "}
-                <h2 className="text-base font-bold flex items-center gap-2 text-foreground mb-4">
-                  <Database className="h-5 w-5 text-muted-foreground" />
+          <GlassSpotlightCard spotlightColor="rgba(59, 130, 246, 0.14)" className="p-6 md:p-8">
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+              <div className="w-full">
+                <h2 className="text-base font-bold flex items-center gap-2 text-slate-900 dark:text-white mb-4">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <Database className="h-4 w-4" />
+                  </span>
                   Database Synchronization
                 </h2>
-                <div className="p-4 rounded-xl bg-muted/30 border border-border flex flex-col gap-3 mb-2">
-                  <p className="text-sm text-foreground">
+                <div className="glass-inset-well p-4 rounded-xl flex flex-col gap-3 mb-2">
+                  <p className="text-sm text-slate-700 dark:text-slate-300">
                     For update the model list, kindly copy this query and paste
                     it in Salesforce Inspector. Then, upload the extracted CSV
                     data below.
                   </p>
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <pre className="flex-1 p-3 rounded-lg bg-background text-primary font-mono text-xs overflow-x-auto border border-border shadow-inner whitespace-pre-wrap">
+                    <pre className="glass-inset-well flex-1 p-3.5 rounded-lg text-blue-700 dark:text-sky-300 font-mono text-xs overflow-x-auto whitespace-pre-wrap">
                       {soqlQuery}
                     </pre>
                     <button
@@ -990,8 +1010,8 @@ export default function WarrantyFinderPage() {
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 className={cn(
-                  "border-2 border-dashed border-border/80 dark:border-white/[0.1] rounded-2xl p-8 flex flex-col items-center justify-center transition-all duration-300 relative group",
-                  isDragging ? "border-primary bg-primary/20 scale-[1.02] shadow-lg" : "bg-surface-recessed/40 dark:bg-[#06070a]/60 hover:bg-surface-recessed/60 dark:hover:bg-[#06070a]/80"
+                  "glass-inset-well border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all duration-300 relative group",
+                  isDragging ? "border-blue-500 bg-blue-500/15 scale-[1.015] shadow-lg shadow-blue-500/15" : "border-slate-300/70 dark:border-white/[0.12] hover:border-blue-500/40"
                 )}
               >
                 <div className="h-12 w-12 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center mb-4">
@@ -1018,7 +1038,7 @@ export default function WarrantyFinderPage() {
               </div>
               <div className="relative">
                 <textarea
-                  className="w-full h-full min-h-[200px] rounded-2xl border-2 border-dashed border-border/80 dark:border-white/[0.1] bg-surface-recessed/40 dark:bg-[#06070a]/60 p-6 text-xs font-mono focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/40 resize-none text-foreground placeholder:text-muted-foreground/60 transition-all duration-300"
+                  className="glass-inset-well w-full h-full min-h-[200px] rounded-2xl border-2 border-dashed border-slate-300/70 dark:border-white/[0.12] p-6 text-xs font-mono focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25 resize-none text-foreground placeholder:text-muted-foreground/60 transition-all duration-300"
                   placeholder="Or paste raw CSV text here..."
                   value={csvText}
                   onChange={(e) => setCsvText(e.target.value)}
@@ -1050,7 +1070,7 @@ export default function WarrantyFinderPage() {
                 </span>
               </button>
             </div>
-          </div>
+          </GlassSpotlightCard>
         </motion.div>
       </div>
     </div>

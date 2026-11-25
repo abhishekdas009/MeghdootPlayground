@@ -3,6 +3,8 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GlassHero, GlassSpotlightCard } from "@/components/ui/glass-primitives";
+import { PANEL_SWAP_MOTION } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -435,15 +437,24 @@ export default function DailyReportGeneratorPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="workspace-page mx-auto w-full max-w-7xl flex flex-col gap-6 pb-12 px-4 sm:px-6 lg:p-8">
+      <GlassHero
+        icon={FileSpreadsheet}
+        badge="Daily Operations Studio"
+        title="Daily Report"
+        highlight="Generator"
+        description="Build executive Issue Category Breakdown tables, merge Salesforce status exports, or craft SDE & CP Training Minutes of Meeting."
+        watermark="REPORTS"
+      />
+
       {/* ── Module Switcher Tabs ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between max-w-7xl mx-auto w-full px-4 sm:px-6 gap-3">
-        <div className="glass-mode-toggle p-1.5 rounded-2xl inline-flex relative">
+      <div className="flex flex-wrap items-center justify-between w-full gap-3">
+        <div className="glass-mode-toggle p-1.5 rounded-2xl inline-flex flex-wrap lg:flex-nowrap items-center gap-1 relative max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab("category-breakdown")}
             className={cn(
-              "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10",
+              "flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all relative z-10 cursor-pointer whitespace-nowrap shrink-0",
               activeTab === "category-breakdown"
                 ? "text-white font-black"
                 : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
@@ -459,10 +470,10 @@ export default function DailyReportGeneratorPage() {
                 }}
               />
             )}
-            <Layers className={cn("h-4 w-4 transition-colors", activeTab === "category-breakdown" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
+            <Layers className={cn("h-4 w-4 transition-colors shrink-0", activeTab === "category-breakdown" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
             <span>Issue Category Breakdown</span>
             <span className={cn(
-              "text-[10px] font-black uppercase px-2 py-0.5 rounded-full transition-colors",
+              "hidden 2xl:inline-flex text-[10px] font-black uppercase px-2 py-0.5 rounded-full transition-colors whitespace-nowrap",
               activeTab === "category-breakdown"
                 ? "bg-white/20 text-white border border-white/30"
                 : "bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-500/20"
@@ -474,7 +485,7 @@ export default function DailyReportGeneratorPage() {
             type="button"
             onClick={() => setActiveTab("status-merger")}
             className={cn(
-              "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10",
+              "flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all relative z-10 cursor-pointer whitespace-nowrap shrink-0",
               activeTab === "status-merger"
                 ? "text-white font-black"
                 : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
@@ -490,14 +501,14 @@ export default function DailyReportGeneratorPage() {
                 }}
               />
             )}
-            <FileSpreadsheet className={cn("h-4 w-4 transition-colors", activeTab === "status-merger" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
+            <FileSpreadsheet className={cn("h-4 w-4 transition-colors shrink-0", activeTab === "status-merger" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
             <span>Status Report & Merger</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("training-mom")}
             className={cn(
-              "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all relative z-10",
+              "flex items-center gap-2 px-3 xl:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all relative z-10 cursor-pointer whitespace-nowrap shrink-0",
               activeTab === "training-mom"
                 ? "text-white font-black"
                 : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
@@ -513,10 +524,10 @@ export default function DailyReportGeneratorPage() {
                 }}
               />
             )}
-            <GraduationCap className={cn("h-4 w-4 transition-colors", activeTab === "training-mom" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
+            <GraduationCap className={cn("h-4 w-4 transition-colors shrink-0", activeTab === "training-mom" ? "text-white" : "text-sky-500 dark:text-sky-400")} />
             <span>Training MOM Maker</span>
             <span className={cn(
-              "text-[10px] font-black uppercase px-2 py-0.5 rounded-full transition-colors",
+              "hidden 2xl:inline-flex text-[10px] font-black uppercase px-2 py-0.5 rounded-full transition-colors whitespace-nowrap",
               activeTab === "training-mom"
                 ? "bg-white/20 text-white border border-white/30"
                 : "bg-sky-500/10 text-sky-600 dark:text-sky-300 border border-sky-500/20"
@@ -526,45 +537,52 @@ export default function DailyReportGeneratorPage() {
           </button>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground font-medium">
-          {activeTab === "category-breakdown" ? (
-            <span className="flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1.5 rounded-xl border border-primary/20 font-semibold">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Paste category list ➔ Exact Image 2 table with blue headers
-            </span>
-          ) : activeTab === "status-merger" ? (
-            <span className="flex items-center gap-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 px-3 py-1.5 rounded-xl border border-purple-500/20 font-semibold">
-              <Mail className="h-3.5 w-3.5 text-purple-500" />
-              Merge ticket files & draft daily email
-            </span>
-          ) : (
-            <span className="flex items-center gap-1.5 bg-sky-500/10 text-sky-600 dark:text-sky-400 px-3 py-1.5 rounded-xl border border-sky-500/20 font-semibold">
-              <GraduationCap className="h-3.5 w-3.5 text-sky-500" />
-              SDE & CP Training Minutes of Meeting (MOM)
-            </span>
-          )}
+        <div className="hidden 2xl:flex items-center gap-2 text-xs text-muted-foreground font-medium">
+          <span className="glass-surface flex items-center gap-1.5 text-blue-700 dark:text-sky-300 px-3 py-1.5 rounded-xl font-semibold">
+            {activeTab === "category-breakdown" ? (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                Paste category list ➔ Exact Image 2 table
+              </>
+            ) : activeTab === "status-merger" ? (
+              <>
+                <Mail className="h-3.5 w-3.5" />
+                Merge ticket files &amp; draft daily email
+              </>
+            ) : (
+              <>
+                <GraduationCap className="h-3.5 w-3.5" />
+                SDE &amp; CP Training Minutes of Meeting (MOM)
+              </>
+            )}
+          </span>
         </div>
       </div>
 
+      <AnimatePresence mode="wait">
       {activeTab === "category-breakdown" ? (
-        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6">
+        <motion.div key="tab-cat" {...PANEL_SWAP_MOTION} className="w-full">
           <CategoryBreakdownModule
             onAppendToDailyEmail={(html) => {
               setCategoryBreakdownHtml(html);
               setActiveTab("status-merger");
             }}
           />
-        </div>
+        </motion.div>
       ) : activeTab === "training-mom" ? (
-        <TrainingMOMMaker />
+        <motion.div key="tab-mom" {...PANEL_SWAP_MOTION} className="w-full">
+          <TrainingMOMMaker />
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-7xl mx-auto w-full px-4 sm:px-6">
+        <motion.div key="tab-merger" {...PANEL_SWAP_MOTION} className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
         {/* Input Section */}
         <div className="lg:col-span-5 space-y-6">
-          <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl p-0 overflow-hidden">
-            <CardHeader className="pb-4 px-6 pt-5 border-b border-border/70 bg-muted/20">
-              <CardTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
-                <Calculator className="h-5 w-5 text-purple-500" />
+          <GlassSpotlightCard delay={0.05}>
+            <CardHeader className="pb-4 px-6 pt-5 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md">
+              <CardTitle className="flex items-center gap-2.5 text-lg font-black text-foreground">
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600 dark:text-sky-300 border border-blue-500/20">
+                  <Calculator className="h-4.5 w-4.5" />
+                </div>
                 Input Data
               </CardTitle>
             </CardHeader>
@@ -726,35 +744,38 @@ export default function DailyReportGeneratorPage() {
 
               <Button 
                 onClick={handleGenerate} 
-                className="w-full h-12 mt-2 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl transition-all"
+                className="w-full h-12 mt-2 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 hover:brightness-110 text-white font-bold shadow-lg shadow-blue-500/25 rounded-xl transition-all"
               >
                 <CheckCircle2 className="mr-2 h-5 w-5" />
                 Generate & Merge
               </Button>
             </CardContent>
-          </Card>
+          </GlassSpotlightCard>
         </div>
 
         {/* Output Section */}
         <div className="lg:col-span-7">
-          <Card className="app-card h-full border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl flex flex-col p-0 overflow-hidden">
-            <CardHeader className="flex flex-col xl:flex-row items-start xl:items-center justify-between pb-4 border-b border-border/70 bg-muted/20 px-6 py-4 gap-4 flex-wrap">
-              <CardTitle className="text-lg font-bold text-foreground">Generated Outputs</CardTitle>
+          <GlassSpotlightCard delay={0.12} className="h-full">
+            <CardHeader className="flex flex-col xl:flex-row items-start xl:items-center justify-between pb-4 border-b border-border/50 dark:border-white/[0.08] bg-white/30 dark:bg-white/[0.02] backdrop-blur-md px-6 py-4 gap-4 flex-wrap">
+              <CardTitle className="text-lg font-black text-foreground flex items-center gap-2.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-sky-500 shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+                Generated Outputs
+              </CardTitle>
               {reportData && (
                 <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
-                  <Button variant="outline" size="sm" onClick={handleDownloadExcel} className="flex-1 sm:flex-none gap-2 bg-[#107c41] hover:bg-[#185c37] text-white border-none shadow-md shadow-[#107c41]/20 rounded-xl font-bold">
+                  <Button variant="outline" size="sm" onClick={handleDownloadExcel} className="flex-1 sm:flex-none gap-2 border-blue-500/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-sky-200 shadow-sm rounded-xl font-bold">
                     <Download className="h-4 w-4" /> Merge to Excel
                   </Button>
-                  <Button variant="outline" size="sm" onClick={handleCopyEmail} className="flex-1 sm:flex-none gap-2 border-border/80 dark:border-white/[0.08] bg-card/80 dark:bg-[#06070a]/80 text-foreground hover:bg-surface-elevated rounded-xl font-bold">
+                  <Button variant="outline" size="sm" onClick={handleCopyEmail} className="flex-1 sm:flex-none gap-2 border-border/80 dark:border-white/[0.1] bg-white/60 dark:bg-white/[0.05] text-foreground hover:border-blue-500/40 rounded-xl font-bold">
                     <Copy className="h-4 w-4" /> Copy Email
                   </Button>
-                  <Button variant="primary" size="sm" onClick={handleDraftEmail} className="flex-1 sm:flex-none gap-2 bg-primary hover:bg-primary/90 text-primary-foreground border-none shadow-md shadow-primary/20 rounded-xl font-bold">
+                  <Button variant="primary" size="sm" onClick={handleDraftEmail} className="flex-1 sm:flex-none gap-2 bg-gradient-to-r from-sky-400 via-blue-600 to-blue-700 text-white border-none shadow-md shadow-blue-500/25 rounded-xl font-bold">
                     <Mail className="h-4 w-4" /> Open Mail Draft
                   </Button>
                 </div>
               )}
             </CardHeader>
-            <CardContent className="p-0 flex-1 rounded-b-xl overflow-hidden relative">
+            <CardContent className="p-0 flex-1 rounded-b-xl overflow-hidden relative min-h-[420px]">
               {!reportData ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 p-8 text-center">
                   <Mail className="h-12 w-12 mb-4 opacity-20" />
@@ -859,34 +880,35 @@ export default function DailyReportGeneratorPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </GlassSpotlightCard>
         </div>
-      </div>
+      </motion.div>
       )}
+      </AnimatePresence>
 
       {/* UPDATE SOQL QUERY MODAL DIALOG */}
       {isMounted && editingKey && createPortal(
         <AnimatePresence>
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-3xl bg-card dark:bg-[#0e1017] border border-border/80 dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-3xl bg-white/90 dark:bg-[#0b0d14]/88 backdrop-blur-3xl border border-slate-200/80 dark:border-white/[0.12] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border/70 dark:border-white/[0.08] bg-muted/30 dark:bg-white/[0.02]">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-border/50 dark:border-white/[0.08] bg-white/40 dark:bg-white/[0.02]">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-sky-300 border border-blue-500/20 shrink-0">
                     <Code2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-base sm:text-lg font-bold text-foreground">
                         Update {editingKey === "closed_cases" ? "Completed / Closed Cases" : "Other Status Cases"} SOQL
                       </h2>
-                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2 py-0.5 rounded-full border border-purple-500/20">
+                      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-700 dark:text-sky-300 px-2 py-0.5 rounded-full border border-blue-500/20 whitespace-nowrap shrink-0">
                         <Database className="h-3 w-3" /> Prisma Model
                       </span>
                     </div>
@@ -898,19 +920,19 @@ export default function DailyReportGeneratorPage() {
                 <button
                   type="button"
                   onClick={() => setEditingKey(null)}
-                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:hover:bg-white/[0.08] transition-all cursor-pointer"
+                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 dark:hover:bg-white/[0.08] transition-all cursor-pointer shrink-0"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
               {/* Toolbar */}
-              <div className="flex items-center justify-between px-6 py-2.5 bg-muted/15 dark:bg-white/[0.01] border-b border-border/50 dark:border-white/[0.05] text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-2.5 bg-muted/15 dark:bg-white/[0.01] border-b border-border/50 dark:border-white/[0.05] text-xs">
                 <span className="text-muted-foreground font-medium flex items-center gap-1.5">
                   <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                   Lines: {editingSoql.split("\n").length} | Characters: {editingSoql.length}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <Button
                     type="button"
                     variant="ghost"

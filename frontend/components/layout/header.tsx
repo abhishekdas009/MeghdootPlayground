@@ -354,7 +354,7 @@ export function Header() {
             <Input
               ref={searchInputRef}
               readOnly
-              placeholder="Search 37+ templates, queries, modules, history... (Press ⌘K or Ctrl+K)"
+              placeholder="Search templates, queries, history..."
               className="h-9.5 border-0 bg-transparent pl-10 pr-16 text-xs font-semibold focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground cursor-pointer"
               onClick={() => setSearchOpen(true)}
               onFocus={() => {
@@ -494,10 +494,10 @@ export function Header() {
               type="button"
               onClick={() => setWallpaperModalOpen(true)}
               className={cn(
-                "relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border transition-all shadow-xs",
+                "relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border transition-all duration-200 shadow-xs active:scale-95",
                 wallpaperModalOpen
-                  ? "bg-gradient-to-br from-indigo-600 to-purple-600 text-white border-indigo-500 shadow-indigo-500/25 ring-2 ring-indigo-400/40"
-                  : "border-border/70 bg-card/60 hover:bg-card hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                  ? "bg-gradient-to-br from-sky-400 via-blue-600 to-blue-700 text-white border-sky-400/50 shadow-blue-500/30 ring-2 ring-sky-400/40"
+                  : "border-border/70 bg-card/60 backdrop-blur-md hover:bg-card hover:border-primary/40 text-muted-foreground hover:text-foreground"
               )}
               title="Ambient Wallpaper & Backgrounds (Alt+B)"
               aria-label="Open wallpaper and ambient background selector"
@@ -510,10 +510,10 @@ export function Header() {
               type="button"
               onClick={() => toggleDock()}
               className={cn(
-                "relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border transition-all shadow-xs",
+                "relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border transition-all backdrop-blur-md",
                 dockOpen
-                  ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/25 ring-2 ring-blue-400/40"
-                  : "border-border/70 bg-card/60 hover:bg-card hover:border-primary/40 text-muted-foreground hover:text-foreground"
+                  ? "bg-gradient-to-br from-blue-600 to-sky-600 text-white border-blue-400/50 shadow-md shadow-blue-500/25 ring-2 ring-blue-400/30"
+                  : "border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] hover:bg-white dark:hover:bg-white/[0.08] hover:border-blue-500/40 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400"
               )}
               title="Toggle Multi-Tasking Split Dock (Alt+D or Ctrl+\\)"
               aria-label="Toggle Multi-Tasking Split Dock"
@@ -525,7 +525,7 @@ export function Header() {
             <button
               type="button"
               onClick={() => setShortcutsModalOpen(true)}
-              className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border border-border/70 bg-card/60 hover:bg-card hover:border-primary/40 text-muted-foreground hover:text-foreground transition-all shadow-xs"
+              className="relative flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-white/70 dark:bg-white/[0.04] backdrop-blur-md hover:bg-white dark:hover:bg-white/[0.08] hover:border-blue-500/40 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all"
               title="Keyboard Shortcuts Cheat Sheet (?)"
               aria-label="Open keyboard shortcuts cheat sheet"
             >
