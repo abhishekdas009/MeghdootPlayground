@@ -25,22 +25,22 @@ export const SPRING_GENTLE_120HZ = {
 
 // Standard page enter/exit motion preset
 export const PAGE_MOTION = {
-  initial: { opacity: 0, y: 6 },
+  initial: { opacity: 0.9, y: 4 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
+  exit: { opacity: 0.9, y: -3 },
   transition: {
-    duration: 0.22,
+    duration: 0.14,
     ease: EASE_120HZ,
   },
 };
 
 // Modal / Dialog scale & fade motion preset
 export const MODAL_MOTION = {
-  initial: { opacity: 0, scale: 0.96, y: 10 },
+  initial: { opacity: 0, scale: 0.97, y: 8 },
   animate: { opacity: 1, scale: 1, y: 0 },
-  exit: { opacity: 0, scale: 0.96, y: 8 },
+  exit: { opacity: 0, scale: 0.97, y: 6 },
   transition: {
-    duration: 0.2,
+    duration: 0.16,
     ease: EASE_120HZ,
   },
 };
@@ -61,26 +61,26 @@ export const GLASS_TAB_SPRING = {
   mass: 0.75,
 };
 
-// Stagger container & item presets for smooth cascade reveals
+// Stagger container & item presets for snappy cascade reveals
 export const STAGGER_CONTAINER = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.045,
-      delayChildren: 0.02,
+      staggerChildren: 0.02,
+      delayChildren: 0,
     },
   },
 };
 
 export const STAGGER_ITEM = {
-  hidden: { opacity: 0, y: 12, scale: 0.985 },
+  hidden: { opacity: 0, y: 8, scale: 0.992 },
   show: {
     opacity: 1,
     y: 0,
     scale: 1,
     transition: {
-      duration: 0.28,
+      duration: 0.18,
       ease: EASE_120HZ,
     },
   },
@@ -88,11 +88,11 @@ export const STAGGER_ITEM = {
 
 // Panel crossfade transition for AnimatePresence mode="wait"
 export const PANEL_SWAP_MOTION = {
-  initial: { opacity: 0, y: 8, scale: 0.992 },
+  initial: { opacity: 0, y: 6, scale: 0.994 },
   animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -6, scale: 0.994 },
+  exit: { opacity: 0, y: -4, scale: 0.996 },
   transition: {
-    duration: 0.22,
+    duration: 0.15,
     ease: EASE_120HZ,
   },
 };

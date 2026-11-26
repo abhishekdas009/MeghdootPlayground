@@ -375,7 +375,7 @@ export function TrainingCalendarPicker({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 top-full mt-2 z-50 w-[300px] rounded-2xl p-3.5 shadow-2xl backdrop-blur-2xl border bg-white/95 dark:bg-[#090d16]/95 border-slate-200/90 dark:border-white/15"
+            className="absolute left-0 top-full mt-2 z-50 w-[300px] rounded-2xl p-3.5 shadow-2xl backdrop-blur-md border bg-white/95 dark:bg-[#090d16]/95 border-slate-200/90 dark:border-white/15"
           >
             {/* Calendar Header */}
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
@@ -700,7 +700,7 @@ export function TrainingTimePickerSection({
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="rounded-2xl p-3.5 bg-white/95 dark:bg-[#070b14]/95 border border-sky-500/40 shadow-2xl backdrop-blur-2xl space-y-3">
+            <div className="rounded-2xl p-3.5 bg-white/95 dark:bg-[#070b14]/95 border border-sky-500/40 shadow-2xl backdrop-blur-md space-y-3">
               {/* Target Switcher Tabs */}
               <div className="flex items-center justify-between pb-2 border-b border-border/70">
                 <div className="flex items-center gap-1.5 p-1 bg-surface-recessed/70 dark:bg-[#04060a] rounded-xl border border-border/60">
@@ -1327,7 +1327,7 @@ export function TrainingMOMMaker() {
       {/* ── Left Column: Configuration & Inputs ── */}
       <div className="lg:col-span-5 space-y-6">
         {/* Card 1: Session Details */}
-        <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl p-0 overflow-visible relative z-20">
+        <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-md p-0 overflow-visible relative z-20">
           <CardHeader className="pb-4 px-6 pt-5 border-b border-border/70 bg-muted/20 rounded-t-2xl">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-lg font-bold text-foreground">
               <div className="flex items-center gap-2">
@@ -1509,7 +1509,7 @@ export function TrainingMOMMaker() {
         </Card>
 
         {/* Card 2: Attendees Table Manager */}
-        <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl p-0 overflow-hidden">
+        <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-md p-0 overflow-hidden">
           <CardHeader className="pb-3 px-6 pt-5 border-b border-border/70 bg-muted/20 flex flex-row items-center justify-between flex-wrap gap-2">
             <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
               <Users className="h-4 w-4 text-emerald-500" />
@@ -1661,7 +1661,7 @@ export function TrainingMOMMaker() {
         </Card>
 
         {/* Card 3: Topics Overview & Takeaways (Collapsible) */}
-        <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl p-0 overflow-hidden">
+        <Card className="app-card border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-md p-0 overflow-hidden">
           <button
             type="button"
             onClick={() => setIsCurriculumOpen(!isCurriculumOpen)}
@@ -1715,7 +1715,7 @@ export function TrainingMOMMaker() {
 
       {/* ── Right Column: Generated Output / Live Email Preview ── */}
       <div className="lg:col-span-7 space-y-6">
-        <Card className="app-card h-full border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-2xl flex flex-col p-0 overflow-hidden">
+        <Card className="app-card h-full border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl backdrop-blur-md flex flex-col p-0 overflow-hidden">
               {/* Header */}
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-4 border-b border-border/70 bg-muted/20 px-6 py-4 gap-3 flex-wrap">
             <div>

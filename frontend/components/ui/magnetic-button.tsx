@@ -1,15 +1,17 @@
 "use client";
 
-import React, { useRef, useState } from "react";
-import { motion } from "framer-motion";
+import React, { useRef } from "react";
+import { motion, useMotionTemplate, useMotionValue, useSpring } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export interface MagneticButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   className?: string;
-  magneticPull?: number; 
-  glowColor?: string; 
+  magneticPull?: number;
+  glowColor?: string;
 }
+
+const MAGNET_SPRING = { stiffness: 320, damping: 22, mass: 0.45 };
 
 export const MagneticButton = React.forwardRef<HTMLButtonElement, MagneticButtonProps>(({
   children,
@@ -21,40 +23,44 @@ export const MagneticButton = React.forwardRef<HTMLButtonElement, MagneticButton
   ...props
 }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+  const x = useSpring(rawX, MAGNET_SPRING);
+  const y = useSpring(rawY, MAGNET_SPRING);
+  const glowX = useMotionValue(50);
+  const glowY = useMotionValue(50);
+  const glowOpacity = useMotionValue(0);
+  const rectRef = useRef<DOMRect | null>(null);
+
+  const spotlightBg = useMotionTemplate`radial-gradient(circle 45px at ${glowX}px ${glowY}px, ${glowColor}, transparent 100%)`;
+
+  const handleMouseEnter = () => {
+    if (disabled || !containerRef.current) return;
+    rectRef.current = containerRef.current.getBoundingClientRect();
+    glowOpacity.set(1);
+  };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current || disabled) return;
+    const rect = rectRef.current ?? containerRef.current.getBoundingClientRect();
+    rectRef.current = rect;
 
-    const { clientX, clientY } = e;
-    const { left, top, width, height } = containerRef.current.getBoundingClientRect();
-    
-    // Spotlight position relative to button
-    setMousePos({ x: clientX - left, y: clientY - top });
+    const relX = e.clientX - rect.left;
+    const relY = e.clientY - rect.top;
+    glowX.set(relX);
+    glowY.set(relY);
 
-    // Magnetic pull calculation
-    const centerX = left + width / 2;
-    const centerY = top + height / 2;
-    
-    // Only pull if mouse is within a reasonable distance (already handled by hover, but smooth)
-    const distanceX = clientX - centerX;
-    const distanceY = clientY - centerY;
-
-    setPosition({ 
-      x: (distanceX / width) * magneticPull, 
-      y: (distanceY / height) * magneticPull 
-    });
-  };
-
-  const handleMouseEnter = () => {
-    if (!disabled) setIsHovered(true);
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    rawX.set(((relX - centerX) / Math.max(rect.width, 1)) * magneticPull);
+    rawY.set(((relY - centerY) / Math.max(rect.height, 1)) * magneticPull);
   };
 
   const handleMouseLeave = () => {
-    setIsHovered(false);
-    setPosition({ x: 0, y: 0 });
+    rectRef.current = null;
+    glowOpacity.set(0);
+    rawX.set(0);
+    rawY.set(0);
   };
 
   return (
@@ -63,27 +69,25 @@ export const MagneticButton = React.forwardRef<HTMLButtonElement, MagneticButton
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      animate={{ x: position.x, y: position.y }}
-      transition={{ type: "spring", stiffness: 300, damping: 20, mass: 0.5 }}
+      style={{ x, y }}
       className="relative inline-block"
     >
       <button
         ref={ref}
         disabled={disabled}
         className={cn(
-          "relative overflow-hidden transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed",
+          "relative overflow-hidden transition-[opacity,transform,box-shadow,background-color] duration-200 disabled:opacity-50 disabled:cursor-not-allowed",
           className
         )}
         onClick={onClick}
         {...props}
       >
-        {/* Spotlight Effect */}
         <motion.div
-          animate={{ opacity: isHovered ? 1 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="pointer-events-none absolute inset-0 z-0"
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-200"
           style={{
-            background: `radial-gradient(circle 45px at ${mousePos.x}px ${mousePos.y}px, ${glowColor}, transparent 100%)`,
+            opacity: glowOpacity,
+            background: spotlightBg,
           }}
         />
         <span className="relative z-10 flex items-center justify-center gap-2">

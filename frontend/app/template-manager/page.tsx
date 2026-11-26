@@ -1063,10 +1063,10 @@ export default function QueryLibraryPage() {
         {!showForm ? (
           <motion.div
             key="kpi-cards"
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0.9, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
-            transition={{ duration: 0.3 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={{ duration: 0.16 }}
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5"
           >
             {[

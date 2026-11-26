@@ -11,19 +11,45 @@ export interface RefreshRateInfo {
 // Global cached refresh rate to avoid re-measuring on every component mount
 let cachedFps = 60;
 let isHighRefreshGlobal = false;
+let hasMeasuredOnce = false;
+let isMeasuringNow = false;
+let lastMeasuredTimestamp = 0;
 let listeners: Array<(info: RefreshRateInfo) => void> = [];
 
+function buildInfo(fps: number, highRefresh: boolean): RefreshRateInfo {
+  return {
+    fps,
+    isHighRefresh: highRefresh,
+    label: `${fps}Hz ${fps >= 120 ? "Ultra Smooth" : fps >= 90 ? "High Refresh" : "Standard"}`,
+  };
+}
+
 /**
- * Measure display refresh rate using high-resolution requestAnimationFrame timestamps
+ * Measure display refresh rate using high-resolution requestAnimationFrame timestamps.
+ * Deduplicated and cooled down so tab switches / multiple mounts do not re-trigger bursts.
  */
-export function measureDisplayRefreshRate(callback?: (info: RefreshRateInfo) => void) {
+export function measureDisplayRefreshRate(
+  callback?: (info: RefreshRateInfo) => void,
+  force = false
+) {
   if (typeof window === "undefined") {
     return;
   }
 
+  const nowMs = Date.now();
+  if (!force && hasMeasuredOnce && nowMs - lastMeasuredTimestamp < 60_000) {
+    if (callback) callback(buildInfo(cachedFps, isHighRefreshGlobal));
+    return;
+  }
+
+  if (isMeasuringNow) {
+    return;
+  }
+  isMeasuringNow = true;
+
   let frameCount = 0;
   let startTime = 0;
-  const sampleFrames = 25;
+  const sampleFrames = 18;
   const deltas: number[] = [];
   let lastTimestamp = 0;
 
@@ -45,15 +71,19 @@ export function measureDisplayRefreshRate(callback?: (info: RefreshRateInfo) => 
     if (frameCount < sampleFrames) {
       requestAnimationFrame(sample);
     } else {
-      // Calculate median or trimmed average delta to discard frame drops
+      isMeasuringNow = false;
+      hasMeasuredOnce = true;
+      lastMeasuredTimestamp = Date.now();
+
+      // Calculate median/trimmed average delta to discard isolated frame drops
       deltas.sort((a, b) => a - b);
-      const validDeltas = deltas.slice(2, deltas.length - 2);
+      const validDeltas = deltas.length > 4 ? deltas.slice(2, deltas.length - 2) : deltas;
       const avgDelta =
         validDeltas.length > 0
           ? validDeltas.reduce((a, b) => a + b, 0) / validDeltas.length
           : (now - startTime) / frameCount;
 
-      const rawFps = 1000 / avgDelta;
+      const rawFps = avgDelta > 0 ? 1000 / avgDelta : 60;
 
       // Snap to known standard hardware tiers
       let detectedFps = 60;
@@ -75,11 +105,7 @@ export function measureDisplayRefreshRate(callback?: (info: RefreshRateInfo) => 
         isHighRefreshGlobal ? "1" : "0"
       );
 
-      const info: RefreshRateInfo = {
-        fps: detectedFps,
-        isHighRefresh: isHighRefreshGlobal,
-        label: `${detectedFps}Hz ${detectedFps >= 120 ? "Ultra Smooth" : detectedFps >= 90 ? "High Refresh" : "Standard"}`,
-      };
+      const info = buildInfo(detectedFps, isHighRefreshGlobal);
 
       if (callback) callback(info);
       listeners.forEach((fn) => fn(info));

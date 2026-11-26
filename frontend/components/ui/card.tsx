@@ -16,7 +16,7 @@ const Card = React.forwardRef<HTMLElement, CardProps>(
       ref={ref}
       className={cn(
         "app-card card-motion min-w-0 rounded-2xl text-foreground",
-        "transition-all duration-250 ease-out",
+        "transition-[transform,border-color,box-shadow] duration-200 ease-out",
         interactive && [
           "cursor-pointer hover:-translate-y-0.5 hover:border-primary/50",
           "focus-within:ring-2 focus-within:ring-primary/40 focus-within:outline-none"

@@ -32,9 +32,14 @@ import { useDashboardStore, type ActivityEntry } from "@/lib/dashboard-store";
 import { motion, AnimatePresence } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { useUIStore } from "@/store/ui-store";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
-import { GlobalSearchModal } from "@/components/layout/global-search-modal";
 import { EmptyActivityIllustration } from "@/components/ui/illustrations";
+
+const GlobalSearchModal = dynamic(
+  () => import("@/components/layout/global-search-modal").then((m) => m.GlobalSearchModal),
+  { ssr: false }
+);
 
 type ThemeMode = "light" | "dark";
 
@@ -75,18 +80,16 @@ function notificationMeta(type: ActivityEntry["type"]) {
 
 export function Header() {
   const router = useRouter();
-  const {
-    toggleSidebar,
-    sidebarCollapsed,
-    onSidebarHoverStart,
-    onMenuButtonMouseLeave,
-    setMobileSidebarOpen,
-    dockOpen,
-    toggleDock,
-    setShortcutsModalOpen,
-    wallpaperModalOpen,
-    setWallpaperModalOpen,
-  } = useUIStore();
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
+  const onSidebarHoverStart = useUIStore((s) => s.onSidebarHoverStart);
+  const onMenuButtonMouseLeave = useUIStore((s) => s.onMenuButtonMouseLeave);
+  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
+  const dockOpen = useUIStore((s) => s.dockOpen);
+  const toggleDock = useUIStore((s) => s.toggleDock);
+  const setShortcutsModalOpen = useUIStore((s) => s.setShortcutsModalOpen);
+  const wallpaperModalOpen = useUIStore((s) => s.wallpaperModalOpen);
+  const setWallpaperModalOpen = useUIStore((s) => s.setWallpaperModalOpen);
   const activity = useDashboardStore((s) => s.activity);
 
   const formatTime = (ts: string) => {
@@ -101,6 +104,11 @@ export function Header() {
 
   const [searchFocused, setSearchFocused] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const [mountSearch, setMountSearch] = React.useState(false);
+
+  React.useEffect(() => {
+    if (searchOpen) setMountSearch(true);
+  }, [searchOpen]);
   const [theme, setTheme] = React.useState<ThemeMode>("dark");
   const [lastSeenActivityAt, setLastSeenActivityAt] = React.useState<string | null>(null);
   const [notificationReadStateLoaded, setNotificationReadStateLoaded] = React.useState(false);
@@ -237,7 +245,7 @@ export function Header() {
   }, [toggleDock, setShortcutsModalOpen, toggleTheme]);
 
   return (
-    <header className="desktop-command-bar fixed top-0 left-0 right-0 z-50 h-14 w-full border-b border-border/40 bg-background/65 backdrop-blur-xl shadow-[0_1px_0_rgb(255_255_255_/_0.04)] transition-all duration-200" suppressHydrationWarning>
+    <header className="desktop-command-bar fixed top-0 left-0 right-0 z-50 h-14 w-full border-b border-border/40 bg-background/70 backdrop-blur-md shadow-[0_1px_0_rgb(255_255_255_/_0.04)] transition-colors duration-150" suppressHydrationWarning>
       <div className="flex h-full items-center justify-between px-4 sm:px-5 gap-3" suppressHydrationWarning>
         {/* Left Section: Menu & Brand */}
         <div className="flex items-center gap-2.5 shrink-0" suppressHydrationWarning>
@@ -668,7 +676,7 @@ export function Header() {
         </div>
       </div>
 
-      <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />
+      {mountSearch && <GlobalSearchModal open={searchOpen} onOpenChange={setSearchOpen} />}
     </header>
   );
 }

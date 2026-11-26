@@ -1,22 +1,36 @@
+"use client";
+
 import * as React from "react";
 import Prism from "prismjs";
 import "prismjs/components/prism-sql";
-// We use a custom theme or just tailwind colors, but Prism adds token classes like `token keyword`.
-// Let's define the custom CSS for Prism tokens.
+
+const MAX_HIGHLIGHT_CHARS = 45_000;
 
 export function SOQLHighlighter({ query, className }: { query?: string; className?: string }) {
-  const [highlighted, setHighlighted] = React.useState("");
+  const rawQuery = query || "";
+  const deferredQuery = React.useDeferredValue(rawQuery);
 
-  React.useEffect(() => {
-    // Prism's SQL grammar works perfectly for SOQL
-    const html = Prism.highlight(query || "", Prism.languages.sql!, "sql");
-    setHighlighted(html);
-  }, [query]);
+  const highlighted = React.useMemo(() => {
+    if (!deferredQuery || deferredQuery.length > MAX_HIGHLIGHT_CHARS) {
+      return null;
+    }
+    const grammar = Prism.languages.sql;
+    if (!grammar) return null;
+    return Prism.highlight(deferredQuery, grammar, "sql");
+  }, [deferredQuery]);
+
+  if (highlighted === null) {
+    return (
+      <pre className={`language-sql ${className || ""}`}>
+        {rawQuery}
+      </pre>
+    );
+  }
 
   return (
-    <pre 
+    <pre
       className={`language-sql ${className || ""}`}
-      dangerouslySetInnerHTML={{ __html: highlighted || query || "" }}
+      dangerouslySetInnerHTML={{ __html: highlighted }}
     />
   );
 }

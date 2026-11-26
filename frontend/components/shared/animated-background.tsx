@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useUIStore } from "@/store/ui-store";
 import { useRefreshRate } from "@/lib/refresh-rate";
-import { WALLPAPER_PRESETS } from "@/lib/wallpapers";
+import { getInsightWatermarkGradient, WALLPAPER_PRESETS } from "@/lib/wallpapers";
 import { cn } from "@/lib/utils";
 
 interface AuroraRay {
@@ -120,12 +120,20 @@ const ANIMATED_WALLPAPER_IDS = [
   "quantum-helix",
 ];
 
+const DIFFUSE_WALLPAPER_IDS = new Set([
+  "aurora",
+  "fluid-plasma",
+  "quantum-waves",
+]);
+
 export function AnimatedBackground() {
   const [mounted, setMounted] = React.useState(false);
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const [isDark, setIsDark] = React.useState(true);
-  const { wallpaperId, wallpaperOpacity, wallpaperSpeed } = useUIStore();
-  const { fps, isHighRefresh } = useRefreshRate();
+  const wallpaperId = useUIStore((s) => s.wallpaperId);
+  const wallpaperOpacity = useUIStore((s) => s.wallpaperOpacity);
+  const wallpaperSpeed = useUIStore((s) => s.wallpaperSpeed);
+  const { isHighRefresh } = useRefreshRate();
 
   React.useEffect(() => {
     setMounted(true);
@@ -146,6 +154,13 @@ export function AnimatedBackground() {
 
     return () => observer.disconnect();
   }, []);
+
+  // Sync INSIGHT TABLE typography gradient with active wallpaper background (or STEP 1 neutral dark/white scheme)
+  React.useEffect(() => {
+    if (!mounted) return;
+    const gradient = getInsightWatermarkGradient(wallpaperId, isDark, wallpaperOpacity);
+    document.documentElement.style.setProperty("--insight-wm-gradient", gradient);
+  }, [mounted, wallpaperId, isDark, wallpaperOpacity]);
 
   const mouseRef = React.useRef<{
     x: number;
@@ -175,7 +190,7 @@ export function AnimatedBackground() {
 
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
 
     if (!isAnimated) {
@@ -184,10 +199,23 @@ export function AnimatedBackground() {
       return;
     }
 
-    let animationFrameId: number;
-    let width = (canvas.width = window.innerWidth);
-    let height = (canvas.height = window.innerHeight);
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isStaticFrameOnly = prefersReducedMotion || wallpaperSpeed === "paused";
+    const renderScale = DIFFUSE_WALLPAPER_IDS.has(wallpaperId) ? 0.6 : 1;
+
+    let animationFrameId: number | null = null;
+    let width = window.innerWidth;
+    let height = window.innerHeight;
     let time = 0;
+
+    const configureCanvasSize = () => {
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = Math.max(1, Math.round(width * renderScale));
+      canvas.height = Math.max(1, Math.round(height * renderScale));
+      ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
+    };
+    configureCanvasSize();
 
     const speedMultiplier =
       wallpaperSpeed === "paused"
@@ -200,10 +228,20 @@ export function AnimatedBackground() {
         ? isHighRefresh ? 1.25 : 1.0
         : 1.0;
 
+    // Frame pacing keeps background fluid while preserving GPU budget for UI scroll & typing
+    const minFrameMs =
+      wallpaperSpeed === "ultra"
+        ? 14
+        : wallpaperSpeed === "slow"
+        ? 30
+        : isHighRefresh && wallpaperSpeed === "adaptive"
+        ? 18
+        : 24;
+
     const handleResize = () => {
       if (!canvas) return;
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      configureCanvasSize();
+      rebuildBackdropGradients();
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -255,11 +293,120 @@ export function AnimatedBackground() {
       mouseRef.current.vy = 0;
     };
 
-    window.addEventListener("resize", handleResize);
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("mouseleave", handleMouseLeave);
+    window.addEventListener("resize", handleResize, { passive: true });
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
+    window.addEventListener("mousedown", handleMouseDown, { passive: true });
+    window.addEventListener("mouseup", handleMouseUp, { passive: true });
+    window.addEventListener("mouseleave", handleMouseLeave, { passive: true });
+
+    // Cached gradients for Aurora & Starfield to eliminate hundreds of per-frame heap allocations
+    let cachedAuroraSkyGrad: CanvasGradient | null = null;
+    let cachedAuroraCurtainGrads: CanvasGradient[] = [];
+    let cachedNebulaGrads: CanvasGradient[] = [];
+
+    const auroraLayers = [
+      {
+        baseYRatio: 0.28,
+        amp: 68,
+        freq: 0.0022,
+        speed: 0.8,
+        alpha: isDark ? 0.28 : 0.16,
+        colStart: isDark ? "rgba(167, 139, 250, " : "rgba(124, 58, 237, ",
+        colEnd: isDark ? "rgba(129, 140, 248, " : "rgba(99, 102, 241, ",
+        rayCol: isDark ? "#c084fc" : "#7c3aed",
+        rayHeight: 95,
+      },
+      {
+        baseYRatio: 0.44,
+        amp: 90,
+        freq: 0.0028,
+        speed: 1.05,
+        alpha: isDark ? 0.35 : 0.22,
+        colStart: isDark ? "rgba(52, 211, 153, " : "rgba(5, 150, 105, ",
+        colEnd: isDark ? "rgba(16, 185, 129, " : "rgba(16, 185, 129, ",
+        rayCol: isDark ? "#34d399" : "#059669",
+        rayHeight: 120,
+      },
+      {
+        baseYRatio: 0.58,
+        amp: 74,
+        freq: 0.0034,
+        speed: 1.25,
+        alpha: isDark ? 0.32 : 0.2,
+        colStart: isDark ? "rgba(56, 189, 248, " : "rgba(2, 132, 199, ",
+        colEnd: isDark ? "rgba(6, 182, 212, " : "rgba(14, 165, 233, ",
+        rayCol: isDark ? "#38bdf8" : "#0284c7",
+        rayHeight: 85,
+      },
+      {
+        baseYRatio: 0.7,
+        amp: 55,
+        freq: 0.0025,
+        speed: 0.7,
+        alpha: isDark ? 0.22 : 0.14,
+        colStart: isDark ? "rgba(244, 114, 182, " : "rgba(219, 39, 119, ",
+        colEnd: isDark ? "rgba(129, 140, 248, " : "rgba(99, 102, 241, ",
+        rayCol: isDark ? "#f472b6" : "#db2777",
+        rayHeight: 65,
+      },
+    ];
+
+    const rebuildBackdropGradients = () => {
+      if (isDark) {
+        const g = ctx.createRadialGradient(
+          width * 0.5,
+          height * 0.35,
+          100,
+          width * 0.5,
+          height * 0.35,
+          Math.max(width, height) * 0.85
+        );
+        g.addColorStop(0, "rgba(6, 30, 48, 0.45)");
+        g.addColorStop(0.5, "rgba(8, 16, 32, 0.25)");
+        g.addColorStop(1, "rgba(3, 4, 8, 0.95)");
+        cachedAuroraSkyGrad = g;
+      } else {
+        const g = ctx.createRadialGradient(
+          width * 0.5,
+          height * 0.3,
+          100,
+          width * 0.5,
+          height * 0.3,
+          Math.max(width, height) * 0.9
+        );
+        g.addColorStop(0, "rgba(238, 246, 255, 0.65)");
+        g.addColorStop(0.6, "rgba(241, 245, 249, 0.45)");
+        g.addColorStop(1, "rgba(248, 250, 252, 0.85)");
+        cachedAuroraSkyGrad = g;
+      }
+
+      cachedAuroraCurtainGrads = auroraLayers.map((layer) => {
+        const grad = ctx.createLinearGradient(
+          0,
+          height * layer.baseYRatio - layer.amp,
+          0,
+          height
+        );
+        grad.addColorStop(0, `${layer.colStart}${layer.alpha})`);
+        grad.addColorStop(0.45, `${layer.colEnd}${layer.alpha * 0.75})`);
+        grad.addColorStop(0.85, `${layer.colEnd}${layer.alpha * 0.2})`);
+        grad.addColorStop(1, `${layer.colEnd}0)`);
+        return grad;
+      });
+
+      const nebulae = [
+        { x: width * 0.25, y: height * 0.3, r: width * 0.4, color: isDark ? "rgba(99, 102, 241, 0.18)" : "rgba(199, 210, 254, 0.4)" },
+        { x: width * 0.75, y: height * 0.65, r: width * 0.45, color: isDark ? "rgba(168, 85, 247, 0.14)" : "rgba(233, 213, 255, 0.35)" },
+        { x: width * 0.5, y: height * 0.85, r: width * 0.35, color: isDark ? "rgba(14, 165, 233, 0.15)" : "rgba(186, 230, 253, 0.35)" },
+      ];
+      cachedNebulaGrads = nebulae.map((neb) => {
+        const rad = ctx.createRadialGradient(neb.x, neb.y, 10, neb.x, neb.y, neb.r);
+        rad.addColorStop(0, neb.color);
+        rad.addColorStop(1, "transparent");
+        return rad;
+      });
+    };
+    rebuildBackdropGradients();
 
     // ── Asset Allocations ──
     const starCount = wallpaperId === "starfield" ? 170 : wallpaperId === "meteor-shower" ? 130 : 65;
@@ -440,41 +587,12 @@ export function AnimatedBackground() {
       });
     }
 
-    // ── 1. AURORA BOREALIS ──
+    // ── 1. AURORA BOREALIS (Cached Gradients & Zero Per-Frame Gradient Allocations) ──
     const renderAurora = () => {
-      if (isDark) {
-        ctx.fillStyle = "#030408";
-        ctx.fillRect(0, 0, width, height);
-
-        const ambientGrad = ctx.createRadialGradient(
-          width * 0.5,
-          height * 0.35,
-          100,
-          width * 0.5,
-          height * 0.35,
-          Math.max(width, height) * 0.85
-        );
-        ambientGrad.addColorStop(0, "rgba(6, 30, 48, 0.45)");
-        ambientGrad.addColorStop(0.5, "rgba(8, 16, 32, 0.25)");
-        ambientGrad.addColorStop(1, "rgba(3, 4, 8, 0.95)");
-        ctx.fillStyle = ambientGrad;
-        ctx.fillRect(0, 0, width, height);
-      } else {
-        ctx.fillStyle = "#f8fafc";
-        ctx.fillRect(0, 0, width, height);
-
-        const lightGrad = ctx.createRadialGradient(
-          width * 0.5,
-          height * 0.3,
-          100,
-          width * 0.5,
-          height * 0.3,
-          Math.max(width, height) * 0.9
-        );
-        lightGrad.addColorStop(0, "rgba(238, 246, 255, 0.65)");
-        lightGrad.addColorStop(0.6, "rgba(241, 245, 249, 0.45)");
-        lightGrad.addColorStop(1, "rgba(248, 250, 252, 0.85)");
-        ctx.fillStyle = lightGrad;
+      ctx.fillStyle = isDark ? "#030408" : "#f8fafc";
+      ctx.fillRect(0, 0, width, height);
+      if (cachedAuroraSkyGrad) {
+        ctx.fillStyle = cachedAuroraSkyGrad;
         ctx.fillRect(0, 0, width, height);
       }
 
@@ -482,67 +600,24 @@ export function AnimatedBackground() {
         for (let i = 0; i < stars.length; i++) {
           const s = stars[i]!;
           const twinkle = Math.sin(time * s.twinkleSpeed + s.phase) * 0.4 + 0.6;
+          ctx.globalAlpha = s.baseAlpha * twinkle;
+          ctx.fillStyle = "#e0f2fe";
           ctx.beginPath();
           ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(224, 242, 254, ${s.baseAlpha * twinkle})`;
           ctx.fill();
         }
+        ctx.globalAlpha = 1.0;
       }
 
       const m = mouseRef.current;
-      const layers = [
-        {
-          baseYRatio: 0.28,
-          amp: 68,
-          freq: 0.0022,
-          speed: 0.8,
-          alpha: isDark ? 0.28 : 0.16,
-          colStart: isDark ? "rgba(167, 139, 250, " : "rgba(124, 58, 237, ",
-          colEnd: isDark ? "rgba(129, 140, 248, " : "rgba(99, 102, 241, ",
-          rayCol: isDark ? "#c084fc" : "#7c3aed",
-          rayHeight: 95,
-        },
-        {
-          baseYRatio: 0.44,
-          amp: 90,
-          freq: 0.0028,
-          speed: 1.05,
-          alpha: isDark ? 0.35 : 0.22,
-          colStart: isDark ? "rgba(52, 211, 153, " : "rgba(5, 150, 105, ",
-          colEnd: isDark ? "rgba(16, 185, 129, " : "rgba(16, 185, 129, ",
-          rayCol: isDark ? "#34d399" : "#059669",
-          rayHeight: 120,
-        },
-        {
-          baseYRatio: 0.58,
-          amp: 74,
-          freq: 0.0034,
-          speed: 1.25,
-          alpha: isDark ? 0.32 : 0.2,
-          colStart: isDark ? "rgba(56, 189, 248, " : "rgba(2, 132, 199, ",
-          colEnd: isDark ? "rgba(6, 182, 212, " : "rgba(14, 165, 233, ",
-          rayCol: isDark ? "#38bdf8" : "#0284c7",
-          rayHeight: 85,
-        },
-        {
-          baseYRatio: 0.7,
-          amp: 55,
-          freq: 0.0025,
-          speed: 0.7,
-          alpha: isDark ? 0.22 : 0.14,
-          colStart: isDark ? "rgba(244, 114, 182, " : "rgba(219, 39, 119, ",
-          colEnd: isDark ? "rgba(129, 140, 248, " : "rgba(99, 102, 241, ",
-          rayCol: isDark ? "#f472b6" : "#db2777",
-          rayHeight: 65,
-        },
-      ];
+      const stepX = 20;
 
-      layers.forEach((layer, layerIdx) => {
+      for (let layerIdx = 0; layerIdx < auroraLayers.length; layerIdx++) {
+        const layer = auroraLayers[layerIdx]!;
         const points: Array<{ x: number; y: number }> = [];
         ctx.beginPath();
         ctx.moveTo(0, height);
 
-        const stepX = 14;
         for (let x = 0; x <= width + stepX; x += stepX) {
           let mouseDisplace = 0;
           if (m.x !== -1000) {
@@ -565,21 +640,12 @@ export function AnimatedBackground() {
         ctx.lineTo(width, height);
         ctx.closePath();
 
-        const curtainGrad = ctx.createLinearGradient(
-          0,
-          height * layer.baseYRatio - layer.amp,
-          0,
-          height
-        );
-        curtainGrad.addColorStop(0, `${layer.colStart}${layer.alpha})`);
-        curtainGrad.addColorStop(0.45, `${layer.colEnd}${layer.alpha * 0.75})`);
-        curtainGrad.addColorStop(0.85, `${layer.colEnd}${layer.alpha * 0.2})`);
-        curtainGrad.addColorStop(1, `${layer.colEnd}0)`);
-
-        ctx.fillStyle = curtainGrad;
+        ctx.fillStyle = cachedAuroraCurtainGrads[layerIdx] || layer.rayCol;
         ctx.fill();
 
         const rayStride = 3;
+        ctx.strokeStyle = layer.rayCol;
+        ctx.lineWidth = isDark ? 2.0 : 1.6;
         for (let i = 0; i < points.length; i += rayStride) {
           const pt = points[i]!;
           const rayIndex = (i + layerIdx * 17) % curtainRays.length;
@@ -587,22 +653,16 @@ export function AnimatedBackground() {
           const shimmer = Math.sin(time * rayData.speed + rayData.phase) * 0.35 + 0.65;
           const currentRayH = layer.rayHeight * rayData.heightMult * shimmer;
 
-          const rayGrad = ctx.createLinearGradient(pt.x, pt.y - currentRayH, pt.x, pt.y + 10);
-          rayGrad.addColorStop(0, "transparent");
-          rayGrad.addColorStop(0.45, layer.rayCol);
-          rayGrad.addColorStop(1, "transparent");
-
+          ctx.globalAlpha = (isDark ? 0.18 : 0.1) * shimmer;
           ctx.beginPath();
           ctx.moveTo(pt.x, pt.y - currentRayH);
-          ctx.lineTo(pt.x, pt.y + 15);
-          ctx.strokeStyle = rayGrad;
-          ctx.lineWidth = isDark ? 2.2 : 1.8;
-          ctx.globalAlpha = (isDark ? 0.32 : 0.16) * shimmer;
+          ctx.lineTo(pt.x, pt.y + 12);
           ctx.stroke();
-          ctx.globalAlpha = 1.0;
         }
-      });
+        ctx.globalAlpha = 1.0;
+      }
 
+      const palette = isDark ? moteColorsDark : moteColorsLight;
       for (let i = 0; i < motes.length; i++) {
         const mote = motes[i]!;
         mote.x += mote.vx * speedMultiplier;
@@ -615,12 +675,11 @@ export function AnimatedBackground() {
 
         ctx.beginPath();
         ctx.arc(mote.x, mote.y, mote.size, 0, Math.PI * 2);
-        const palette = isDark ? moteColorsDark : moteColorsLight;
         ctx.fillStyle = palette[i % palette.length]!;
         ctx.globalAlpha = isDark ? mote.alpha : mote.alpha * 0.7;
         ctx.fill();
-        ctx.globalAlpha = 1.0;
       }
+      ctx.globalAlpha = 1.0;
     };
 
     // ── 2. DEEP SPACE COSMOS ──
@@ -628,33 +687,24 @@ export function AnimatedBackground() {
       ctx.fillStyle = isDark ? "#020308" : "#f1f5f9";
       ctx.fillRect(0, 0, width, height);
 
-      const nebulae = [
-        { x: width * 0.25, y: height * 0.3, r: width * 0.4, color: isDark ? "rgba(99, 102, 241, 0.18)" : "rgba(199, 210, 254, 0.4)" },
-        { x: width * 0.75, y: height * 0.65, r: width * 0.45, color: isDark ? "rgba(168, 85, 247, 0.14)" : "rgba(233, 213, 255, 0.35)" },
-        { x: width * 0.5, y: height * 0.85, r: width * 0.35, color: isDark ? "rgba(14, 165, 233, 0.15)" : "rgba(186, 230, 253, 0.35)" },
-      ];
-
-      nebulae.forEach((neb) => {
-        const rad = ctx.createRadialGradient(neb.x, neb.y, 10, neb.x, neb.y, neb.r);
-        rad.addColorStop(0, neb.color);
-        rad.addColorStop(1, "transparent");
-        ctx.fillStyle = rad;
+      for (let n = 0; n < cachedNebulaGrads.length; n++) {
+        ctx.fillStyle = cachedNebulaGrads[n]!;
         ctx.fillRect(0, 0, width, height);
-      });
+      }
 
+      ctx.fillStyle = isDark ? "#f0f9ff" : "#1e3a8a";
       for (let i = 0; i < stars.length; i++) {
         const s = stars[i]!;
         s.y += 0.15 * speedMultiplier;
         if (s.y > height) s.y = 0;
 
         const twinkle = Math.sin(time * s.twinkleSpeed + s.phase) * 0.4 + 0.6;
+        ctx.globalAlpha = isDark ? s.baseAlpha * twinkle : s.baseAlpha * twinkle * 0.6;
         ctx.beginPath();
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fillStyle = isDark
-          ? `rgba(240, 249, 255, ${s.baseAlpha * twinkle})`
-          : `rgba(30, 58, 138, ${s.baseAlpha * twinkle * 0.6})`;
         ctx.fill();
       }
+      ctx.globalAlpha = 1.0;
     };
 
     // ── 3. CYBERNETIC BLUEPRINT ──
@@ -1242,9 +1292,24 @@ export function AnimatedBackground() {
     };
 
     let lastTime = performance.now();
+    let lastDrawTime = lastTime;
+
     const render = (now?: DOMHighResTimeStamp) => {
+      if (document.hidden) {
+        animationFrameId = null;
+        return;
+      }
+
       const currentTime = typeof now === "number" ? now : performance.now();
-      const deltaMs = Math.min(currentTime - lastTime, 40);
+      const elapsedSinceDraw = currentTime - lastDrawTime;
+
+      if (!isStaticFrameOnly && elapsedSinceDraw < minFrameMs) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+      lastDrawTime = currentTime;
+
+      const deltaMs = Math.min(currentTime - lastTime, 48);
       lastTime = currentTime;
       const deltaFactor = deltaMs > 0 ? deltaMs / 16.67 : 1.0;
       time += 0.007 * speedMultiplier * deltaFactor;
@@ -1286,23 +1351,46 @@ export function AnimatedBackground() {
           continue;
         }
 
-        ctx.save();
         ctx.beginPath();
         ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
         ctx.strokeStyle = r.color;
         ctx.globalAlpha = r.alpha;
         ctx.lineWidth = 2.0;
         ctx.stroke();
-        ctx.restore();
       }
+      ctx.globalAlpha = 1.0;
 
-      animationFrameId = requestAnimationFrame(render);
+      if (!isStaticFrameOnly) {
+        animationFrameId = requestAnimationFrame(render);
+      }
     };
 
-    animationFrameId = requestAnimationFrame(render);
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (animationFrameId !== null) {
+          cancelAnimationFrame(animationFrameId);
+          animationFrameId = null;
+        }
+      } else if (!isStaticFrameOnly && animationFrameId === null) {
+        lastTime = performance.now();
+        lastDrawTime = lastTime;
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    if (isStaticFrameOnly) {
+      render(performance.now());
+    } else if (!document.hidden) {
+      animationFrameId = requestAnimationFrame(render);
+    }
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mousedown", handleMouseDown);

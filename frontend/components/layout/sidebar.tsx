@@ -65,16 +65,18 @@ const NAV_ICON_BG: Record<string, string> = {
 const DIVIDERS_AFTER = new Set(["/daily-report-generator", "/analytics"]);
 export function Sidebar() {
   const pathname = usePathname();
-  const {
-    sidebarCollapsed,
-    sidebarHovered,
-    toggleSidebar,
-    setSidebarHovered,
-    onSidebarHoverStart,
-    onSidebarHoverEnd,
-    mobileSidebarOpen,
-    setMobileSidebarOpen,
-  } = useUIStore();
+  const sidebarCollapsed = useUIStore((s) => s.sidebarCollapsed);
+  const sidebarHovered = useUIStore((s) => s.sidebarHovered);
+  const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const setSidebarHovered = useUIStore((s) => s.setSidebarHovered);
+  const onSidebarHoverStart = useUIStore((s) => s.onSidebarHoverStart);
+  const onSidebarHoverEnd = useUIStore((s) => s.onSidebarHoverEnd);
+  const mobileSidebarOpen = useUIStore((s) => s.mobileSidebarOpen);
+  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
+  const activeUserName = useUIStore((s) => s.activeUserName);
+  const askNameOnStart = useUIStore((s) => s.askNameOnStart);
+  const userIdentityHydrated = useUIStore((s) => s.userIdentityHydrated);
+  const setUserModalOpen = useUIStore((s) => s.setUserModalOpen);
 
   const isExpanded = !sidebarCollapsed || sidebarHovered;
 
@@ -117,7 +119,7 @@ export function Sidebar() {
             {/* Icon box */}
             <div
               className={cn(
-                "sidebar-nav-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110",
+                "sidebar-nav-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition-transform duration-150 group-hover:scale-105",
                 isActive
                   ? iconBg
                   : "text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-sky-300 bg-transparent group-hover:bg-blue-500/10 dark:group-hover:bg-white/[0.06]"
@@ -126,26 +128,15 @@ export function Sidebar() {
               <Icon className="h-4.5 w-4.5" />
             </div>
 
-            {/* Label */}
-            <motion.span
-              initial={false}
-              animate={{
-                opacity: isCompact ? 0 : 1,
-                width: isCompact ? 0 : "auto",
-              }}
-              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            {/* Label (CSS transition avoids per-frame JS width reflow across 12 links) */}
+            <span
               className={cn(
-                "truncate tracking-tight",
-                !isCompact && "md:block"
+                "truncate tracking-tight whitespace-nowrap transition-opacity duration-150",
+                isCompact ? "hidden w-0 opacity-0" : "inline-block opacity-100"
               )}
-              style={{
-                display: "inline-block",
-                whiteSpace: "nowrap",
-                overflow: "hidden"
-              }}
             >
               {item.label}
-            </motion.span>
+            </span>
           </Link>
 
           {/* Section divider */}
@@ -188,14 +179,24 @@ export function Sidebar() {
           </button>
         )}
 
-        {/* Workspace identity */}
-        <div
+        {/* Workspace identity & active Case Owner switcher */}
+        <button
+          type="button"
+          onClick={() => {
+            setUserModalOpen(true);
+            if (isMobile) setMobileSidebarOpen(false);
+          }}
+          title={
+            userIdentityHydrated && activeUserName
+              ? `${activeUserName} • Click to switch user or toggle Ask Name First`
+              : "Click to choose your Case Owner name"
+          }
           className={cn(
-            "flex items-center justify-between gap-2 rounded-xl p-2 bg-background/40 backdrop-blur-sm border border-border/30 shadow-none transition-colors duration-150",
+            "w-full flex items-center justify-between gap-2 rounded-xl p-2 bg-background/40 hover:bg-primary/10 dark:hover:bg-white/[0.06] backdrop-blur-sm border border-border/30 hover:border-primary/40 shadow-none transition-colors duration-150 text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
             isCompact ? "flex-col justify-center p-1.5 gap-1.5" : ""
           )}
         >
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 w-full">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10 ring-1 ring-primary/30 overflow-hidden">
             <Image
               src="/logo%20white.png"
@@ -214,15 +215,21 @@ export function Sidebar() {
           </div>
           {(!isCompact || isMobile) && (
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="text-xs font-extrabold text-foreground truncate">Salesforce Team</div>
+              <div className="text-xs font-extrabold text-foreground truncate">
+                {userIdentityHydrated && activeUserName ? activeUserName : "Salesforce Team"}
+              </div>
               <div className="text-[10px] font-sans text-emerald-600 dark:text-emerald-400 truncate flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
-                <span>PostgreSQL DB</span>
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 motion-safe:animate-pulse" />
+                <span className="truncate">
+                  {userIdentityHydrated && activeUserName
+                    ? `Switch \u2022 Ask: ${askNameOnStart ? "ON" : "OFF"}`
+                    : "Choose Case Owner"}
+                </span>
               </div>
             </div>
           )}
         </div>
-      </div>
+      </button>
     </div>
   );
 };
@@ -230,19 +237,17 @@ export function Sidebar() {
   return (
     <>
       {/* ─── Desktop & Tablet Sidebar ────────────────────────────────── */}
-      <motion.aside
-        initial={false}
-        animate={{ width: isExpanded ? 256 : 84 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      <aside
         data-sidebar-collapsed={sidebarCollapsed ? "true" : "false"}
         data-sidebar-peeking={sidebarCollapsed && sidebarHovered ? "true" : "false"}
         onMouseEnter={onSidebarHoverStart}
         onMouseLeave={onSidebarHoverEnd}
         className={cn(
-          "desktop-icon-dock fixed left-0 top-[var(--app-header-height)] hidden h-[calc(100dvh-var(--app-header-height))] flex-col overflow-hidden border-r transition-colors duration-150 md:flex",
+          "desktop-icon-dock fixed left-0 top-[var(--app-header-height)] hidden h-[calc(100dvh-var(--app-header-height))] flex-col overflow-hidden border-r transition-[width,background-color] duration-150 ease-[cubic-bezier(0.16,1,0.3,1)] md:flex",
+          isExpanded ? "w-[256px]" : "w-[84px]",
           sidebarCollapsed && sidebarHovered
-            ? "z-40 bg-background/95 dark:bg-card backdrop-blur-2xl border-border/80 shadow-2xl shadow-black/25 dark:shadow-black/75"
-            : "z-30 bg-background/45 backdrop-blur-xl border-border/40 border-r border-border"
+            ? "z-40 bg-background/95 dark:bg-card backdrop-blur-lg border-border/80 shadow-2xl shadow-black/25 dark:shadow-black/75"
+            : "z-30 bg-background/55 backdrop-blur-md border-border/40 border-r border-border"
         )}
       >
         {/* Nav items container */}
@@ -252,7 +257,7 @@ export function Sidebar() {
 
         {/* Footer with Theme toggle, User avatar, and Collapse button */}
         {renderSidebarFooter(false)}
-      </motion.aside>
+      </aside>
 
       {/* ─── Mobile Phone & Touch Screen Slide-Over Drawer ───────────── */}
       <AnimatePresence initial={false}>

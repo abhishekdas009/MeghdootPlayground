@@ -319,7 +319,7 @@ export default function UserManualsPage() {
   return (
     <div className="flex h-screen flex-col bg-transparent overflow-hidden">
       {/* ── Top Header Area ─────────────────────────────────────────────────────── */}
-      <div className="relative flex shrink-0 flex-col gap-4 border-b border-slate-200/70 dark:border-white/[0.08] bg-white/55 dark:bg-[#05070e]/65 px-6 py-4 backdrop-blur-2xl xl:flex-row xl:items-center xl:justify-between z-20">
+      <div className="relative flex shrink-0 flex-col gap-4 border-b border-slate-200/70 dark:border-white/[0.08] bg-white/55 dark:bg-[#05070e]/65 px-6 py-4 backdrop-blur-md xl:flex-row xl:items-center xl:justify-between z-20">
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px glass-shimmer-line opacity-60" />
         <div className="flex items-center gap-3.5 min-w-0">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-400 via-blue-600 to-blue-700 text-white shadow-[0_6px_18px_rgba(2,132,199,0.35)] ring-1 ring-white/25">
@@ -348,7 +348,7 @@ export default function UserManualsPage() {
             <SelectTrigger className="w-[150px] shrink-0 h-9 bg-white/65 dark:bg-white/[0.05] backdrop-blur-md border-slate-200/80 dark:border-white/[0.1] text-slate-900 dark:text-slate-100 shadow-xs text-xs font-bold rounded-xl">
               <SelectValue placeholder="All Versions" />
             </SelectTrigger>
-            <SelectContent className="bg-white/95 dark:bg-[#0b0e18]/95 backdrop-blur-2xl border-slate-200/80 dark:border-white/[0.1]">
+            <SelectContent className="bg-white/95 dark:bg-[#0b0e18]/95 backdrop-blur-md border-slate-200/80 dark:border-white/[0.1]">
               <SelectItem value="All">All Versions</SelectItem>
               <SelectItem value="New Version">New Version</SelectItem>
               <SelectItem value="Old Version">Old Version</SelectItem>

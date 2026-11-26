@@ -257,3 +257,122 @@ export const WALLPAPER_PRESETS: WallpaperPreset[] = [
     previewLight: "linear-gradient(180deg, #fef3c7 0%, #fed7aa 35%, #fffbeb 85%)",
   },
 ];
+
+const WATERMARK_PALETTES: Record<string, { dark: [string, string, string]; light: [string, string, string] }> = {
+  aurora: {
+    dark: ["rgba(209, 250, 229, 0.72)", "rgba(52, 211, 153, 0.54)", "rgba(56, 189, 248, 0.14)"],
+    light: ["rgba(5, 150, 105, 0.58)", "rgba(2, 132, 199, 0.42)", "rgba(16, 185, 129, 0.08)"],
+  },
+  starfield: {
+    dark: ["rgba(224, 231, 255, 0.72)", "rgba(129, 140, 248, 0.52)", "rgba(67, 56, 202, 0.14)"],
+    light: ["rgba(67, 56, 202, 0.56)", "rgba(99, 102, 241, 0.38)", "rgba(129, 140, 248, 0.08)"],
+  },
+  "cyber-grid": {
+    dark: ["rgba(224, 242, 254, 0.76)", "rgba(56, 189, 248, 0.54)", "rgba(2, 132, 199, 0.14)"],
+    light: ["rgba(2, 132, 199, 0.60)", "rgba(3, 105, 161, 0.42)", "rgba(56, 189, 248, 0.08)"],
+  },
+  "fluid-plasma": {
+    dark: ["rgba(251, 207, 232, 0.74)", "rgba(236, 72, 153, 0.54)", "rgba(139, 92, 246, 0.16)"],
+    light: ["rgba(219, 39, 119, 0.56)", "rgba(124, 58, 237, 0.40)", "rgba(139, 92, 246, 0.08)"],
+  },
+  "matrix-rain": {
+    dark: ["rgba(187, 247, 208, 0.72)", "rgba(34, 197, 94, 0.50)", "rgba(21, 128, 61, 0.14)"],
+    light: ["rgba(21, 128, 61, 0.58)", "rgba(22, 163, 74, 0.38)", "rgba(74, 222, 128, 0.08)"],
+  },
+  "neural-network": {
+    dark: ["rgba(207, 250, 254, 0.74)", "rgba(6, 182, 212, 0.52)", "rgba(14, 116, 144, 0.14)"],
+    light: ["rgba(14, 116, 144, 0.58)", "rgba(8, 145, 178, 0.40)", "rgba(34, 211, 238, 0.08)"],
+  },
+  "quantum-waves": {
+    dark: ["rgba(243, 232, 255, 0.74)", "rgba(168, 85, 247, 0.54)", "rgba(99, 102, 241, 0.14)"],
+    light: ["rgba(126, 34, 206, 0.56)", "rgba(109, 40, 217, 0.38)", "rgba(168, 85, 247, 0.08)"],
+  },
+  "firefly-forest": {
+    dark: ["rgba(254, 240, 138, 0.72)", "rgba(234, 179, 8, 0.48)", "rgba(99, 102, 241, 0.14)"],
+    light: ["rgba(180, 83, 9, 0.56)", "rgba(79, 70, 229, 0.38)", "rgba(234, 179, 8, 0.08)"],
+  },
+  "cosmic-vortex": {
+    dark: ["rgba(237, 233, 254, 0.74)", "rgba(139, 92, 246, 0.54)", "rgba(109, 40, 217, 0.14)"],
+    light: ["rgba(109, 40, 217, 0.56)", "rgba(79, 70, 229, 0.38)", "rgba(139, 92, 246, 0.08)"],
+  },
+  "cyber-hive": {
+    dark: ["rgba(207, 250, 254, 0.76)", "rgba(0, 229, 255, 0.50)", "rgba(14, 116, 144, 0.14)"],
+    light: ["rgba(14, 116, 144, 0.58)", "rgba(2, 132, 199, 0.40)", "rgba(6, 182, 212, 0.08)"],
+  },
+  "meteor-shower": {
+    dark: ["rgba(254, 205, 211, 0.74)", "rgba(244, 63, 94, 0.52)", "rgba(99, 102, 241, 0.16)"],
+    light: ["rgba(190, 18, 60, 0.56)", "rgba(79, 70, 229, 0.38)", "rgba(244, 63, 94, 0.08)"],
+  },
+  "quantum-helix": {
+    dark: ["rgba(167, 243, 208, 0.74)", "rgba(16, 185, 129, 0.52)", "rgba(56, 189, 248, 0.14)"],
+    light: ["rgba(4, 120, 87, 0.58)", "rgba(2, 132, 199, 0.40)", "rgba(16, 185, 129, 0.08)"],
+  },
+  "bluestar-frost": {
+    dark: ["rgba(219, 234, 254, 0.78)", "rgba(56, 189, 248, 0.54)", "rgba(1, 118, 211, 0.16)"],
+    light: ["rgba(1, 118, 211, 0.60)", "rgba(29, 78, 216, 0.44)", "rgba(56, 189, 248, 0.08)"],
+  },
+  "midnight-nebula": {
+    dark: ["rgba(224, 231, 255, 0.74)", "rgba(99, 102, 241, 0.52)", "rgba(55, 48, 163, 0.14)"],
+    light: ["rgba(79, 70, 229, 0.56)", "rgba(55, 48, 163, 0.38)", "rgba(99, 102, 241, 0.08)"],
+  },
+  "sunset-twilight": {
+    dark: ["rgba(254, 243, 199, 0.74)", "rgba(245, 158, 11, 0.52)", "rgba(194, 65, 12, 0.16)"],
+    light: ["rgba(217, 119, 6, 0.56)", "rgba(194, 65, 12, 0.40)", "rgba(245, 158, 11, 0.08)"],
+  },
+  "salesforce-mesh": {
+    dark: ["rgba(224, 242, 254, 0.78)", "rgba(2, 132, 199, 0.54)", "rgba(3, 105, 161, 0.14)"],
+    light: ["rgba(2, 132, 199, 0.60)", "rgba(3, 105, 161, 0.42)", "rgba(56, 189, 248, 0.08)"],
+  },
+  "emerald-matrix": {
+    dark: ["rgba(209, 250, 229, 0.74)", "rgba(16, 185, 129, 0.52)", "rgba(6, 95, 70, 0.16)"],
+    light: ["rgba(6, 95, 70, 0.58)", "rgba(5, 150, 105, 0.40)", "rgba(52, 211, 153, 0.08)"],
+  },
+  "tokyo-neon": {
+    dark: ["rgba(251, 207, 232, 0.76)", "rgba(244, 63, 94, 0.56)", "rgba(168, 85, 247, 0.20)"],
+    light: ["rgba(190, 24, 93, 0.58)", "rgba(126, 34, 206, 0.42)", "rgba(236, 72, 153, 0.08)"],
+  },
+  "glacial-ice": {
+    dark: ["rgba(224, 242, 254, 0.78)", "rgba(56, 189, 248, 0.52)", "rgba(3, 105, 161, 0.14)"],
+    light: ["rgba(3, 105, 161, 0.58)", "rgba(2, 132, 199, 0.42)", "rgba(125, 211, 252, 0.08)"],
+  },
+  "volcanic-magma": {
+    dark: ["rgba(255, 237, 213, 0.74)", "rgba(249, 115, 22, 0.54)", "rgba(220, 38, 38, 0.18)"],
+    light: ["rgba(194, 65, 12, 0.58)", "rgba(153, 27, 27, 0.42)", "rgba(249, 115, 22, 0.08)"],
+  },
+  "deep-abyss": {
+    dark: ["rgba(204, 251, 241, 0.74)", "rgba(20, 184, 166, 0.52)", "rgba(15, 118, 110, 0.16)"],
+    light: ["rgba(15, 118, 110, 0.58)", "rgba(17, 94, 89, 0.42)", "rgba(45, 212, 191, 0.08)"],
+  },
+  "retro-vector": {
+    dark: ["rgba(254, 243, 199, 0.74)", "rgba(234, 179, 8, 0.52)", "rgba(180, 83, 9, 0.16)"],
+    light: ["rgba(180, 83, 9, 0.58)", "rgba(146, 64, 14, 0.42)", "rgba(234, 179, 8, 0.08)"],
+  },
+};
+
+/**
+ * Computes the adaptive gradient for INSIGHT TABLE watermark typography.
+ * Matches active background wallpaper color stops; falls back to STEP 1's
+ * monochrome scheme when background is complete dark or white (`minimal`,
+ * `carbon-matrix`, or low wallpaper opacity).
+ */
+export function getInsightWatermarkGradient(
+  wallpaperId: string,
+  isDark: boolean,
+  wallpaperOpacity = 1
+): string {
+  const palette = WATERMARK_PALETTES[wallpaperId];
+  const isNeutralBackdrop =
+    !palette || wallpaperId === "minimal" || wallpaperId === "carbon-matrix" || wallpaperOpacity <= 0.15;
+
+  const cardSurfaceMid = isDark ? "rgba(10, 12, 18, 0.32)" : "rgba(248, 250, 252, 0.42)";
+  const cardSurfaceEnd = isDark ? "rgba(10, 12, 18, 0.14)" : "rgba(241, 245, 249, 0.18)";
+
+  if (isNeutralBackdrop) {
+    return isDark
+      ? `linear-gradient(180deg, rgba(255, 255, 255, 0.52) 0%, rgba(148, 163, 184, 0.22) 55%, ${cardSurfaceMid} 88%, ${cardSurfaceEnd} 100%)`
+      : `linear-gradient(180deg, rgba(148, 163, 184, 0.52) 0%, rgba(203, 213, 225, 0.32) 55%, ${cardSurfaceMid} 88%, ${cardSurfaceEnd} 100%)`;
+  }
+
+  const [c1, c2, c3] = isDark ? palette.dark : palette.light;
+  return `linear-gradient(166deg, ${c1} 0%, ${c2} 40%, ${c3} 70%, ${cardSurfaceMid} 90%, ${cardSurfaceEnd} 100%)`;
+}

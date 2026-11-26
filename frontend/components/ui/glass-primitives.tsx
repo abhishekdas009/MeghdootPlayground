@@ -92,9 +92,9 @@ export function GlassSpotlightCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12, scale: 0.99 }}
+      initial={{ opacity: 0.9, y: 8, scale: 0.995 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.28, delay, ease: EASE_120HZ }}
+      transition={{ duration: 0.18, delay: Math.min(delay, 0.12), ease: EASE_120HZ }}
       whileHover={interactive ? { y: -3 } : undefined}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
@@ -152,9 +152,9 @@ export function GlassHero({
 }: GlassHeroProps) {
   return (
     <motion.section
-      initial={{ opacity: 0, y: -12 }}
+      initial={{ opacity: 0.9, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.34, ease: EASE_120HZ }}
+      transition={{ duration: 0.2, ease: EASE_120HZ }}
       className={cn(
         "page-hero relative flex flex-col gap-5 overflow-hidden rounded-3xl",
         className

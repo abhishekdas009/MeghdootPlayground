@@ -10,7 +10,6 @@ import * as React from "react";
 
 
 
-import * as xlsx from "xlsx";
 
 
 
@@ -36,13 +35,14 @@ import { Textarea } from "@/components/ui/textarea";
 
 import { SOQLHighlighter } from "@/components/ui/soql-highlighter";
 
+import { useUIStore } from "@/store/ui-store";
 
 
 
 
 
 
-import { SOQLRelationshipGraph } from "@/components/soql/soql-relationship-graph";
+
 
 
 
@@ -71,7 +71,6 @@ import { trackDashboardEvent } from "@/lib/dashboard-tracker";
 
 
 import { classifyTicketPrefix, processAlgo1TicketClassification, processAlgo1CcoStep3Classification, type CcoAlgoResult, type CcoTicketItem, processAlgo2NamoClassification, type NamoAlgo2Result, processAlgo3NonNamoClassification, type NonNamoAlgo3Result, processAccountCheckClassification, type AccountCheckResult, type AccountCheckRow, buildNonNamoExecutionSummary, buildNamoExecutionSummary, isEntityLockedError, parseCancellationFailedResults, type ParsedFailedResult, buildCancellationStep5Output, isStatusCanceled, isStatusCompleted } from "@/lib/cancellation-algo";
-import { downloadExcludedInsightsExcel } from "@/lib/cancellation-excel";
 import { parseAssetTransferPairs } from "@/lib/parsers";
 
 
@@ -276,7 +275,6 @@ import {
 
 
 
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 
 
@@ -288,7 +286,6 @@ import { MagneticButton } from "@/components/ui/magnetic-button";
 
 
 
-import { JsonViewer } from "@/components/ui/json-viewer";
 
 
 
@@ -6650,7 +6647,7 @@ function PasteResultCard({
 
 
 
-    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
+    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
 
 
 
@@ -6658,11 +6655,11 @@ function PasteResultCard({
 
 
 
-        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+        <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
 
 
 
-          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/40 dark:to-transparent bg-clip-text text-transparent">
+          <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -6970,7 +6967,7 @@ function QueryPreviewCard({
 
 
 
-    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
+    <Card className={cn("overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col transition-all duration-300 group relative", className || 'h-[500px] xl:h-[calc(100vh-120px)] min-h-[350px]')}>
 
 
 
@@ -6978,11 +6975,11 @@ function QueryPreviewCard({
 
 
 
-        <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+        <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
 
 
 
-          <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/40 dark:to-transparent bg-clip-text text-transparent">
+          <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -8178,7 +8175,7 @@ function TemplatePicker({
 
 
 
-            className="fixed z-[100] overflow-hidden rounded-2xl border border-border/80 bg-popover/98 p-1.5 text-foreground shadow-2xl backdrop-blur-2xl dark:border-white/[0.1] dark:bg-[#07080c]/95 dark:shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.06)]"
+            className="fixed z-[100] overflow-hidden rounded-2xl border border-border/80 bg-popover/98 p-1.5 text-foreground shadow-2xl backdrop-blur-md dark:border-white/[0.1] dark:bg-[#07080c]/95 dark:shadow-[0_25px_60px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.06)]"
 
 
 
@@ -8358,11 +8355,11 @@ const cardContainerVariants = {
 
 
 
-      staggerChildren: 0.07,
+      staggerChildren: 0.025,
 
 
 
-      delayChildren: 0.02,
+      delayChildren: 0,
 
 
 
@@ -8382,11 +8379,7 @@ const cardContainerVariants = {
 
 
 
-    y: -14,
-
-
-
-    filter: "blur(6px)",
+    y: -8,
 
 
 
@@ -8394,7 +8387,7 @@ const cardContainerVariants = {
 
 
 
-      duration: 0.18,
+      duration: 0.12,
 
 
 
@@ -8430,15 +8423,11 @@ const cardItemVariants = {
 
 
 
-    y: 28,
+    y: 12,
 
 
 
-    scale: 0.95,
-
-
-
-    filter: "blur(8px)",
+    scale: 0.985,
 
 
 
@@ -8462,10 +8451,6 @@ const cardItemVariants = {
 
 
 
-    filter: "blur(0px)",
-
-
-
     transition: {
 
 
@@ -8474,15 +8459,15 @@ const cardItemVariants = {
 
 
 
-      stiffness: 380,
+      stiffness: 440,
 
 
 
-      damping: 26,
+      damping: 32,
 
 
 
-      mass: 0.75,
+      mass: 0.7,
 
 
 
@@ -8514,15 +8499,11 @@ const step1CardVariants = {
 
 
 
-    y: 22,
+    y: 10,
 
 
 
-    scale: 0.96,
-
-
-
-    filter: "blur(6px)",
+    scale: 0.99,
 
 
 
@@ -8546,10 +8527,6 @@ const step1CardVariants = {
 
 
 
-    filter: "blur(0px)",
-
-
-
     transition: {
 
 
@@ -8558,15 +8535,15 @@ const step1CardVariants = {
 
 
 
-      stiffness: 380,
+      stiffness: 440,
 
 
 
-      damping: 26,
+      damping: 32,
 
 
 
-      mass: 0.8,
+      mass: 0.7,
 
 
 
@@ -8586,15 +8563,11 @@ const step1CardVariants = {
 
 
 
-    y: -14,
+    y: -8,
 
 
 
-    scale: 0.97,
-
-
-
-    filter: "blur(6px)",
+    scale: 0.99,
 
 
 
@@ -8602,7 +8575,7 @@ const step1CardVariants = {
 
 
 
-      duration: 0.18,
+      duration: 0.12,
 
 
 
@@ -8638,7 +8611,42 @@ interface PendingTransferException {
 
 }
 
+const AnimatedStepPlaceholder = React.memo(function AnimatedStepPlaceholder({
+  text,
+  visible,
+}: {
+  text: string;
+  visible: boolean;
+}) {
+  const words = React.useMemo(() => text.split(" "), [text]);
+  const sweepDuration = React.useMemo(
+    () => `${Math.max(2.1, words.length * 0.25).toFixed(2)}s`,
+    [words.length]
+  );
 
+  if (!visible) return null;
+
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-6 text-center select-none font-mono text-xs leading-relaxed"
+      style={{ "--sweep-duration": sweepDuration } as React.CSSProperties}
+    >
+      <span className="font-light tracking-normal">
+        {words.map((word, idx) => (
+          <React.Fragment key={`${idx}-${word}`}>
+            {idx > 0 ? " " : null}
+            <span
+              className="step3-word-sweep"
+              style={{ "--word-idx": idx } as React.CSSProperties}
+            >
+              {word}
+            </span>
+          </React.Fragment>
+        ))}
+      </span>
+    </div>
+  );
+});
 
 const buildPendingAsciiTable = (exceptions: PendingTransferException[]) => {
   if (exceptions.length === 0) return "";
@@ -9784,12 +9792,14 @@ function CancellationHandoverModal({
               variant="outline"
               size="sm"
               onClick={() => {
-                downloadExcludedInsightsExcel({
+                void import("@/lib/cancellation-excel").then((m) =>
+                  m.downloadExcludedInsightsExcel({
                   cancellationType: type,
                   namoResult,
                   nonNamoResult,
                   ccoResult,
-                });
+                })
+                );
               }}
               className="h-8 text-xs font-bold rounded-lg gap-1.5 shadow-sm border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300"
               title="Download multi-sheet Excluded Tickets Excel (.xlsx)"
@@ -10816,6 +10826,8 @@ export default function SOQLGeneratorPage() {
 
 
 
+  const syncCaseOwnersFromTable = useUIStore((s) => s.syncCaseOwnersFromTable);
+
   React.useEffect(() => {
 
 
@@ -10825,6 +10837,11 @@ export default function SOQLGeneratorPage() {
 
 
   }, [refreshCaseOwners]);
+
+  React.useEffect(() => {
+    if (caseOwnerLoadState !== "ready") return;
+    syncCaseOwnersFromTable(caseOwners);
+  }, [caseOwners, caseOwnerLoadState, syncCaseOwnersFromTable]);
 
 
 
@@ -15071,6 +15088,10 @@ AND Ticket_Numbers__c IN (
 
 
 
+          const xlsx = await import("xlsx");
+
+
+
           const workbook = xlsx.read(buffer, { type: "array" });
 
 
@@ -18255,7 +18276,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-          className="rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/55 dark:bg-[#0b0c10]/45 backdrop-blur-2xl p-3 sm:p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.5)]"
+          className="rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/55 dark:bg-[#0b0c10]/45 backdrop-blur-md p-3 sm:p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.5)]"
 
 
 
@@ -18855,7 +18876,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-          <div className="rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300">
+          <div className="rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300">
 
 
 
@@ -19143,7 +19164,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                  <div className="grid grid-cols-4 gap-1 p-1.5 rounded-xl bg-slate-100/80 dark:bg-[#070a14]/70 border border-slate-200/80 dark:border-white/[0.10] backdrop-blur-xl shadow-inner relative">
+                  <div className="grid grid-cols-4 gap-1 p-1.5 rounded-xl bg-slate-100/80 dark:bg-[#070a14]/70 border border-slate-200/80 dark:border-white/[0.10] backdrop-blur-md shadow-inner relative">
 
 
 
@@ -19487,7 +19508,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
+                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
 
 
 
@@ -19515,7 +19536,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -20689,7 +20710,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
+                className="flex flex-col flex-1 min-h-0 rounded-2xl border border-slate-200/80 dark:border-white/[0.12] bg-white/50 dark:bg-[#0b0c10]/45 backdrop-blur-md shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_0_rgba(255,255,255,0.7)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.12)] overflow-hidden relative group transition-all duration-300"
 
 
 
@@ -20717,7 +20738,7 @@ AND Ticket_Numbers__c IN (
 
 
 
-                  <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                  <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -22149,15 +22170,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="flex flex-col flex-1 h-full rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+                  <Card className="flex flex-col flex-1 h-full rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
 
 
 
-                    <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                    <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
 
 
 
-                      <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -22281,15 +22302,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="flex flex-col flex-1 h-full rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+                  <Card className="flex flex-col flex-1 h-full rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
 
 
 
-                    <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                    <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
 
 
 
-                      <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -22421,7 +22442,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="flex flex-col flex-1 h-full rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
+                  <Card className="flex flex-col flex-1 h-full rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:border-white/10 dark:bg-slate-950/45 overflow-hidden relative group transition-all duration-300">
 
 
 
@@ -22429,7 +22450,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter">
 
 
 
@@ -22593,7 +22614,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -22601,7 +22622,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -22677,7 +22698,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -22685,7 +22706,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -22713,7 +22734,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                          <CardTitle className="text-lg xl:text-xl font-black tracking-tight flex-1 leading-tight text-slate-800 dark:text-white">
+                          <CardTitle className="text-lg md:text-xl font-black tracking-tight flex-1 leading-tight text-slate-800 dark:text-white">
 
 
 
@@ -22837,7 +22858,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -22845,7 +22866,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -22933,7 +22954,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -22941,7 +22962,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -22973,7 +22994,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <CardTitle className="text-lg xl:text-xl font-black tracking-tight leading-tight text-slate-800 dark:text-white">
+                            <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-slate-800 dark:text-white">
 
 
 
@@ -23133,7 +23154,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -23141,7 +23162,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                        <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -23258,7 +23279,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                    <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -23266,7 +23287,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                        <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent uppercase">
+                        <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter uppercase">
 
 
 
@@ -24546,7 +24567,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -24554,7 +24575,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <span className="whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                    <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -24757,15 +24778,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
 
 
 
-            <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+            <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
 
 
 
-              <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+              <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -24785,17 +24806,17 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center justify-between gap-3 mt-5 md:mt-6 flex-wrap w-full">
 
 
 
-                      <CardTitle className="mt-5 md:mt-6 text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
+                      <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
                         {cancellationType === "Account Check" ? "Account Check SOQL Results" : "Paste SOQL Result Batch"}
                       </CardTitle>
 
 
 
-                      <div className="flex items-center gap-2 mt-5 md:mt-6">
+                      <div className="flex items-center gap-2">
 
 
 
@@ -24915,31 +24936,19 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <Textarea
-
-
-
-                      placeholder={`Paste Salesforce SOQL result here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "ParentWorkOrderId"   "ParentWorkOrder"   "Is_Approval_Sent__c"   "Is_MR_Created__c"   "Account"   "Account.Group__c"   "FGR_Approved_Reject_For_CRBF__c"   "AssetId"   "Status"   "ParentWorkOrder.Ticket_Number_Read_Only__c"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   ""   ""   "false"   "false"   "[Account]"   "CCO"   ""   "02iNy00000CYGmbIAH"   "Accepted"   ""\n"[WorkOrder]"   "0WONy000004JcKLOA0"   "A23020209204"   ""   ""   "false"   "false"   "[Account]"   "NAMO"   ""   "02iNy00000CYGmbIAH"   "In Progress"   ""\n"[WorkOrder]"   "0WONy000003qBSCOA2"   "A23090340026"   "0WONy00000MkzWsOAJ"   "[WorkOrder]"   "false"   "false"   "[Account]"   "NON NAMO"   ""   "02iNy00000CjSmNIAV"   "Bundled"   "BLK25113030694566"`}
-
-
-
-                      className="flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y min-h-[220px]"
-
-
-
-                      value={cancellationExecutionInput}
-
-
-
-                      onPaste={handleCancellationResultPaste}
-
-
-
-                      onChange={(event) => handleCancellationResultInputChange(event.target.value)}
-
-
-
-                    />
+                    <div className="relative flex-1 flex flex-col min-h-[220px]">
+                      <AnimatedStepPlaceholder
+                        text="Paste Salesforce SOQL result here..."
+                        visible={!cancellationExecutionInput}
+                      />
+                      <Textarea
+                        placeholder=""
+                        className="relative z-20 flex-1 font-mono text-xs leading-relaxed rounded-xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y min-h-[220px]"
+                        value={cancellationExecutionInput}
+                        onPaste={handleCancellationResultPaste}
+                        onChange={(event) => handleCancellationResultInputChange(event.target.value)}
+                      />
+                    </div>
 
                     {/* Cancellation Parsed Status Bar */}
                     {((cancellationType === "NAMO" && namoAlgo2Result.allRecords.length > 0) ||
@@ -25170,18 +25179,18 @@ BSL22295338      CID-6074821`}
               {/* CCO, NAMO & NON-NAMO: FULL-WIDTH MASTER MULTIPLE INSIGHTS CARD */}
               {(cancellationType === "NAMO" || cancellationType === "NON NAMO" || cancellationType === "CCO") && (
                 <motion.div variants={cardItemVariants} className="col-span-full h-full flex flex-col">
-                  <Card className="overflow-hidden rounded-2xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
-                    {/* INSIGHTS Ambient Watermark */}
-                    <div className="absolute top-1 left-3 md:top-2 md:left-4 pointer-events-none select-none z-0 overflow-hidden opacity-70">
-                      <span className="whitespace-nowrap text-[28px] md:text-[34px] lg:text-[40px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/40 dark:to-white/8 bg-clip-text text-transparent">
-                        INSIGHTS
+                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                    {/* INSIGHT TABLE Ambient Watermark */}
+                    <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+                      <span className="insight-table-watermark whitespace-nowrap text-[36px] md:text-[46px] lg:text-[54px] leading-[0.8] font-black tracking-tighter">
+                        INSIGHT TABLE
                       </span>
                     </div>
 
-                    <CardHeader className="pb-2 bg-transparent p-3.5 sm:p-4 relative z-10">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 mt-3 md:mt-4 w-full">
+                    <CardHeader className="pb-3 bg-transparent p-5 sm:p-6 relative z-10">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-6 md:mt-7 w-full">
                         <div className="flex items-center gap-2.5 flex-wrap">
-                          <CardTitle className="text-sm md:text-base font-black tracking-tight leading-tight text-foreground">
+                          <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
                             {cancellationType === "NAMO" ? "NAMO Operational Insights & Segregation" : cancellationType === "NON NAMO" ? "NON-NAMO Operational Insights & Segregation" : "CCO Operational Insights & Segregation"}
                           </CardTitle>
                           {(() => {
@@ -25243,12 +25252,14 @@ BSL22295338      CID-6074821`}
                                   size="sm"
                                   className="h-8 gap-1.5 text-xs font-bold border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-lg shadow-sm whitespace-nowrap shrink-0"
                                   onClick={() => {
-                                    downloadExcludedInsightsExcel({
+                                    void import("@/lib/cancellation-excel").then((m) =>
+                                      m.downloadExcludedInsightsExcel({
                                       cancellationType,
                                       ccoResult: ccoAlgoResult,
                                       namoResult: namoAlgo2Result,
                                       nonNamoResult: nonNamoAlgo3Result,
-                                    });
+                                    })
+                                    );
                                   }}
                                   title="Download Multi-Sheet Excluded Tickets Excel (.xlsx)"
                                 >
@@ -25656,10 +25667,10 @@ BSL22295338      CID-6074821`}
               {/* ACCOUNT CHECK: STEP 4 MASTER OPERATIONAL INSIGHTS CARD */}
               {cancellationType === "Account Check" && (
                 <motion.div variants={cardItemVariants} className="col-span-full h-full flex flex-col">
-                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                  <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
                     {/* INSIGHT TABLE Ambient Watermark */}
                     <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 overflow-hidden opacity-90 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
-                      <span className="whitespace-nowrap text-[36px] md:text-[46px] lg:text-[54px] leading-[0.8] font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[36px] md:text-[46px] lg:text-[54px] leading-[0.8] font-black tracking-tighter">
                         INSIGHT TABLE
                       </span>
                     </div>
@@ -26087,15 +26098,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:border-white/10 dark:bg-slate-950/45 h-full flex flex-col transition-all duration-300 group relative">
 
 
 
-          <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
 
 
 
-            <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/50 to-transparent dark:from-white/50 dark:to-white/10 bg-clip-text text-transparent">
+            <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -26345,11 +26356,18 @@ BSL22295338      CID-6074821`}
 
                     </div>
 
-                    <div className="rounded-xl bg-transparent text-foreground flex flex-col min-h-0 flex-1 overflow-hidden border-transparent shadow-none">
-                      <SOQLHighlighter query={cancellationCanceledOutput || `"_"   "Id"   "Ticket_Number_Read_Only__c"   "Status"\n// Output will be generated here based on your custom algorithm`} className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100" />
-
-
-
+                    <div className="relative rounded-xl bg-transparent text-foreground flex flex-col min-h-[180px] flex-1 overflow-hidden border-transparent shadow-none">
+                      {cancellationCanceledOutput ? (
+                        <SOQLHighlighter
+                          query={cancellationCanceledOutput}
+                          className="overflow-auto whitespace-pre-wrap break-words p-0 font-mono text-xs leading-relaxed text-slate-800 dark:text-sky-200 min-h-[180px] max-h-[320px] selection:bg-blue-500/20 selection:text-blue-900 dark:selection:text-blue-100"
+                        />
+                      ) : (
+                        <AnimatedStepPlaceholder
+                          text="Output will be generated here based on your custom algorithm"
+                          visible={true}
+                        />
+                      )}
                     </div>
 
 
@@ -26374,15 +26392,15 @@ BSL22295338      CID-6074821`}
 
 
 
-                <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md h-full flex flex-col transition-all duration-300 group relative">
 
 
 
-          <div className="absolute top-3 left-4 md:top-4 md:left-6 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
+          <div className="absolute top-2 left-4 md:top-3 md:left-5 pointer-events-none select-none z-0 opacity-100 transition-all duration-700 ease-out group-hover:translate-x-3 group-hover:scale-105 group-hover:opacity-100 origin-left">
 
 
 
-            <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+            <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -26462,24 +26480,18 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <Textarea
-
-
-
-                      placeholder={`Paste Salesforce SOQL result of FAILED tickets here...\n"_"   "Id"   "Ticket_Number_Read_Only__c"   "Status"\n"[WorkOrder]"   "0WONy000008eHgfOAE"   "B25031925463529"   "Cancellation Requested"`}
-
-
-
-                      className="flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-2xl border border-border/70 dark:border-white/[0.08] bg-surface-recessed/60 dark:bg-black/25 p-4 resize-y text-foreground backdrop-blur-sm"
-
-
-
-                      value={cancellationFailedInput}
-
-
-
-                      onChange={(event) => setCancellationFailedInput(event.target.value)}
-                    />
+                    <div className="relative flex-1 flex flex-col min-h-[180px] rounded-2xl border border-border/70 dark:border-white/[0.08] bg-surface-recessed/60 dark:bg-black/25 backdrop-blur-sm overflow-hidden">
+                      <AnimatedStepPlaceholder
+                        text="Paste Salesforce SOQL result of FAILED tickets here..."
+                        visible={!cancellationFailedInput}
+                      />
+                      <Textarea
+                        placeholder=""
+                        className="relative z-20 flex-1 min-h-[180px] font-mono text-xs leading-relaxed rounded-2xl border-transparent bg-transparent focus-visible:ring-0 focus-visible:border-transparent shadow-none p-4 resize-y text-foreground"
+                        value={cancellationFailedInput}
+                        onChange={(event) => setCancellationFailedInput(event.target.value)}
+                      />
+                    </div>
 
                     </CardContent>
 
@@ -26531,13 +26543,15 @@ BSL22295338      CID-6074821`}
                   (parsedCancellationFailed?.allFailedTickets?.length || 0);
 
                 const handleDownloadStep5Excel = () => {
-                  downloadExcludedInsightsExcel({
+                  void import("@/lib/cancellation-excel").then((m) =>
+                    m.downloadExcludedInsightsExcel({
                     cancellationType,
                     ccoResult: ccoAlgoResult,
                     namoResult: namoAlgo2Result,
                     nonNamoResult: nonNamoAlgo3Result,
                     parsedFailed: parsedCancellationFailed,
-                  });
+                  })
+                  );
                 };
 
                 return (
@@ -26589,7 +26603,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -26597,7 +26611,7 @@ BSL22295338      CID-6074821`}
 
 
 
-              <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+              <span className="insight-table-watermark whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter">
 
 
 
@@ -26726,7 +26740,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                      <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -26738,7 +26752,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                            <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                            <span className="insight-table-watermark whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter">
 
 
 
@@ -26859,7 +26873,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl h-full flex flex-col transition-all duration-300 group relative">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md h-full flex flex-col transition-all duration-300 group relative">
 
 
 
@@ -27020,7 +27034,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col transition-all duration-300 relative group">
 
 
 
@@ -27032,7 +27046,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                    <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -27068,7 +27082,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                          <CardTitle className="text-lg xl:text-xl font-black tracking-tight leading-tight text-foreground">
+                          <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
 
 
 
@@ -27652,7 +27666,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col flex-1 min-h-0 transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col flex-1 min-h-0 transition-all duration-300 relative group">
 
 
 
@@ -27856,7 +27870,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group shrink-0">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col transition-all duration-300 relative group shrink-0">
 
 
 
@@ -27868,7 +27882,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                    <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                    <span className="insight-table-watermark whitespace-nowrap text-[45px] md:text-[55px] lg:text-[65px] leading-[0.8] font-black tracking-tighter">
 
 
 
@@ -27904,7 +27918,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                          <CardTitle className="text-lg xl:text-xl font-black tracking-tight leading-tight text-foreground">
+                          <CardTitle className="text-lg md:text-xl font-black tracking-tight leading-tight text-foreground">
 
 
 
@@ -28076,7 +28090,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-xl dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 relative group flex-1 min-h-0">
+                <Card className="overflow-hidden rounded-3xl border border-slate-200/50 bg-white/20 shadow-none backdrop-blur-md dark:backdrop-blur-sm dark:border-white/[0.1] dark:bg-white/[0.02] dark:shadow-[0_0_50px_-12px_rgba(59,130,246,0.15),inset_0_0_20px_rgba(255,255,255,0.03)] flex flex-col transition-all duration-300 relative group flex-1 min-h-0">
 
 
 
@@ -28500,7 +28514,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col transition-all duration-300 relative group">
 
 
 
@@ -28716,7 +28730,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col transition-all duration-300 relative group">
 
 
 
@@ -28872,7 +28886,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl flex flex-col transition-all duration-300 relative group">
+                  <Card className="overflow-hidden rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md flex flex-col transition-all duration-300 relative group">
 
 
 
@@ -29092,7 +29106,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                  <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-2xl overflow-hidden relative group transition-all duration-300">
+                  <Card className="flex flex-col flex-1 min-h-[320px] h-[350px] 2xl:h-full rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card/50 dark:bg-[#0b0c10]/45 shadow-xl dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-md overflow-hidden relative group transition-all duration-300">
 
 
 
@@ -29100,7 +29114,7 @@ BSL22295338      CID-6074821`}
 
 
 
-                      <span className="whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter bg-gradient-to-b from-slate-400/40 to-transparent dark:from-white/30 dark:to-transparent bg-clip-text text-transparent">
+                      <span className="insight-table-watermark whitespace-nowrap text-[40px] md:text-[50px] lg:text-[60px] leading-none font-black tracking-tighter">
 
 
 
